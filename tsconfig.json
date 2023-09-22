@@ -17,8 +17,8 @@
     "outDir": "./dist",
 
     "jsx": "react",
-    "jsxFactory": "DocXJSX.createElement",
-    "jsxFragmentFactory": "DocXJSX.Fragment"
+    "jsxFactory": "DX.createElement",
+    "jsxFragmentFactory": "DX.Fragment"
   },
   "include": ["./src/**/*.ts", "./src/**/*.tsx"],
   "exclude": []

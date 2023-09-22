@@ -1,1 +1,4 @@
-export * from './lib/namespace';
+import * as DX from './dx';
+
+export default DX;
+export * from './dx';

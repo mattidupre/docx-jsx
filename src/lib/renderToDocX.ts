@@ -1,24 +1,18 @@
 import { Document, Packer } from 'docx';
-import { type PrimitiveName, type FunctionElement } from './entities';
-import { renderDocXElement, GetRenderedElement } from './renderDocXElement';
+import { parseSectionInstances } from './docXClasses';
+import { elementToDocX } from './elementToDocX';
+import { renderDocumentWrapper } from './renderWrapper';
 
-type EntryElement = FunctionElement<PrimitiveName, { children: any }>;
-
-export const renderToDocX = async <T extends EntryElement>(element: T) => {
-  const instance = renderDocXElement(element);
-
-  const sections = [
-    { children: Array.isArray(instance) ? instance : [instance] },
-  ];
-
-  console.log(sections);
-
-  // @ts-ignore
-  const document = new Document({
-    sections,
+const renderDocument = (element: JSX.Element) =>
+  new Document({
+    sections: parseSectionInstances(
+      renderDocumentWrapper(() => elementToDocX(element)),
+    ),
   });
 
-  const buffer = await Packer.toBuffer(document); // TODO: Streams work too?
+export const renderToDocX = (...args: Parameters<typeof renderDocument>) =>
+  Packer.toBuffer(renderDocument(...args));
 
-  return buffer;
-};
+export const renderToDocXStream = (
+  ...args: Parameters<typeof renderDocument>
+) => Packer.toStream(renderDocument(...args));
