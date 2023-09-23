@@ -20,6 +20,8 @@ import {
   isIgnored,
   type Element,
   type Props,
+  type GetElementType,
+  getElementMeta,
 } from './element';
 
 /**
@@ -29,11 +31,11 @@ import {
  */
 const renderPrimitiveElement = <T extends PrimitiveElement>(
   element: T,
-): T['type'] extends DocXClassName ? AsDocXInstance<T['type']> : never => {
-  return createDocXInstance(
-    element.type,
-    renderPrimitiveProps(element.props) as any,
-  ) as any;
+): GetElementType<T> extends DocXClassName
+  ? AsDocXInstance<GetElementType<T>>
+  : never => {
+  const { type, props } = getElementMeta(element);
+  return createDocXInstance(type, renderPrimitiveProps(props)) as any;
 };
 
 /**
@@ -41,7 +43,10 @@ const renderPrimitiveElement = <T extends PrimitiveElement>(
  */
 const callFunctionElement = <T extends FunctionElement>(
   element: T,
-): ReturnType<T['type']> => element.type(element.props) as any; // TODO: Fix this any
+): ReturnType<GetElementType<T>> => {
+  const { type, props } = getElementMeta(element);
+  return type(props);
+};
 
 type GetRenderedPrimitiveProps<T extends undefined | Props> =
   T extends undefined
@@ -108,7 +113,7 @@ export type GetRenderedNode<T extends Node> = T extends Ignored
   : T extends PrimitiveElement<any, infer N extends PrimitiveName>
   ? AsDocXInstance<N>
   : T extends FunctionElement
-  ? T['type'] extends (...args: any) => infer N
+  ? GetElementType<T> extends (...args: any) => infer N
     ? N extends ReadonlyArray<infer I extends Node>
       ? ReadonlyArray<GetRenderedNode<I>>
       : N extends Node
@@ -137,7 +142,7 @@ export function renderNode<TNode extends Node>(
 
   if (isFunctionElement(node)) {
     return renderComponentWrapper(() => {
-      const returnedElement = callFunctionElement(node);
+      const returnedElement: Node = callFunctionElement(node);
 
       if (Array.isArray(returnedElement)) {
         return returnedElement.flatMap((thisElement) =>

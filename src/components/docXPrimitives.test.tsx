@@ -1,5 +1,6 @@
 import { it, expect, describe } from 'vitest';
 import { DOCX_CLASS_NAMES } from '../lib/docXClasses';
+import { getElementMeta } from '../lib/element';
 import * as allPrimitives from './docXPrimitives';
 import { TextRun } from './docXPrimitives';
 
@@ -17,7 +18,7 @@ describe('creating TextRun', () => {
     });
 
     it('containing a TextRun child', () => {
-      expect(element.props.children).toEqual([
+      expect(getElementMeta(element).props.children).toEqual([
         expect.objectContaining({ type: 'TextRun' }),
       ]);
     });
@@ -30,7 +31,7 @@ describe('creating TextRun', () => {
     });
 
     it('containing a TextRun child', () => {
-      expect(element.props.children).toEqual([
+      expect(getElementMeta(element).props.children).toEqual([
         expect.objectContaining({ type: 'TextRun' }),
       ]);
     });
@@ -43,7 +44,7 @@ describe('creating TextRun', () => {
     });
 
     it('containing a TextRun child', () => {
-      expect(element.props.children).toEqual([
+      expect(getElementMeta(element).props.children).toEqual([
         expect.objectContaining({ type: 'TextRun' }),
         expect.objectContaining({ type: 'TextRun' }),
       ]);

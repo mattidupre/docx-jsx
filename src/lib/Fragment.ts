@@ -1,20 +1,14 @@
-import { type Ignored, type Node, isIgnored, type Props } from './element';
-import { type AsArray } from '../utils/array';
+import { type Ignored, type Node, isIgnored } from './element';
+import { asArray, type Flat } from '../utils/utilities';
 
-type FragmentProps = Props<{
-  children?: Node;
-}>;
-
-export type FragmentFn<TProps extends FragmentProps = FragmentProps> = (
-  props: FragmentProps,
-) => TProps['children'] extends Ignored ? [] : AsArray<TProps['children']>;
-
-export const FragmentComponent = <TProps extends FragmentProps>({
+export const Fragment = <TChildren extends Node>({
   children,
-}: TProps): ReturnType<FragmentFn<TProps>> => {
-  const result = (Array.isArray(children) ? children : []).filter((value) => {
+}: {
+  children: TChildren;
+}): ReadonlyArray<Exclude<Flat<TChildren>, Ignored>> => {
+  const result = asArray(children).filter((value) => {
     return !isIgnored(value);
-  }) as any;
+  });
 
-  return result;
+  return result as any;
 };

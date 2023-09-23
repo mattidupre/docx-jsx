@@ -75,15 +75,15 @@ export const isDocXClassName = (value: any): value is DocXClassName =>
 
 export const isDocXInstance = <TName extends undefined | DocXClassName>(
   value: any,
-  name?: TName,
+  ofName?: TName,
 ): value is TName extends DocXClassName
   ? AsDocXInstance<TName>
   : DocXInstance => {
-  if (name !== undefined) {
-    if (!isDocXClassName(name)) {
-      throw new Error(`Invalid DocX class name "${name}".`);
+  if (ofName !== undefined) {
+    if (!isDocXClassName(ofName)) {
+      throw new Error(`Invalid DocX class name "${ofName}".`);
     }
-    return value instanceof DOCX_CLASSES[name];
+    return value instanceof DOCX_CLASSES[ofName];
   }
   return !!Object.values(DOCX_CLASSES).find(
     (docXClass) => value instanceof docXClass,

@@ -1,9 +1,9 @@
+/* eslint-disable react/jsx-no-useless-fragment */
 import { test } from 'vitest';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import { createContext } from './lib/createContext';
-import { useContext } from './lib/useContext';
-import { useEffect } from './lib/useEffect';
+import { createContext } from './lib/context';
+import { DocumentContextProvider } from './lib/documentContext';
 import { useMemo } from './lib/useMemo';
 import { fileURLToPath } from 'url';
 import { renderToDocX } from './lib/renderToDocX';
@@ -16,23 +16,21 @@ const dirname = fileURLToPath(new URL('.', import.meta.url));
 const MockContext = createContext({ foo: 'default' });
 
 const ComponentB = function (): JSX.Element {
-  console.log('context B', useContext(MockContext));
-  useEffect(() => console.log('effect B'));
   return (
     <>
-      <Paragraph>
-        <TextRun>COMPONENT 1</TextRun>
-        <TextRun>{0}</TextRun>
-      </Paragraph>
-      <Paragraph>EXTRA</Paragraph>
+      <DocumentContextProvider options={{ color: 'blue' }}>
+        <Paragraph>
+          <TextRun>COMPONENT 1</TextRun>
+          <TextRun>{0}</TextRun>
+        </Paragraph>
+        <Paragraph>EXTRA</Paragraph>
+      </DocumentContextProvider>
     </>
   );
 };
 
 const ComponentA = function (): JSX.Element {
-  console.log('context A', useContext(MockContext));
-  useEffect(() => console.log('effect A'));
-  const providerValue = useMemo({ foo: 'baz' }, []);
+  const providerValue = useMemo(() => ({ foo: 'baz' }), []);
   return (
     <MockContext.Provider value={providerValue}>
       <Section>
@@ -49,7 +47,7 @@ const ComponentA = function (): JSX.Element {
   );
 };
 
-test('renders without error', async () => {
+test('renders to DocX', async () => {
   const buffer = await renderToDocX(
     <MockContext.Provider value={{ foo: 'bar' }}>
       <ComponentA />

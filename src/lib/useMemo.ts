@@ -1,2 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const useMemo = <TValue>(value: TValue, deps?: Array<unknown>) => value;
+import { useIsReact } from './useIsReact';
+import { useMemo as useReactMemo, type DependencyList } from 'react';
+
+export const useMemo = <TValue>(
+  factory: () => TValue,
+  deps: DependencyList | undefined,
+): TValue => (useIsReact() ? useReactMemo(factory, deps) : factory());

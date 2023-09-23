@@ -1,10 +1,10 @@
-import { type GetRequiredKeys } from './utilityTypes';
 import {
-  parseArray,
+  parseOverArray,
   asArray,
-  type ParseArrayCallback,
+  type GetRequiredKeys,
+  type ParseOverArray,
   type Flat,
-} from './array';
+} from './utilities';
 
 export type Props = Record<string, unknown>;
 
@@ -115,15 +115,15 @@ export const asChildrenArray = <TProps extends Props>(
   return overwriteChildren(props, asArray) as any;
 };
 
-export const parseChildren = <TProps extends Props, TReturn>(
+export const parseOverChildren = <TProps extends Props, TReturn>(
   props: TProps,
-  callback: ParseArrayCallback<GetChildren<TProps>, TReturn>,
+  callback: ParseOverArray<GetChildren<TProps>, TReturn>,
 ): OverwriteChildren<TProps, ReadonlyArray<TReturn>> => {
   if (!hasChildren(props)) {
     return props as any;
   }
 
   return overwriteChildren(props, (children) =>
-    parseArray(children as any, callback as any),
+    parseOverArray(children as any, callback as any),
   ) as any;
 };

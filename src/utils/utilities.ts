@@ -12,15 +12,15 @@ export const asArray = <T>(value: unknown) =>
 // export const asMutableArray = <T>(value: unknown) =>
 //   (Array.isArray(value) ? value : [value]) as AsMutableArray<T>;
 
-export type ParseArrayCallback<TArray, TReturn = unknown> = (
+export type ParseOverArray<TArray, TReturn = unknown> = (
   value: Flat<TArray>,
   index: number,
   subject: TArray,
 ) => TReturn;
 
-export const parseArray = <TSubject, TReturn>(
+export const parseOverArray = <TSubject, TReturn>(
   subject: TSubject,
-  callback: ParseArrayCallback<TSubject, TReturn>,
+  callback: ParseOverArray<TSubject, TReturn>,
 ) =>
   asArray(subject).reduce((arr, value, index) => {
     const result = callback(value as any, index, arr as any);
@@ -29,3 +29,15 @@ export const parseArray = <TSubject, TReturn>(
     }
     return arr;
   }, []) as ReadonlyArray<Exclude<TReturn, undefined>>;
+
+export const omitFromObject = <TKey extends keyof TObj, TObj extends object>(
+  key: TKey,
+  obj: TObj,
+): Omit<TObj, TKey> => {
+  const { [key]: omitted, ...rest } = obj;
+  return rest;
+};
+
+export type GetRequiredKeys<T> = {
+  [K in keyof T]-?: {} extends { [P in K]: T[K] } ? never : K;
+}[keyof T];

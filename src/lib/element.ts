@@ -1,7 +1,9 @@
-import { type ComponentFn } from './component';
-import { type FragmentFn } from './fragment';
+import { type AsArray } from '../utils/utilities';
 import { type Props as AnyProps } from '../utils/props';
 import { type DocXClassName, DOCX_CLASS_NAMES } from './docXClasses';
+import { createElement as createReactElement, type ReactElement } from 'react';
+
+const DOCX_ELEMENT_KEY: unique symbol = Symbol('docx');
 
 export type Props<TProps extends Props = AnyProps> = TProps &
   Partial<Record<keyof InternalProps, never>>;
@@ -23,21 +25,77 @@ export const isIgnored = (value: any): value is Ignored =>
 
 export type PrimitiveName = DocXClassName;
 
-export type ElementType = PrimitiveName | ComponentFn | FragmentFn;
+export type ElementType<TProps extends Props = Props> =
+  | PrimitiveName
+  | { (props: TProps): null | Element | ReadonlyArray<Element> };
 
 export type Element<
   TProps extends Props = Props,
-  TType extends PrimitiveName | ComponentFn<TProps> | FragmentFn<TProps> =
-    | PrimitiveName
-    | ComponentFn<TProps>
-    | FragmentFn<TProps>,
-> = {
-  type: TType;
-  props: TProps;
+  TType extends ElementType<TProps> = ElementType<TProps>,
+> = ReactElement & {
+  [DOCX_ELEMENT_KEY]: {
+    type: TType;
+    props: TProps;
+  };
 };
 
+export type GetElementMeta<TElement extends Element> =
+  TElement[typeof DOCX_ELEMENT_KEY];
+
+export const getElementMeta = <TElement extends Element>(
+  element: TElement,
+): GetElementMeta<TElement> => element[DOCX_ELEMENT_KEY];
+
+export type GetElementType<TElement extends Element> =
+  GetElementMeta<TElement>['type'];
+
+export const getElementType = <TElement extends Element>(
+  element: TElement,
+): GetElementType<TElement> => getElementMeta(element).type;
+
+export type GetElementProps<TElement extends Element> =
+  GetElementMeta<TElement>['props'];
+
+export const getElementProps = <TElement extends Element>(
+  element: TElement,
+): GetElementProps<TElement> => getElementMeta(element).props;
+
 export const isElement = (value: any): value is Element =>
-  !!(value?.type && 'props' in value);
+  getElementMeta(value) !== undefined;
+
+type ElementPropsFromChildren<
+  P extends Props,
+  C extends AsArray<Node>,
+> = (C extends [] ? unknown : { children: C }) & P;
+
+export const createElement = <
+  P extends Props,
+  C extends AsArray<Node>,
+  T extends ElementType<ElementPropsFromChildren<P, C>>,
+>(
+  type: T,
+  props: P,
+  ...children: C
+): Element<ElementPropsFromChildren<P, C>, T> => {
+  // if (type && type.defaultProps) {
+  //   const defaultProps = type.defaultProps;
+  //   for (propName in defaultProps) {
+  //     if (props[propName] === undefined) {
+  //       props[propName] = defaultProps[propName];
+  //     }
+  //   }
+  // }
+
+  const combinedProps = {
+    ...(props ?? {}),
+    ...(children.length ? { children } : {}),
+  };
+
+  return {
+    ...createReactElement(type as any, props, ...(children as any)),
+    [DOCX_ELEMENT_KEY]: { type, props: combinedProps },
+  } as any;
+};
 
 export type PrimitiveElement<
   TProps extends Props = Props,
@@ -45,7 +103,7 @@ export type PrimitiveElement<
 > = Element<TProps, TName>;
 
 export const isPrimitiveElement = (value: any): value is PrimitiveElement =>
-  isElement(value) && typeof value.type === 'string';
+  typeof getElementMeta(value)?.type === 'string';
 
 export type DocXPrimitiveElement<
   TProps extends Props = Props,
@@ -55,41 +113,13 @@ export type DocXPrimitiveElement<
 export const isDocXPrimitiveElement = (
   value: any,
 ): value is DocXPrimitiveElement =>
-  isPrimitiveElement(value) && DOCX_CLASS_NAMES.includes(value.type as any);
-
-export const definePrimitiveElement = <
-  TName extends PrimitiveName,
-  TProps extends Props,
->(
-  name: TName,
-  props: TProps,
-) => ({ type: name, props }) as const;
+  isPrimitiveElement(value) &&
+  DOCX_CLASS_NAMES.includes(getElementMeta(value)?.type);
 
 export type FunctionElement<TProps extends Props = Props> = Element<
   TProps,
-  ComponentFn<TProps> | FragmentFn<TProps>
+  ElementType<TProps> & { (args: any): any }
 >;
 
 export const isFunctionElement = (value: any): value is FunctionElement =>
-  isElement(value) && typeof value.type === 'function';
-
-export const createElement = <
-  P extends Readonly<Record<string, unknown>>,
-  C extends ReadonlyArray<string | number | Node>,
-  T extends PrimitiveName | ComponentFn | FragmentFn,
->(
-  type: T,
-  props: P,
-  ...children: C
-) => {
-  return {
-    type,
-    props: {
-      ...(props ?? {}),
-      ...(children.length ? { children } : {}),
-    },
-  } as unknown as {
-    type: T;
-    props: (C extends [] ? unknown : { children: C }) & P;
-  };
-};
+  isElement(value) && typeof getElementType(value) === 'function';

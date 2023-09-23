@@ -8,7 +8,7 @@ type RenderContext = {
 const renderContexts: Array<RenderContext> = [];
 let currentRenderId = -1;
 
-const isRendering = () => currentRenderId !== -1;
+export const isRendering = () => currentRenderId !== -1;
 
 const resetRenderContexts = () => {
   renderContexts.length = 0;

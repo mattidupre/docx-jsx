@@ -1,16 +1,18 @@
 import {
-  definePrimitiveElement,
   type Ignored,
   isIgnored,
   type Props,
+  createElement,
 } from '../lib/element';
-import { type UnFlat, type Flat } from '../utils/array';
+import { type UnFlat, type Flat } from '../utils/utilities';
 import {
   type DocXOptions,
   type DocXInstance,
   type DocXClassName,
 } from '../lib/docXClasses';
-import { parseChildren, type ExcludeChild } from '../utils/props';
+import { parseOverChildren, type ExcludeChild } from '../utils/props';
+import { useIsDocX } from '../lib/useIsDocX';
+import { useDocumentContext } from '../lib/documentContext';
 
 // Primitives exist because if a component returns a DocXElement directly,
 // and those primitives are defined in a different package than where they are
@@ -36,42 +38,49 @@ type DocXProps<TName extends DocXClassName> = {
     : MapDocXProps<DocXOptions<TName>[K]>;
 };
 
-const useProps = <TProps extends Props>(props: TProps) => {
+const parseDocXProps = <TProps extends Props>(props: TProps) => {
   // TODO: useConfig here.
 
-  return parseChildren(props, (child) => {
+  return parseOverChildren(props, (child) => {
     if (isIgnored(child)) {
       return undefined;
     }
 
     if (typeof child === 'string' || typeof child === 'number') {
-      return definePrimitiveElement('TextRun', { text: String(child) });
+      return createElement('TextRun', { text: String(child) });
     }
 
     return child;
   }) as ExcludeChild<TProps, Ignored | string | number>;
 };
 
-export const TextRun = (props: DocXProps<'TextRun'>) =>
-  definePrimitiveElement('TextRun', useProps(props));
+export const TextRun = (props: DocXProps<'TextRun'>): JSX.Element => {
+  console.log('Document Context:', useDocumentContext());
+
+  if (useIsDocX()) {
+    return createElement('TextRun', parseDocXProps(props));
+  }
+
+  return createElement('span', { children: props.children });
+};
 
 export const Paragraph = (props: DocXProps<'Paragraph'>) =>
-  definePrimitiveElement('Paragraph', useProps(props));
+  createElement('Paragraph', parseDocXProps(props));
 
 export const Table = (props: DocXProps<'Table'>) =>
-  definePrimitiveElement('Table', useProps(props));
+  createElement('Table', parseDocXProps(props));
 
 export const TableRow = (props: DocXProps<'TableRow'>) =>
-  definePrimitiveElement('TableRow', useProps(props));
+  createElement('TableRow', parseDocXProps(props));
 
 export const TableCell = (props: DocXProps<'TableCell'>) =>
-  definePrimitiveElement('TableCell', useProps(props));
+  createElement('TableCell', parseDocXProps(props));
 
 export const Header = (props: DocXProps<'Header'>) =>
-  definePrimitiveElement('Header', useProps(props));
+  createElement('Header', parseDocXProps(props));
 
 export const Footer = (props: DocXProps<'Footer'>) =>
-  definePrimitiveElement('Footer', useProps(props));
+  createElement('Footer', parseDocXProps(props));
 
 export const Section = (props: DocXProps<'Section'>) =>
-  definePrimitiveElement('Section', useProps(props));
+  createElement('Section', parseDocXProps(props));
