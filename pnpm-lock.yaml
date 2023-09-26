@@ -40,6 +40,9 @@ devDependencies:
   eslint-plugin-import:
     specifier: ^2.27.5
     version: 2.27.5(@typescript-eslint/parser@5.62.0)(eslint-import-resolver-typescript@3.5.5)(eslint@8.49.0)
+  jszip:
+    specifier: ^3.10.1
+    version: 3.10.1
   mammoth:
     specifier: ^1.6.0
     version: 1.6.0
@@ -58,6 +61,9 @@ devDependencies:
   vitest:
     specifier: ^0.34.4
     version: 0.34.4
+  xml-formatter:
+    specifier: ^3.5.0
+    version: 3.5.0
 
 packages:
 
@@ -3239,12 +3245,24 @@ packages:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: true
 
+  /xml-formatter@3.5.0:
+    resolution: {integrity: sha512-9ij/f2PLIPv+YDywtdztq7U82kYMDa5yPYwpn0TnXnqJRH6Su8RC/oaw91erHe3aSEbfgBaA1hDzReDFb1SVXw==}
+    engines: {node: '>= 14'}
+    dependencies:
+      xml-parser-xo: 4.1.1
+    dev: true
+
   /xml-js@1.6.11:
     resolution: {integrity: sha512-7rVi2KMfwfWFl+GpPg6m80IVMWXLRjO+PxTq7V2CDhoGak0wzYzFgUY2m4XJ47OGdXd8eLE8EmwfAmdjw7lC1g==}
     hasBin: true
     dependencies:
       sax: 1.2.4
     dev: false
+
+  /xml-parser-xo@4.1.1:
+    resolution: {integrity: sha512-Ggf2y90+Y6e9IK5hoPuembVHJ03PhDSdhldEmgzbihzu9k0XBo0sfcFxaSi4W1PlUSSI1ok+MJ0JCXUn+U4Ilw==}
+    engines: {node: '>= 14'}
+    dev: true
 
   /xml@1.0.1:
     resolution: {integrity: sha512-huCv9IH9Tcf95zuYCsQraZtWnJvBtLVE0QHMOs8bWyZAFZNDcYjsPq1nEx8jKA9y+Beo9v+7OBPRisQTjinQMw==}

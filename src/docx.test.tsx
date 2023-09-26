@@ -1,62 +1,77 @@
-/* eslint-disable react/jsx-no-useless-fragment */
 import { test } from 'vitest';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import { createContext } from './lib/context';
-import { DocumentContextProvider } from './lib/documentContext';
-import { useMemo } from './lib/useMemo';
+import { Document, Section, Paragraph, TextRun } from './lib/components';
+import { TextProvider, useTextConfig } from './lib/context';
+import { renderToDocXXml, renderToDocXBuffer } from './lib/render';
 import { fileURLToPath } from 'url';
-import { renderToDocX } from './lib/renderToDocX';
-import { TextRun, Paragraph, Section } from './components/docXPrimitives';
-import DX from '.';
+import xmlFormat from 'xml-formatter';
 import mammoth from 'mammoth';
 
 const dirname = fileURLToPath(new URL('.', import.meta.url));
 
-const MockContext = createContext({ foo: 'default' });
-
-const ComponentB = function (): JSX.Element {
+const ComponentD = function (): null | JSX.Element {
   return (
     <>
-      <DocumentContextProvider options={{ color: 'blue' }}>
-        <Paragraph>
-          <TextRun>COMPONENT 1</TextRun>
-          <TextRun>{0}</TextRun>
-        </Paragraph>
-        <Paragraph>EXTRA</Paragraph>
-      </DocumentContextProvider>
+      <TextRun>Component D 1</TextRun>
+      <TextRun>Component D 2</TextRun>
     </>
   );
 };
 
-const ComponentA = function (): JSX.Element {
-  const providerValue = useMemo(() => ({ foo: 'baz' }), []);
+const ComponentC = function (): null | JSX.Element {
+  console.log('ComponentC', useTextConfig());
+  return null;
+};
+
+const ComponentB = function (): null | JSX.Element {
   return (
-    <MockContext.Provider value={providerValue}>
-      <Section>
-        <Paragraph>NO TEXTRUN</Paragraph>
-        <Paragraph text="WEIRD" />
-        <ComponentB />
-        <Paragraph text="WEIRD" />
+    <>
+      <ComponentC />
+      <TextProvider options={{ color: 'red' }}>
         <Paragraph>
-          <TextRun>THREE</TextRun>
+          <ComponentC />
+          <TextRun>COMPONENT 1</TextRun>
+          <TextRun>{0}</TextRun>
         </Paragraph>
-        {/* <ComponentB /> */}
-      </Section>
-    </MockContext.Provider>
+        <Paragraph>EXTRA</Paragraph>
+      </TextProvider>
+    </>
   );
 };
 
-test('renders to DocX', async () => {
-  const buffer = await renderToDocX(
-    <MockContext.Provider value={{ foo: 'bar' }}>
-      <ComponentA />
-    </MockContext.Provider>,
+const ComponentA = function (): null | JSX.Element {
+  console.log('ComponentA', useTextConfig());
+  return (
+    <>
+      <Paragraph>NO TEXTRUN</Paragraph>
+      <Paragraph text="WEIRD" />
+      <ComponentB />
+      <Paragraph text="WEIRD" />
+      <Paragraph>
+        <TextRun>THREE</TextRun>
+      </Paragraph>
+      {/* <ComponentB /> */}
+    </>
   );
+};
 
-  await fs.writeFile(path.resolve(dirname, '../dist/test.docx'), buffer);
+const jsx = (
+  <Document>
+    <Section>
+      <ComponentA />
+    </Section>
+  </Document>
+);
 
+test('render to docx markup', async () => {
+  const str = xmlFormat(await renderToDocXXml(jsx));
+  console.log(str);
+});
+
+test('render to docx buffer', async () => {
+  const buffer = await renderToDocXBuffer(jsx);
   const { value } = await mammoth.extractRawText({ buffer });
-
-  console.log(JSON.stringify(value));
+  console.log(value);
+  await fs.writeFile(path.resolve(dirname, '../dist/test.docx'), buffer);
 });

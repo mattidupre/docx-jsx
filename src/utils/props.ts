@@ -11,6 +11,37 @@ export type Props = Record<string, unknown>;
 export const isProps = (value: any): value is Props =>
   typeof value === 'object' && value !== null;
 
+export const mapProps = <TProps extends Props>(
+  props: TProps,
+  callback: (
+    value: TProps[keyof TProps],
+    key: keyof TProps,
+    props: TProps,
+  ) => unknown,
+) =>
+  Object.fromEntries(
+    Object.entries(props).map(([key, value]) => [
+      key,
+      callback(value as any, key, props),
+    ]),
+  );
+
+export const mapPropsDeep = (
+  props: Props,
+  callback: (value: unknown, key: string, props: Props) => unknown,
+): Props =>
+  mapProps(props, (value, key, thisProps) => {
+    if (Array.isArray(value)) {
+      return value.map((v) => mapPropsDeep(v, callback));
+    }
+
+    if (isProps(value)) {
+      return mapPropsDeep(value, callback);
+    }
+
+    return callback(value, key, thisProps);
+  });
+
 export type HasChildren<T extends Props> = 'children' extends keyof T
   ? T['children'] extends undefined
     ? false
@@ -115,15 +146,15 @@ export const asChildrenArray = <TProps extends Props>(
   return overwriteChildren(props, asArray) as any;
 };
 
-export const parseOverChildren = <TProps extends Props, TReturn>(
-  props: TProps,
-  callback: ParseOverArray<GetChildren<TProps>, TReturn>,
-): OverwriteChildren<TProps, ReadonlyArray<TReturn>> => {
-  if (!hasChildren(props)) {
-    return props as any;
-  }
+// export const parseOverChildren = <TProps extends Props, TReturn>(
+//   props: TProps,
+//   callback: ParseOverArray<GetChildren<TProps>, TReturn>,
+// ): OverwriteChildren<TProps, ReadonlyArray<TReturn>> => {
+//   if (!hasChildren(props)) {
+//     return props as any;
+//   }
 
-  return overwriteChildren(props, (children) =>
-    parseOverArray(children as any, callback as any),
-  ) as any;
-};
+//   return overwriteChildren(props, (children) =>
+//     parseOverArray(children as any, callback as any),
+//   ) as any;
+// };
