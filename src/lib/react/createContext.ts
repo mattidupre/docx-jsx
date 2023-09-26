@@ -11,17 +11,19 @@ import {
 export const createContext = <TValue>(
   defaultValue: TValue,
 ): ReactContext<TValue> => {
-  const Context = {} as ReactContext<TValue>;
-
-  DispatcherStore.setGlobalValue(Context, { defaultValue });
+  const reactContext = createReactContext<TValue>(defaultValue);
 
   const {
     Provider: ReactProvider,
     Consumer: ReactConsumer,
-    ...reactContext
-  } = createReactContext<TValue>(defaultValue);
+    ...contextRest
+  } = reactContext;
 
-  return Object.assign(Context, reactContext, {
+  const customContext = {} as ReactContext<TValue>;
+
+  DispatcherStore.setGlobalValue(customContext, { defaultValue, reactContext });
+
+  return Object.assign(customContext, contextRest, {
     Provider({ value: contextValue, children }: any) {
       if (useIsReact()) {
         return createElement(
@@ -32,7 +34,7 @@ export const createContext = <TValue>(
           ...asArray<any>(children),
         );
       }
-      DispatcherStore.setNodeValue(Context, { contextValue });
+      DispatcherStore.setNodeValue(customContext, { contextValue });
       return children;
     },
 
@@ -40,7 +42,7 @@ export const createContext = <TValue>(
       if (useIsReact()) {
         return createElement(ReactConsumer, null, children);
       }
-      const contextValue = useContext(Context);
+      const contextValue = useContext(customContext);
       return createElement(
         ({ children: childrenFn }: any) => childrenFn(contextValue),
         null,

@@ -1,1 +1,1 @@
-export { renderDocument } from './lib/renderDocument';
+export { renderDocX } from './lib/renderDocX';

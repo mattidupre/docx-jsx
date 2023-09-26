@@ -60,7 +60,7 @@ const renderDocXNode = bindNodeDispatcher(
     }),
 );
 
-export const renderDocument = bindGlobalDispatcher(
+export const renderDocX = bindGlobalDispatcher(
   'docx',
   (rootNode: ReactElement) => {
     const documentElement = renderReactNode(rootNode, {
