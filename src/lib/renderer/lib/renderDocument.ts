@@ -46,7 +46,7 @@ export const renderDocument: typeof renderNode = (
           );
         }
 
-        const { children, ...props } = element.props;
+        const { children, ...options } = element.props;
 
         const sections = context.render(children);
 
@@ -56,7 +56,7 @@ export const renderDocument: typeof renderNode = (
 
         return {
           sections,
-          props,
+          ...options,
         };
       }
 
