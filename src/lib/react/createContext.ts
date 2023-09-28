@@ -1,7 +1,7 @@
 import { useIsReact } from './useIsReact';
 import { useContext } from './useContext';
 import { asArray } from 'src/utils/utilities';
-import { DispatcherStore } from '../dispatcher';
+import { Store } from '../renderer';
 import {
   type Context as ReactContext,
   createElement,
@@ -21,7 +21,7 @@ export const createContext = <TValue>(
 
   const customContext = {} as ReactContext<TValue>;
 
-  DispatcherStore.setGlobalValue(customContext, { defaultValue, reactContext });
+  Store.setGlobalValue(customContext, { defaultValue, reactContext });
 
   return Object.assign(customContext, contextRest, {
     Provider({ value: contextValue, children }: any) {
@@ -34,7 +34,7 @@ export const createContext = <TValue>(
           ...asArray<any>(children),
         );
       }
-      DispatcherStore.setNodeValue(customContext, { contextValue });
+      Store.setNodeValue(customContext, { contextValue });
       return children;
     },
 

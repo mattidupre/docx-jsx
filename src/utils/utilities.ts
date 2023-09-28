@@ -100,3 +100,16 @@ export const mapObjectEntries = <TObj extends GenericObject>(
     }
     return thisObj;
   }, {} as GenericObject);
+
+export type OverwriteNonNullish<
+  TBase extends Record<string, any>,
+  TOptions extends undefined | Partial<Record<keyof TBase, any>>,
+> = TOptions extends Record<string, any>
+  ? {
+      [K in keyof TBase]: K extends keyof TOptions
+        ? TOptions[K] extends null | undefined
+          ? TBase[K]
+          : TOptions[K]
+        : TBase[K];
+    }
+  : TBase;

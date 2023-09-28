@@ -1,4 +1,4 @@
-import { bindGlobalDispatcher, bindNodeDispatcher } from 'src/lib/dispatcher';
+import { bindGlobalDispatcher, bindNodeDispatcher } from 'src/lib/renderer';
 import { type ReactElement, type ReactNode } from 'react';
 import { asArray, mapObjectEntries } from 'src/utils/utilities';
 import {

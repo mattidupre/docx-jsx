@@ -8,7 +8,7 @@ export function Section<TProps extends AsDocXProps<'Section'>>({
   ...options
 }: TProps) {
   if (useIsDocX()) {
-    return createElement('Section' as any, options, asArray(children));
+    return createElement('section' as any, options, ...asArray(children));
   }
   return children;
 }

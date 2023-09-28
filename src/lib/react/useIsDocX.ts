@@ -1,4 +1,3 @@
-import { DispatcherStore } from 'src/lib/dispatcher';
+import { Store } from 'src/lib/renderer';
 
-export const useIsDocX = () =>
-  DispatcherStore.getRenderEnvironment() === 'docx';
+export const useIsDocX = () => Store.getIsRendering();

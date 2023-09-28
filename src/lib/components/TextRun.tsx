@@ -8,7 +8,7 @@ export function TextRun<TProps extends AsDocXProps<'TextRun'>>({
   ...options
 }: TProps) {
   if (useIsDocX()) {
-    return createElement('TextRun' as any, options, asArray(children));
+    return createElement('textrun' as any, options, ...asArray(children));
   }
   return <span>{children}</span>;
 }

@@ -1,3 +1,3 @@
-import { useIsDocX } from './useIsDocX';
+import { Store } from 'src/lib/renderer';
 
-export const useIsReact = () => !useIsDocX();
+export const useIsReact = () => !Store.getIsRendering();

@@ -8,7 +8,7 @@ export function Document<TProps extends AsDocXProps<'Document'>>({
   ...options
 }: TProps) {
   if (useIsDocX()) {
-    return createElement('Document' as any, options, asArray(children));
+    return createElement('document' as any, options, ...asArray(children));
   }
   return children;
 }

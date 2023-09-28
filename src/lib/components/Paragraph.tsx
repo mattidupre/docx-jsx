@@ -8,7 +8,7 @@ export function Paragraph<TProps extends AsDocXProps<'Paragraph'>>({
   ...options
 }: TProps) {
   if (useIsDocX()) {
-    return createElement('Paragraph' as any, options, asArray(children));
+    return createElement('paragraph' as any, options, ...asArray(children));
   }
   return children;
 }

@@ -1,1 +1,1 @@
-export { renderHtml } from './lib/renderHtml';
+export { renderToHtml } from './lib/renderToHtml';
