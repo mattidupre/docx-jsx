@@ -1,9 +1,9 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 
-import { Document, Section, TextRun, Paragraph } from 'src/lib/components';
+import { Document, Section, TextRun, Paragraph } from 'src/components';
 import { TextProvider, useTextConfig } from 'src/lib/context';
 import { type FunctionComponent, Fragment } from 'react';
-import { vi, it, expect } from 'vitest';
+import { vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const componentElements = new Map<FunctionComponent, any>();
@@ -70,7 +70,3 @@ export const mockDocumentElement = (
 );
 
 export const mockDocumentMarkup = renderToStaticMarkup(mockDocumentElement);
-
-it('mocks components', () => {
-  expect(componentElements.size).toBeGreaterThan(1);
-});

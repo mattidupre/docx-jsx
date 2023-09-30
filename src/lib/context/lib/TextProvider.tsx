@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo } from 'src/lib/react';
+import { createContext, useContext, useMemo } from 'src/react';
 import { ReactNode } from 'react';
 import {
   type TextConfig,

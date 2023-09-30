@@ -1,5 +1,6 @@
 export {
-  renderToDocXBuffer,
-  renderToDocXStream,
-  renderToDocXMarkup,
-} from './lib/document';
+  renderDocumentToDocXBuffer,
+  renderDocumentToDocXStream,
+} from './renderers';
+export * from './components';
+export * from './react';
