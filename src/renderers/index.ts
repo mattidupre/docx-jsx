@@ -1,1 +1,2 @@
-export * from './renderToDocX';
+export * from './renderToDocx';
+export * from './renderToAst';

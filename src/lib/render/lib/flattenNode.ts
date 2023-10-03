@@ -12,17 +12,7 @@ import {
 
 export const flattenNode = (
   currentNode: ReactNode,
-  isRoot = true,
 ): ReadonlyArray<IntrinsicElement> => {
-  if (isRoot) {
-    try {
-      Store.initGlobal();
-      return flattenNode(currentNode, false);
-    } finally {
-      Store.completeGlobal();
-    }
-  }
-
   if (Array.isArray(currentNode)) {
     return currentNode.flatMap((childNode) => flattenNode(childNode));
   }
@@ -30,14 +20,14 @@ export const flattenNode = (
   if (isComponentElement(currentNode)) {
     Store.initNode();
     try {
-      return flattenNode(currentNode.type(currentNode.props), false);
+      return flattenNode(currentNode.type(currentNode.props));
     } finally {
       Store.completeNode();
     }
   }
 
   if (isOtherElement(currentNode)) {
-    return flattenNode(currentNode.props?.children, false);
+    return flattenNode(currentNode.props?.children);
   }
 
   if (isNullish(currentNode)) {
@@ -47,11 +37,10 @@ export const flattenNode = (
   if (isStringish(currentNode)) {
     return flattenNode(
       createIntrinsicElement('text', { text: String(currentNode) }),
-      false,
     );
   }
 
-  if (isIntrinsicElement(currentNode)) {
+  if (isIntrinsicElement(currentNode, undefined)) {
     return [currentNode];
   }
 

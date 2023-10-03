@@ -7,7 +7,7 @@ import {
   createElement,
   isValidElement,
 } from 'react';
-import { type IntrinsicPropsConfig } from './intrinsics';
+import { type SchemaName, type SchemaProps } from './schema';
 import { asArray } from 'src/utils';
 
 // Nullish: values omitted in the output.
@@ -30,31 +30,29 @@ export const isStringish = (value: any): value is Stringish =>
 
 type IntrinsicKey =
   | undefined
-  | IntrinsicType
+  | SchemaName
   | IntrinsicElement
-  | ReadonlyArray<IntrinsicType>
+  | ReadonlyArray<SchemaName>
   | ReadonlyArray<IntrinsicElement>;
 
 export type IntrinsicType<TType extends IntrinsicKey = undefined> = [
   TType,
 ] extends [undefined]
-  ? keyof IntrinsicPropsConfig
-  : TType extends ReadonlyArray<
-      infer T extends IntrinsicType | IntrinsicElement
-    >
+  ? SchemaName
+  : TType extends ReadonlyArray<infer T extends SchemaName | IntrinsicElement>
   ? IntrinsicType<T>
-  : TType extends IntrinsicType
+  : TType extends SchemaName
   ? TType
-  : TType extends IntrinsicElement<infer T extends IntrinsicType>
+  : TType extends IntrinsicElement<infer T extends SchemaName>
   ? T
   : never;
 
 export type IntrinsicProps<TType extends IntrinsicKey> =
-  IntrinsicPropsConfig[IntrinsicType<TType>];
+  SchemaProps[IntrinsicType<TType>];
 
 export type IntrinsicElement<TType extends IntrinsicKey = undefined> =
-  TType extends IntrinsicType
-    ? ReactElement<IntrinsicProps<TType>, TType>
+  TType extends SchemaName
+    ? ReactElement<SchemaProps<TType>, TType>
     : IntrinsicElement<IntrinsicType<TType>>;
 
 export const isIntrinsicElement = <TType extends IntrinsicKey>(
@@ -98,9 +96,9 @@ export const asIntrinsicElement = <TTypes extends IntrinsicKey>(
   return value as IntrinsicElement<TTypes>;
 };
 
-export const createIntrinsicElement = <TType extends IntrinsicType>(
+export const createIntrinsicElement = <TType extends SchemaName>(
   type: TType,
-  props: IntrinsicProps<TType>,
+  props: SchemaProps<TType>,
 ): IntrinsicElement<TType> => {
   const { children, ...restProps } = props as any;
   return createElement(type, restProps, children) as any;
