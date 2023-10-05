@@ -1,5 +1,3 @@
-import { type ReactNode } from 'react';
-import { Store } from './Store';
 import {
   isNullish,
   isStringish,
@@ -8,26 +6,33 @@ import {
   isIntrinsicElement,
   createIntrinsicElement,
   type IntrinsicElement,
-} from 'src/entities';
+  type Stringish,
+} from '../entities';
+import { type ReactNode } from 'react';
+import { Store } from './renderStore';
 
-export const flattenNode = (
+const renderStringish = (stringish: Stringish) => {
+  return createIntrinsicElement('textrun', { text: String(stringish) });
+};
+
+export const renderNode = (
   currentNode: ReactNode,
 ): ReadonlyArray<IntrinsicElement> => {
   if (Array.isArray(currentNode)) {
-    return currentNode.flatMap((childNode) => flattenNode(childNode));
+    return currentNode.flatMap((childNode) => renderNode(childNode));
   }
 
   if (isComponentElement(currentNode)) {
     Store.initNode();
     try {
-      return flattenNode(currentNode.type(currentNode.props));
+      return renderNode(currentNode.type(currentNode.props));
     } finally {
       Store.completeNode();
     }
   }
 
   if (isOtherElement(currentNode)) {
-    return flattenNode(currentNode.props?.children);
+    return renderNode(currentNode.props?.children);
   }
 
   if (isNullish(currentNode)) {
@@ -35,9 +40,7 @@ export const flattenNode = (
   }
 
   if (isStringish(currentNode)) {
-    return flattenNode(
-      createIntrinsicElement('text', { text: String(currentNode) }),
-    );
+    return renderNode(renderStringish(currentNode));
   }
 
   if (isIntrinsicElement(currentNode, undefined)) {

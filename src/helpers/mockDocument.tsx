@@ -1,8 +1,8 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 
 import { Document, Section, TextRun, Paragraph } from 'src/components';
-import { TextProvider, useTextConfig } from 'src/lib/context';
-import { type FunctionComponent, Fragment } from 'react';
+import { TextProvider, useTextConfig } from 'src/context';
+import { type FunctionComponent } from 'react';
 import { vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 

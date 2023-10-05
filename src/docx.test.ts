@@ -12,9 +12,8 @@ import { fileURLToPath } from 'url';
 const dirname = fileURLToPath(new URL('.', import.meta.url));
 
 test('renders to ast', () => {
-  console.log(
-    JSON.stringify(renderDocumentToAst(mockDocumentElement), null, 2),
-  );
+  const ast = renderDocumentToAst(mockDocumentElement);
+  // console.log(JSON.stringify(ast, null, 2));
 });
 
 test('renders to xml', async () => {

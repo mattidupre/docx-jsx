@@ -1,4 +1,4 @@
-import { Store } from 'src/lib/render';
+import { Store } from 'src/render';
 import { useEffect as useReactEffect } from 'react';
 import { useReactHook } from './useReactHook';
 

@@ -1,3 +1,3 @@
-import { Store } from 'src/lib/render';
+import { Store } from 'src/render';
 
 export const useIsReact = () => !Store.getIsRendering();

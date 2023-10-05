@@ -1,19 +1,19 @@
 import { Packer } from 'docx';
 import JSZip from 'jszip';
-import { render } from 'src/entities';
 import xmlFormat from 'xml-formatter';
+import { type ReactNode } from 'react';
+import { createRenderer } from 'src/render';
+import { createParser } from 'src/parse';
 
-type DocumentEl = JSX.Element;
+export const renderToDocx = createRenderer('document', createParser('docx'));
 
-const renderToDocx = (documentEl: DocumentEl) => render(documentEl, 'docx');
-
-export const renderDocumentToDocxBuffer = async (documentEl: DocumentEl) =>
+export const renderDocumentToDocxBuffer = async (documentEl: ReactNode) =>
   Packer.toBuffer(renderToDocx(documentEl));
 
-export const renderDocumentToDocxStream = async (documentEl: DocumentEl) =>
+export const renderDocumentToDocxStream = async (documentEl: ReactNode) =>
   Packer.toStream(renderToDocx(documentEl));
 
-export const renderDocumentToDocxXml = async (documentEl: DocumentEl) =>
+export const renderDocumentToDocxXml = async (documentEl: ReactNode) =>
   Packer.toBuffer(renderToDocx(documentEl))
     .then((buffer) => JSZip.loadAsync(buffer))
     .then(({ files }) => files['word/document.xml'].async('string'))

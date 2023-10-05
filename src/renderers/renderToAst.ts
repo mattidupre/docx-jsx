@@ -1,6 +1,7 @@
-import { render } from 'src/entities';
+import { createRenderer } from 'src/render';
+import { createParser } from 'src/parse';
 
-type DocumentEl = JSX.Element;
-
-export const renderDocumentToAst = (documentEl: DocumentEl) =>
-  render(documentEl, 'ast');
+export const renderDocumentToAst = createRenderer(
+  'document',
+  createParser('ast'),
+);

@@ -1,7 +1,7 @@
 import { useIsReact } from './useIsReact';
 import { useContext } from './useContext';
 import { asArray } from 'src/utils/utilities';
-import { Store } from '../../lib/render';
+import { Store } from 'src/render';
 import {
   type Context as ReactContext,
   createElement,

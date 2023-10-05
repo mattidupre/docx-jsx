@@ -7,18 +7,15 @@ import {
   createElement,
   isValidElement,
 } from 'react';
-import { type SchemaName, type SchemaProps } from './schema';
 import { asArray } from 'src/utils';
 
 // Nullish: values omitted in the output.
 // Stringish: values that are coerced into strings in the output.
 // AnyElement / ReactElement: object representing a Component or Intrinsic.
-// IntrinsicElement: an element that maps to an output value, e.g., Dev or TextRun.
+// IntrinsicElement: an element that maps to an output value, e.g., div or textrun.
 // OtherElement: a React Fragment or Exotic Component, just noop and return children.
 
 export { ReactElement as AnyElement };
-export const isAnyElement = (value: any): value is ReactElement =>
-  isValidElement(value);
 
 export type Nullish = true | false | null | undefined;
 export const isNullish = (value: any): value is Nullish =>
@@ -28,36 +25,17 @@ export type Stringish = string | number;
 export const isStringish = (value: any): value is Stringish =>
   typeof value === 'string' || typeof value === 'number';
 
-type IntrinsicKey =
-  | undefined
-  | SchemaName
-  | IntrinsicElement
-  | ReadonlyArray<SchemaName>
-  | ReadonlyArray<IntrinsicElement>;
+export type IntrinsicType = string;
+export type IntrinsicProps = Record<string, any>;
 
-export type IntrinsicType<TType extends IntrinsicKey = undefined> = [
-  TType,
-] extends [undefined]
-  ? SchemaName
-  : TType extends ReadonlyArray<infer T extends SchemaName | IntrinsicElement>
-  ? IntrinsicType<T>
-  : TType extends SchemaName
-  ? TType
-  : TType extends IntrinsicElement<infer T extends SchemaName>
-  ? T
-  : never;
+export type IntrinsicElement<
+  TType extends IntrinsicType = IntrinsicType,
+  TProps extends IntrinsicProps = IntrinsicProps,
+> = ReactElement<TProps, TType>;
 
-export type IntrinsicProps<TType extends IntrinsicKey> =
-  SchemaProps[IntrinsicType<TType>];
-
-export type IntrinsicElement<TType extends IntrinsicKey = undefined> =
-  TType extends SchemaName
-    ? ReactElement<SchemaProps<TType>, TType>
-    : IntrinsicElement<IntrinsicType<TType>>;
-
-export const isIntrinsicElement = <TType extends IntrinsicKey>(
+export const isIntrinsicElement = <TType extends IntrinsicType>(
   value: any,
-  type?: TType,
+  allowTypes?: ReadonlyArray<TType>,
 ): value is IntrinsicElement<TType> => {
   if (!isValidElement(value)) {
     return false;
@@ -65,23 +43,22 @@ export const isIntrinsicElement = <TType extends IntrinsicKey>(
   if (typeof value.type !== 'string') {
     return false;
   }
-  if (type === undefined) {
+  if (allowTypes === undefined) {
     return true;
   }
-  const typeArr = Array.isArray(type) ? type : [type];
-  if (!typeArr.includes(value.type as any)) {
+  if (!allowTypes.includes(value.type as any)) {
     throw new TypeError(
       `Expected ${
         value?.type ?? value
-      } to be Intrinsic Element of type ${typeArr.join(' or ')}.`,
+      } to be Intrinsic Element of type ${allowTypes.join(' or ')}.`,
     );
   }
   return true;
 };
 
-export const asIntrinsicElement = <TTypes extends IntrinsicKey>(
+export const asIntrinsicElement = <TType extends IntrinsicType>(
   value: IntrinsicElement,
-  allowTypes?: TTypes,
+  allowTypes?: ReadonlyArray<TType>,
 ) => {
   if (!isIntrinsicElement(value, allowTypes)) {
     if (!allowTypes) {
@@ -93,30 +70,29 @@ export const asIntrinsicElement = <TTypes extends IntrinsicKey>(
       ).join(' or ')}.`,
     );
   }
-  return value as IntrinsicElement<TTypes>;
+  return value as IntrinsicElement<TType>;
 };
 
-export const createIntrinsicElement = <TType extends SchemaName>(
+export const createIntrinsicElement = <
+  TType extends IntrinsicType,
+  TProps extends IntrinsicProps,
+>(
   type: TType,
-  props: SchemaProps<TType>,
-): IntrinsicElement<TType> => {
-  const { children, ...restProps } = props as any;
-  return createElement(type, restProps, children) as any;
-};
+  props: TProps,
+) => createElement(type, props);
 
 export { FunctionComponentElement as ComponentElement };
+
 export const isComponentElement = (
   value: any,
 ): value is FunctionComponentElement<Props> =>
-  isAnyElement(value) && typeof value.type === 'function';
+  isValidElement(value) && typeof value.type === 'function';
 
 export type OtherElement = ReactElement<
   { children?: ReactNode },
   ExoticComponent
 >;
 export const isOtherElement = (value: any): value is OtherElement =>
-  isAnyElement(value) &&
+  isValidElement(value) &&
   !isComponentElement(value) &&
   !isIntrinsicElement(value);
-
-export { ReactNode as AnyNode };
