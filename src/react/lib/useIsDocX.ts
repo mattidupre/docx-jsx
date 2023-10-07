@@ -1,3 +1,5 @@
-import { Store } from 'src/render';
+import { Store } from 'src/lib/store';
 
-export const useIsDocX = () => Store.getIsRendering();
+export const useIsDocX = () => {
+  return Store.getIsRendering();
+};

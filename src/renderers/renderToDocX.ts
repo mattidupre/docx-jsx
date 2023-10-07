@@ -2,8 +2,8 @@ import { Packer } from 'docx';
 import JSZip from 'jszip';
 import xmlFormat from 'xml-formatter';
 import { type ReactNode } from 'react';
-import { createRenderer } from 'src/render';
-import { createParser } from 'src/parse';
+import { createRenderer } from 'src/lib/renderer';
+import { createParser } from 'src/lib/parser';
 
 export const renderToDocx = createRenderer('document', createParser('docx'));
 

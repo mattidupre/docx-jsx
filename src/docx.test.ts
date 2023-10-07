@@ -13,7 +13,7 @@ const dirname = fileURLToPath(new URL('.', import.meta.url));
 
 test('renders to ast', () => {
   const ast = renderDocumentToAst(mockDocumentElement);
-  // console.log(JSON.stringify(ast, null, 2));
+  console.log(JSON.stringify(ast, null, 2));
 });
 
 test('renders to xml', async () => {

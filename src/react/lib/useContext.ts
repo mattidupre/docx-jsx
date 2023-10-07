@@ -1,4 +1,4 @@
-import { Store } from 'src/render';
+import { Store } from 'src/lib/store';
 import { useIsReact } from './useIsReact';
 import {
   useContext as useReactContext,

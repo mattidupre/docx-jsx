@@ -69,4 +69,4 @@ export const mockDocumentElement = (
   </Document>
 );
 
-export const mockDocumentMarkup = renderToStaticMarkup(mockDocumentElement);
+// export const mockDocumentMarkup = renderToStaticMarkup(mockDocumentElement);

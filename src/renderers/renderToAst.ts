@@ -1,5 +1,5 @@
-import { createRenderer } from 'src/render';
-import { createParser } from 'src/parse';
+import { createRenderer } from 'src/lib/renderer';
+import { createParser } from 'src/lib/parser';
 
 export const renderDocumentToAst = createRenderer(
   'document',

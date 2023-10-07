@@ -1,5 +1,4 @@
 import { createElement } from 'react';
-import { asArray } from 'src/utils/utilities';
 import { useIsDocX } from 'src/react';
 
 export function Document<TProps extends AsDocXProps<'Document'>>({
