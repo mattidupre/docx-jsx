@@ -14,14 +14,6 @@ import {
 } from 'docx';
 import { asArray } from 'src/utils';
 
-// Nullish: values omitted in the output.
-// Stringish: values that are coerced into strings in the output.
-// AnyElement / ReactElement: object representing a Component or Intrinsic.
-// IntrinsicElement: an element that maps to an output value, e.g., div or textrun.
-// OtherElement: a React Fragment or Exotic Component, just noop and return children.
-
-export type RenderType = 'docx' | 'react' | 'ast';
-
 export type Nullish = true | false | null | undefined;
 export const isNullish = (value: any): value is Nullish =>
   value === null || value === undefined || value === true || value === false;
@@ -32,24 +24,32 @@ export const isStringish = (value: any): value is Stringish =>
 
 export type IntrinsicProps = {
   document: Omit<IDocumentOptions, 'sections'> & {
-    sections: ChildrenNode<'section'>;
+    children: ChildrenNode<'section'>;
   };
   section: Omit<ISectionOptions, 'children' | 'headers' | 'footers'> & {
     children: ChildrenNode<'paragraph' | 'table'>;
-    headers?: Partial<
-      Record<keyof ISectionOptions['headers'], ChildNode<'header'>>
-    >;
-    footers?: Partial<
-      Record<keyof ISectionOptions['footers'], ChildNode<'footer'>>
-    >;
+    headers?: {
+      default?: ChildNode<'header'>;
+      first?: ChildNode<'header'>;
+      even?: ChildNode<'header'>;
+    };
+    footers?: {
+      default?: ChildNode<'footer'>;
+      first?: ChildNode<'footer'>;
+      even?: ChildNode<'footer'>;
+    };
   };
-  header: { children: ChildrenNode<'paragraph' | 'table'> };
-  footer: { children: ChildrenNode<'paragraph' | 'table'> };
+  header: {
+    children: ChildrenNode<'paragraph' | 'table'>;
+  };
+  footer: {
+    children: ChildrenNode<'paragraph' | 'table'>;
+  };
   paragraph: Omit<IParagraphOptions, 'children'> & {
     children: ChildrenNode<'textrun'>;
   };
   textrun: Omit<IRunOptions, 'children'> & {
-    children: ChildrenNode<'textrun'>;
+    children?: ChildrenNode<'textrun'>;
   };
   table: never;
 };
@@ -101,12 +101,9 @@ export const asIntrinsicElement = <TType extends IntrinsicType>(
   return value as IntrinsicElement<TType>;
 };
 
-export const createIntrinsicElement = <
-  TType extends IntrinsicType,
-  TProps extends IntrinsicProps,
->(
+export const createIntrinsicElement = <TType extends IntrinsicType>(
   type: TType,
-  props: TProps,
+  props: IntrinsicProps[TType],
 ) => createElement(type, props);
 
 export { FunctionComponentElement as ComponentElement };
@@ -141,9 +138,9 @@ type IsBrandedChild<TValue> = typeof CHILD_META_KEY extends keyof TValue
   ? true
   : false;
 
-type UnbrandChild<TValue> = IsBrandedChild<TValue> extends true
-  ? Omit<TValue, typeof CHILD_META_KEY>
-  : TValue;
+// type UnbrandChild<TValue> = IsBrandedChild<TValue> extends true
+//   ? Omit<TValue, typeof CHILD_META_KEY>
+//   : TValue;
 
 type GetIntrinsicType<TValue> = TValue extends BrandChild<
   infer TIntrinsicType,

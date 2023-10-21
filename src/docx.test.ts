@@ -3,6 +3,7 @@ import {
   renderDocumentToDocxXml,
   renderDocumentToAst,
   renderDocumentToDocxBuffer,
+  renderToPreview,
 } from 'src/renderers';
 import { test } from 'vitest';
 import path from 'node:path';
@@ -24,3 +25,8 @@ test('renders to docx', async () => {
   const buffer = await renderDocumentToDocxBuffer(mockDocumentElement);
   await fs.writeFile(path.resolve(dirname, '../dist/test.docx'), buffer);
 });
+
+// test('renders to preview', async () => {
+//   const html = renderToPreview(mockDocumentElement);
+//   await fs.writeFile(path.resolve(dirname, '../dist/test.html'), html);
+// });

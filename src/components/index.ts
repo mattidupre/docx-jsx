@@ -1,4 +1,6 @@
 export { Document } from './Document';
+export { PagesGroup } from './PagesGroup';
+export { Header } from './Header';
+export { Footer } from './Footer';
 export { Paragraph } from './Paragraph';
-export { Section } from './Section';
 export { TextRun } from './TextRun';

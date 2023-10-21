@@ -1,6 +1,13 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 
-import { Document, Section, TextRun, Paragraph } from 'src/components';
+import {
+  Document,
+  PagesGroup,
+  Header,
+  Footer,
+  TextRun,
+  Paragraph,
+} from 'src/components';
 import { TextProvider, useTextConfig } from 'src/context';
 import { type FunctionComponent } from 'react';
 import { vi } from 'vitest';
@@ -63,9 +70,17 @@ const ComponentA = createMockComponent(() => {
 
 export const mockDocumentElement = (
   <Document>
-    <Section>
+    <PagesGroup
+      headers={{
+        default: (
+          <Header>
+            <Paragraph>HEADER TEXT</Paragraph>
+          </Header>
+        ),
+      }}
+    >
       <ComponentA />
-    </Section>
+    </PagesGroup>
   </Document>
 );
 

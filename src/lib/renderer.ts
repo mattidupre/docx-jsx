@@ -19,13 +19,10 @@ import { mapObjectValues } from 'src/utils';
 import { type ReactNode } from 'react';
 
 export const ELEMENT_RENDERERS = {
-  document: (props, { renderChildren }) => {
-    const { sections, ...options } = props;
-    return {
-      ...options,
-      sections: renderChildren(sections, ['section']),
-    };
-  },
+  document: ({ children, ...options }, { renderChildren }) => ({
+    ...options,
+    children: renderChildren(children, ['section']),
+  }),
   section: (
     { children, headers, footers },
     { renderChildren, renderChild },
@@ -111,7 +108,7 @@ export const renderNode = (
 };
 
 export const createRenderer =
-  (rootType: IntrinsicType, parser: Parser) => (rootNode: ReactNode) => {
+  (rootType: 'document', parser: Parser) => (rootNode: ReactNode) => {
     if (Store.getIsRendering()) {
       throw new Error('Store is already rendering.');
     }
