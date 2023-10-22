@@ -2,8 +2,8 @@ import { Packer } from 'docx';
 import JSZip from 'jszip';
 import xmlFormat from 'xml-formatter';
 import { createRenderer } from 'src/lib/renderer';
-import { createParser } from 'src/lib/parser';
-export const renderToDocx = createRenderer('document', createParser('docx'));
+import { parseOptionsToDocx } from 'src/lib/parse';
+export const renderToDocx = createRenderer(parseOptionsToDocx);
 export const renderDocumentToDocxBuffer = async (documentEl) => Packer.toBuffer(renderToDocx(documentEl));
 export const renderDocumentToDocxStream = async (documentEl) => Packer.toStream(renderToDocx(documentEl));
 export const renderDocumentToDocxXml = async (documentEl) => Packer.toBuffer(renderToDocx(documentEl))

@@ -8,7 +8,7 @@ export function PagesGroup<TProps extends IntrinsicElementProps['section']>({
 }: TProps) {
   if (useIsDocX()) {
     return createElement(
-      'section' as any,
+      'pagesGroup' as any,
       options,
       ...Children.toArray(children),
     );

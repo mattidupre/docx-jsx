@@ -3,9 +3,9 @@ import JSZip from 'jszip';
 import xmlFormat from 'xml-formatter';
 import { type ReactNode } from 'react';
 import { createRenderer } from 'src/lib/renderer';
-import { createParser } from 'src/lib/parser';
+import { parseOptionsToDocx } from 'src/lib/parse';
 
-export const renderToDocx = createRenderer('document', createParser('docx'));
+export const renderToDocx = createRenderer(parseOptionsToDocx);
 
 export const renderDocumentToDocxBuffer = async (documentEl: ReactNode) =>
   Packer.toBuffer(renderToDocx(documentEl));

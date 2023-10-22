@@ -2,8 +2,16 @@ export declare const ELEMENT_RENDERERS: {
     readonly document: ({ children, ...options }: IntrinsicElementProps, { renderChildren }: RenderContext) => any;
     readonly section: ({ children, headers, footers }: IntrinsicElementProps, { renderChildren, renderChild }: RenderContext) => {
         children: any;
-        headers: any;
-        footers: any;
+        headers: {
+            [x: string]: unknown;
+            [x: number]: unknown;
+            [x: symbol]: unknown;
+        };
+        footers: {
+            [x: string]: unknown;
+            [x: number]: unknown;
+            [x: symbol]: unknown;
+        };
     };
     readonly header: ({ children }: IntrinsicElementProps, { renderChildren }: RenderContext) => {
         children: any;

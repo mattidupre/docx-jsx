@@ -1,4 +1,4 @@
 import { createRenderer } from 'src/lib/renderer';
-import { createParser } from 'src/lib/parser';
-export const renderDocumentToAst = createRenderer('document', createParser('ast'));
+import { parseOptionsToAst } from 'src/lib/parse';
+export const renderDocumentToAst = createRenderer(parseOptionsToAst);
 //# sourceMappingURL=renderToAst.js.map

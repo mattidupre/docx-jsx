@@ -1,4 +1,3 @@
 export * from './document';
-export * from './element';
-export * from './render';
+export * from './schema';
 //# sourceMappingURL=index.js.map

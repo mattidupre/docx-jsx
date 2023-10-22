@@ -1,40 +1,51 @@
-import { type ReactNode, type ReactElement } from 'react';
-import { type ISectionOptions, type IDocumentOptions, type IParagraphOptions, type IRunOptions } from 'docx';
-export type IntrinsicType = 'document' | 'section' | 'header' | 'footer' | 'paragraph' | 'textrun' | 'table';
-export type IntrinsicElementProps<TNode = ReactNode> = {
-    document: Omit<IDocumentOptions, 'sections'> & {
-        children: TNode;
+import { type ReactNode } from 'react';
+export declare const SCHEMA: {
+    readonly document: {
+        readonly children: readonly ["pagesGroup"];
     };
-    section: Omit<ISectionOptions, 'children' | 'headers' | 'footers'> & {
-        children: TNode;
-        headers?: {
-            default?: TNode;
-            first?: TNode;
-            even?: TNode;
+    readonly pagesGroup: {
+        readonly children: readonly ["paragraph", "table"];
+        readonly headers: {
+            readonly default: "header";
+            readonly even: "header";
+            readonly odd: "header";
+            readonly first: "header";
         };
-        footers?: {
-            default?: TNode;
-            first?: TNode;
-            even?: TNode;
+        readonly footers: {
+            readonly default: "header";
+            readonly even: "header";
+            readonly odd: "header";
+            readonly first: "header";
         };
     };
-    header: {
-        children: TNode;
+    readonly header: {
+        readonly children: readonly ["header"];
     };
-    footer: {
-        children: TNode;
+    readonly footer: {
+        readonly children: readonly ["footer"];
     };
-    paragraph: Omit<IParagraphOptions, 'children'> & {
-        children: TNode;
+    readonly paragraph: {
+        readonly children: readonly ["textrun"];
     };
-    textrun: Omit<IRunOptions, 'children'> & {
-        children?: TNode;
+    readonly textrun: {
+        readonly children: readonly ["textrun"];
     };
-    table: never;
+    readonly table: {};
 };
-export type IntrinsicElement<TType extends IntrinsicType = IntrinsicType, TProps extends IntrinsicElementProps = IntrinsicElementProps> = TType extends unknown ? ReactElement<TProps, TType> : never;
-export declare const isAnyElement: (value: any) => value is ReactElement<any, string | import("react").JSXElementConstructor<any>>;
-export declare const isIntrinsicElement: <TType extends IntrinsicType = IntrinsicType>(value: any, allowTypes?: readonly TType[] | undefined) => value is IntrinsicElement<TType, IntrinsicElementProps<ReactNode>>;
-export declare function assertIntrinsicElement<TType extends IntrinsicType = IntrinsicType>(value: unknown, allowTypes?: ReadonlyArray<TType>): asserts value is IntrinsicElement<TType>;
-export declare const asIntrinsicElement: <TType extends IntrinsicType = IntrinsicType>(value: unknown, allowTypes?: readonly TType[] | undefined) => IntrinsicElement<TType, IntrinsicElementProps<ReactNode>>;
-export declare const isComponentElement: (value: any) => value is ReactElement<any, (...args: any) => any>;
+type ElementType = keyof typeof SCHEMA;
+type ElementOptions = {
+    document: Record<string, never>;
+    pagesGroup: Record<string, never>;
+    header: Record<string, never>;
+    footer: Record<string, never>;
+    paragraph: Record<string, never>;
+    textrun: Record<string, never>;
+    table: Record<string, never>;
+};
+type ParseSchemaToProps<TValue extends Record<string, any>> = {
+    [T in keyof TValue]: TValue[T] extends ElementType ? ReactNode : TValue[T] extends ReadonlyArray<infer I extends ElementType> ? ParseSchemaToProps<(typeof SCHEMA)[I]> : TValue[T] extends Record<string, any> ? ParseSchemaToProps<TValue[T]> : never;
+};
+export type ElementProps = {
+    [TElementType in ElementType]: ElementOptions[TElementType] & ParseSchemaToProps<(typeof SCHEMA)[TElementType]>;
+};
+export {};

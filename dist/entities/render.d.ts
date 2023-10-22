@@ -1,5 +1,5 @@
 import { type ReactNode, type ReactElement } from 'react';
-import { type IntrinsicType, type IntrinsicElementProps } from './element';
+import { type IntrinsicType, type IntrinsicElementProps } from '../lib/element';
 export type RenderType = 'docx' | 'ast' | 'html';
 export type RenderContext = {
     type: string;
