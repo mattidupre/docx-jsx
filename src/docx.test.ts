@@ -1,4 +1,4 @@
-import { mockDocumentElement } from 'src/helpers';
+import { mockDocumentElement } from 'src/mocks';
 import {
   renderDocumentToDocxXml,
   renderDocumentToAst,
@@ -26,7 +26,7 @@ test('renders to docx', async () => {
   await fs.writeFile(path.resolve(dirname, '../dist/test.docx'), buffer);
 });
 
-// test('renders to preview', async () => {
-//   const html = renderToPreview(mockDocumentElement);
-//   await fs.writeFile(path.resolve(dirname, '../dist/test.html'), html);
-// });
+test('renders to preview', async () => {
+  const html = renderToPreview(mockDocumentElement);
+  // await fs.writeFile(path.resolve(dirname, '../dist/test.html'), html);
+});

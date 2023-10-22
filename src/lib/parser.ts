@@ -2,9 +2,9 @@ import { Document, Header, Footer, Paragraph, TextRun, Table } from 'docx';
 import { type Parser, type RenderType, type IntrinsicType } from 'src/entities';
 import { asArray } from 'src/utils';
 
-type ParsersConfig = { [K in IntrinsicType]: Parser<K> };
+type ParsersConfig<TNode> = { [K in IntrinsicType]: Parser<K, TNode> };
 
-const AST_PARSERS: ParsersConfig = {
+const AST_PARSERS: ParsersConfig<any> = {
   document: (options, { type }) => ({ type, options }),
   section: (options, { type }) => ({ type, options }),
   header: (options, { type }) => ({ type, options }),
@@ -14,7 +14,7 @@ const AST_PARSERS: ParsersConfig = {
   table: (options, { type }) => ({ type, options }),
 };
 
-const DOCX_PARSERS: ParsersConfig = {
+const DOCX_PARSERS: ParsersConfig<any> = {
   document: ({ children, ...options }) =>
     new Document({ ...options, sections: children }),
   section: (options) => options,
@@ -26,7 +26,7 @@ const DOCX_PARSERS: ParsersConfig = {
 };
 
 const parseHtmlChildren = (children: unknown) => asArray(children).join('');
-const HTML_PARSERS: ParsersConfig = {
+const HTML_PARSERS: ParsersConfig<any> = {
   document: ({ children, ...options }) => ({
     ...options,
     pagesGroups: children,

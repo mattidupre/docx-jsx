@@ -1,8 +1,8 @@
 import { createElement, Children } from 'react';
 import { useIsDocX } from 'src/react';
-import { type IntrinsicProps } from 'src/entities';
+import { type IntrinsicElementProps } from 'src/entities';
 
-export function Header<TProps extends IntrinsicProps['header']>({
+export function Header<TProps extends IntrinsicElementProps['header']>({
   children,
   ...options
 }: TProps) {

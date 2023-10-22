@@ -1,11 +1,9 @@
 import {
-  type PageType,
-  assertPageType,
-  type PageOptions,
   PAGES_GROUP_DATA_ATTRIBUTE,
   HEADER_CLASS_NAME,
   FOOTER_CLASS_NAME,
 } from './entities';
+import { type PageType, assertPageType, type PageOptions } from 'src/entities';
 import { jsToCss } from 'src/utils';
 
 type Options = Pick<
@@ -33,6 +31,8 @@ const getPageTypeSelector = (pagesGroupId: string, pageType: PageType) => {
       return baseSelector + '.pagedjs_even_page';
     case 'odd':
       return baseSelector + '.pagedjs_odd_page';
+    default:
+      throw new TypeError(`Invalid page type "${pageType}".`);
   }
 };
 
@@ -47,6 +47,8 @@ const getAtPageSelector = (pagesGroupId: string, pageType: PageType) => {
       return `@page ${pagesGroupId}:left`;
     case 'odd':
       return `@page ${pagesGroupId}:right`;
+    default:
+      throw new TypeError(`Invalid page type "${pageType}".`);
   }
 };
 

@@ -1,12 +1,13 @@
 import { createRenderer } from 'src/lib/renderer';
 import { createParser } from 'src/lib/parser';
 import { createPager } from 'src/lib/pager';
-import { type ChildNode } from 'src/entities';
+import { type ReactNode } from 'react';
 
 const renderToHtml = createRenderer('document', createParser('html'));
 
-export const renderToPreview = (documentNode: ChildNode) => {
+export const renderToPreview = (documentNode: ReactNode) => {
   const { pagesGroups } = renderToHtml(documentNode);
+  console.log(pagesGroups);
   // createPager is called here.
 };
 

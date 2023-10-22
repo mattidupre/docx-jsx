@@ -6,18 +6,15 @@
     "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "resolveJsonModule": true,
     "skipLibCheck": true,
     "allowJs": false,
     "sourceMap": true,
     "strict": true,
 
-    "baseUrl": ".",
-    "rootDir": "./src",
-    "outDir": "./dist",
+    "jsx": "react-jsx",
 
-    "jsx": "react-jsx"
+    "baseUrl": ".",
+    "outDir": "./dist"
   },
-  "include": ["./src/**/*.ts", "./src/**/*.tsx"],
-  "exclude": []
+  "include": ["./src/**/*"]
 }
