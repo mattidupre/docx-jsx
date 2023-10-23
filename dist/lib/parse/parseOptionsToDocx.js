@@ -7,10 +7,10 @@ export const parseOptionsToDocx = defineParser({
     header: (options) => new Header(options),
     footer: (options) => new Footer(options),
     paragraph: (options) => new Paragraph(options),
-    textrun: ({ children, ...options }) => {
-        console.log('HERE', options); // TODO: Why does this fire with {}?
-        return new TextRun({ ...options, children: children?.length || undefined });
-    },
+    textrun: ({ children, ...options }) => new TextRun({
+        ...options,
+        children: children?.length ? children : undefined,
+    }),
     table: (options) => new Table(options),
 });
 //# sourceMappingURL=parseOptionsToDocx.js.map

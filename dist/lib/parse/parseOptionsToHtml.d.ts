@@ -1,1 +1,1 @@
-export declare const parseOptionsToHtml: <TElementType extends "document" | "pagesGroup" | "paragraph" | "table" | "header" | "footer" | "textrun">(inputType: TElementType, props: import("../../entities").ParserOptions[TElementType]) => any;
+export declare const parseOptionsToHtml: <TElementType extends ElementType>(inputType: TElementType, props: ParserOptions) => any;

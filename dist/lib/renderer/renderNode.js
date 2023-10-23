@@ -1,6 +1,9 @@
 import { Store } from 'src/lib/store';
 import { createElement, isValidElement, } from 'react';
 export const renderNode = (currentNode) => {
+    if (Array.isArray(currentNode)) {
+        return currentNode.flatMap((childNode) => renderNode(childNode));
+    }
     if (currentNode === undefined ||
         currentNode === null ||
         currentNode === true ||
@@ -8,10 +11,8 @@ export const renderNode = (currentNode) => {
         return [];
     }
     if (typeof currentNode === 'number' || typeof currentNode === 'string') {
+        // Stringish nodes get converted into Text elements.
         return renderNode(createElement('textrun', { text: String(currentNode) }));
-    }
-    if (Array.isArray(currentNode)) {
-        return currentNode.flatMap((childNode) => renderNode(childNode));
     }
     if (isValidElement(currentNode)) {
         const { type, props } = currentNode;

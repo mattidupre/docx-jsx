@@ -1,2 +1,2 @@
-import { SCHEMA } from 'src/entities';
-export declare const mapChildren: (obj: any, renderNode: (value: any) => ReadonlyArray<any>, parseChild: (value: any) => any, schemaOption: keyof typeof SCHEMA | Record<string, any>) => any;
+import { type ReactElement } from 'react';
+export declare const mapChildren: (obj: any, onChild: (value: ReactElement<any, string>, types: string | ReadonlyArray<string>) => unknown, currentSchema?: Record<string, any>) => any;

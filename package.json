@@ -45,6 +45,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@sinclair/typebox": "^0.31.18",
     "docx": "^8.2.3",
     "jszip": "^3.10.1",
     "pagedjs": "^0.4.3",

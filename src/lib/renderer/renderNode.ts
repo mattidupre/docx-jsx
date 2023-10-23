@@ -8,7 +8,11 @@ import {
 
 export const renderNode = (
   currentNode: ReactNode,
-): ReadonlyArray<ReactElement> => {
+): ReadonlyArray<ReactElement<any, string>> => {
+  if (Array.isArray(currentNode)) {
+    return currentNode.flatMap((childNode) => renderNode(childNode));
+  }
+
   if (
     currentNode === undefined ||
     currentNode === null ||
@@ -19,11 +23,8 @@ export const renderNode = (
   }
 
   if (typeof currentNode === 'number' || typeof currentNode === 'string') {
+    // Stringish nodes get converted into Text elements.
     return renderNode(createElement('textrun', { text: String(currentNode) }));
-  }
-
-  if (Array.isArray(currentNode)) {
-    return currentNode.flatMap((childNode) => renderNode(childNode));
   }
 
   if (isValidElement(currentNode)) {

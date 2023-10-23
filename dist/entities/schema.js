@@ -1,26 +1,37 @@
-export const SCHEMA = {
-    document: {
-        children: ['pagesGroup'],
-    },
-    pagesGroup: {
-        children: ['paragraph', 'table'],
-        headers: {
-            default: 'header',
-            even: 'header',
-            odd: 'header',
-            first: 'header',
-        },
-        footers: {
-            default: 'header',
-            even: 'header',
-            odd: 'header',
-            first: 'header',
-        },
-    },
-    header: { children: ['header'] },
-    footer: { children: ['footer'] },
-    paragraph: { children: ['textrun'] },
-    textrun: { children: ['textrun'] },
-    table: {},
-};
+import { Type } from '@sinclair/typebox';
+import { defineSchema } from 'src/lib/defineSchema';
+export const schema = defineSchema(({ Child, Children }) => ({
+    document: Type.Object({
+        tempArr: Type.Array(Type.String()),
+        tempObj: Type.Object({ temp: Type.String() }),
+        children: Children(['pagesGroup']),
+    }),
+    pagesGroups: Type.Array(Type.Object({
+        headers: Type.Optional(Type.Partial(Type.Object({
+            default: Child(['header']),
+            first: Child(['header']),
+            even: Child(['header']),
+            odd: Child(['header']),
+        }))),
+        children: Children(['paragraph', 'table']),
+        footers: Type.Optional(Type.Partial(Type.Object({
+            default: Child(['footer']),
+            first: Child(['footer']),
+            even: Child(['footer']),
+            odd: Child(['footer']),
+        }))),
+    })),
+    header: Type.Object({
+        children: Children(['paragraph', 'table']),
+    }),
+    footer: Type.Object({
+        children: Children(['paragraph', 'table']),
+    }),
+    paragraph: Type.Object({
+        children: Children(['textrun']),
+    }),
+    textrun: Type.Object({
+        children: Children(['textrun']),
+    }),
+}));
 //# sourceMappingURL=schema.js.map
