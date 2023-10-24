@@ -5,7 +5,6 @@ import { mockDocumentElement } from 'src/mocks/mockDocument';
 import { Store } from 'src/lib/store';
 import { type ReactNode } from 'react';
 
-// HERE Why is temp "unknown?"
 const render = schema<Record<string, 'CHILD'>, Record<string, 'CHILDREN'>>(
   (
     node,

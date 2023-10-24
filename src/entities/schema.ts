@@ -1,11 +1,10 @@
 import { Type } from '@sinclair/typebox';
 
-import { defineSchema } from 'src/lib/defineSchema';
+import { defineSchema } from 'src/lib/schema';
 
 export const schema = defineSchema(({ Child, Children }) => ({
   document: Type.Object({
-    // temp: Type.String(),
-    children: Children(['pagesGroup']),
+    children: Children(['pagesGroup'], true),
   }),
   pagesGroup: Type.Object({
     headers: Type.Optional(
@@ -31,10 +30,10 @@ export const schema = defineSchema(({ Child, Children }) => ({
     ),
   }),
   header: Type.Object({
-    children: Children(['paragraph', 'table']),
+    children: Children(['paragraph', 'table'], true),
   }),
   footer: Type.Object({
-    children: Children(['paragraph', 'table']),
+    children: Children(['paragraph', 'table'], true),
   }),
   paragraph: Type.Object({
     children: Children(['textrun']),
