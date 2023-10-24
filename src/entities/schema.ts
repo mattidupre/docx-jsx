@@ -1,44 +1,48 @@
 import { Type } from '@sinclair/typebox';
 
-import { defineSchema } from 'src/lib/schema';
-
-export const schema = defineSchema(({ Child, Children }) => ({
+export const createElementSchemas = ({ ReactNode }) => ({
   document: Type.Object({
-    children: Children(['pagesGroup'], true),
+    children: ReactNode({ type: 'pagesGroup', required: true }),
   }),
   pagesGroup: Type.Object({
     headers: Type.Optional(
       Type.Partial(
         Type.Object({
-          default: Child(['header']),
-          first: Child(['header']),
-          even: Child(['header']),
-          odd: Child(['header']),
+          default: ReactNode({ type: 'header', single: true }),
+          first: ReactNode({ type: 'header', single: true }),
+          even: ReactNode({ type: 'header', single: true }),
+          odd: ReactNode({ type: 'header', single: true }),
         }),
       ),
     ),
-    children: Children(['paragraph', 'table']),
+    children: ReactNode({ type: ['paragraph', 'table'] }),
     footers: Type.Optional(
       Type.Partial(
         Type.Object({
-          default: Child(['footer']),
-          first: Child(['footer']),
-          even: Child(['footer']),
-          odd: Child(['footer']),
+          default: ReactNode({ type: 'footer', single: true }),
+          first: ReactNode({ type: 'footer', single: true }),
+          even: ReactNode({ type: 'footer', single: true }),
+          odd: ReactNode({ type: 'footer', single: true }),
         }),
       ),
     ),
   }),
   header: Type.Object({
-    children: Children(['paragraph', 'table'], true),
+    children: ReactNode({
+      type: ['paragraph', 'table'],
+      required: true,
+    }),
   }),
   footer: Type.Object({
-    children: Children(['paragraph', 'table'], true),
+    children: ReactNode({
+      type: ['paragraph', 'table'],
+      required: true,
+    }),
   }),
   paragraph: Type.Object({
-    children: Children(['textrun']),
+    children: ReactNode({ type: 'textrun' }),
   }),
   textrun: Type.Object({
-    children: Children(['textrun']),
+    children: ReactNode({ type: 'textrun' }),
   }),
-}));
+});
