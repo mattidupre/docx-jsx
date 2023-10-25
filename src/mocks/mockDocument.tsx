@@ -4,6 +4,7 @@ import {
   Document,
   PagesGroup,
   Header,
+  Content,
   Footer,
   TextRun,
   Paragraph,
@@ -79,7 +80,9 @@ export const mockDocumentElement = (
         ),
       }}
     >
-      <ComponentA />
+      <Content>
+        <ComponentA />
+      </Content>
     </PagesGroup>
   </Document>
 );

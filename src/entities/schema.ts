@@ -1,20 +1,13 @@
 import { Type, type TSchema } from '@sinclair/typebox';
 import { asArray } from 'src/utils';
-import {
-  type File,
-  Document,
-  Header,
-  Footer,
-  Paragraph,
-  TextRun,
-  Table,
-} from 'docx';
+import { Document, Header, Footer, Paragraph, TextRun, Table } from 'docx';
 import { Relation } from 'src/lib/Relation';
 
 export const ELEMENT_TYPES = [
   'document',
   'pagesGroup',
   'header',
+  'content',
   'footer',
   'paragraph',
   'textrun',
@@ -53,7 +46,7 @@ export const elementSchemas: ElementSchemas = {
         }),
       ),
     ),
-    children: Relation({ type: ['paragraph', 'table'] }),
+    children: Relation({ type: 'content', single: true, required: true }),
     footers: Type.Optional(
       Type.Partial(
         Type.Object({
@@ -66,6 +59,12 @@ export const elementSchemas: ElementSchemas = {
     ),
   }),
   header: Type.Object({
+    children: Relation({
+      type: ['paragraph', 'table'],
+      required: true,
+    }),
+  }),
+  content: Type.Object({
     children: Relation({
       type: ['paragraph', 'table'],
       required: true,

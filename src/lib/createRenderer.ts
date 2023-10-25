@@ -30,7 +30,7 @@ export const createRenderer = <TNode, TElement>({
     try {
       return renderer({ type, props: propsParsers[type](props) });
     } catch (err: any) {
-      throw new Error(
+      throw new TypeError(
         `Error parsing props for element "${type}": ${err.message}`,
       );
     }
