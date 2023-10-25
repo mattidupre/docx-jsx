@@ -1,4 +1,8 @@
-import { createRenderer } from 'src/lib/renderer';
-import { parseOptionsToAst } from 'src/lib/parse';
+import { astRenderer } from 'src/entities';
+import { reactParser } from 'src/lib/reactParser';
+import { createRenderer } from 'src/lib/createRenderer';
 
-export const renderDocumentToAst = createRenderer(parseOptionsToAst);
+export const renderDocumentToAst = createRenderer({
+  parser: reactParser,
+  renderer: astRenderer,
+});

@@ -1,5 +1,7 @@
 /* eslint-disable no-multi-assign */
 
+import { type Parser, type Renderer } from 'src/entities';
+
 type Value<T = any> = Readonly<{ value: T }>;
 type Values = WeakMap<any, Value>;
 type Callback = () => void;
@@ -43,6 +45,10 @@ export class Store {
 
   protected static isGlobalRendering = false;
 
+  protected static parser: undefined | Parser;
+
+  protected static renderer: undefined | Renderer;
+
   protected static globalValues: Values = new WeakMap();
 
   protected static globalCallbacks: Callbacks = [];
@@ -53,16 +59,34 @@ export class Store {
 
   protected static currentNodeIndex = -1;
 
-  public static initGlobal() {
+  public static initGlobal({
+    renderer,
+    parser,
+  }: {
+    renderer: Renderer<any>;
+    parser: Parser<any>;
+  }) {
     if (Store.isGlobalRendering) {
       throw new Error('Do not use multiple renderers at once.');
     }
     Store.clearGlobal();
     Store.isGlobalRendering = true;
+    Store.parser = parser;
+    Store.renderer = renderer;
   }
 
   public static getIsRendering() {
     return Store.isGlobalRendering;
+  }
+
+  public static getParser() {
+    Store.checkIfGlobalRendering();
+    return Store.parser!;
+  }
+
+  public static getRenderer() {
+    Store.checkIfGlobalRendering();
+    return Store.renderer!;
   }
 
   public static setGlobalValue(key: any, value: any) {
@@ -133,6 +157,8 @@ export class Store {
 
   public static clearGlobal() {
     Store.isGlobalRendering = false;
+    Store.parser = undefined;
+    Store.renderer = undefined;
     Store.globalCallbacks.splice(0);
 
     Store.nodeValues.splice(0);

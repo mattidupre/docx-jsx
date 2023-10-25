@@ -7,7 +7,7 @@ import {
   Footer,
   TextRun,
   Paragraph,
-} from 'src/components';
+} from 'src/react';
 import { TextProvider, useTextConfig } from 'src/context';
 import { type FunctionComponent } from 'react';
 import { vi } from 'vitest';
