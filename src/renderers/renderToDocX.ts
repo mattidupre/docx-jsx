@@ -19,7 +19,6 @@ export const renderDocumentToDocxStream = async (documentEl: ReactNode) =>
 
 export const renderDocumentToDocxXml = async (documentEl: ReactNode) => {
   const result = renderToDocx(documentEl);
-  console.log(result);
   return Packer.toBuffer(result)
     .then((buffer) => JSZip.loadAsync(buffer))
     .then(({ files }) => files['word/document.xml'].async('string'))

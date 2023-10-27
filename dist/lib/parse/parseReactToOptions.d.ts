@@ -1,1 +1,0 @@
-export declare const parseReactToOptions: <TElementType extends "document" | "pagesGroup" | "paragraph" | "table" | "header" | "footer" | "textrun">(inputType: TElementType, props: import("src/entities").ParserOptions[TElementType]) => any;

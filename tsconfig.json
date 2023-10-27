@@ -14,7 +14,7 @@
     "jsx": "react-jsx",
 
     "baseUrl": ".",
-    "outDir": "./dist"
+    "outDir": "./dist-backend"
   },
   "include": ["./src/**/*"]
 }

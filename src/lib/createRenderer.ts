@@ -10,6 +10,18 @@ import { Relation } from 'src/lib/Relation';
 import { Value } from '@sinclair/typebox/value';
 import { Store } from 'src/lib/store';
 
+/**
+ * Vitest will serialize and log the entire error object.
+ * Since TypeBox errors are huge, strip it down.
+ */
+class WrappedError extends Error {
+  constructor(originalError: any) {
+    super(originalError.message);
+    this.name = originalError.name;
+    this.stack = originalError.stack;
+  }
+}
+
 const propsParsers = Object.fromEntries(
   ELEMENT_TYPES.map((elementType) => {
     const encoder = TypeCompiler.Compile(elementSchemas[elementType]);
@@ -47,6 +59,8 @@ export const createRenderer = <TNode, TElement>({
         Relation({ type: 'document', required: true, single: true }),
         rootNode,
       );
+    } catch (err: any) {
+      throw new WrappedError(err);
     } finally {
       Store.completeGlobal();
     }

@@ -1,1 +1,0 @@
-{"version":3,"file":"entities.js","sourceRoot":"","sources":["../../src/context/entities.ts"],"names":[],"mappings":"AAMA,MAAM,CAAC,MAAM,mBAAmB,GAAG;IACjC,KAAK,EAAE,MAAM;CACgB,CAAC;AAEhC,MAAM,CAAC,MAAM,gBAAgB,GAAG,CAAC,MAAkB,EAAE,OAAoB,EAAE,EAAE,CAAC,CAAC;IAC7E,GAAG,MAAM;IACT,GAAG,OAAO;CACX,CAAC,CAAC"}

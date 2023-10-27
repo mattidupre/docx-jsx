@@ -1,13 +1,21 @@
 import { Type, type TSchema } from '@sinclair/typebox';
-import { asArray } from 'src/utils';
-import { Document, Header, Footer, Paragraph, TextRun, Table } from 'docx';
+import { asArray, mapObjectValues } from 'src/utils';
+import {
+  Document,
+  Header,
+  Footer,
+  Paragraph,
+  TextRun,
+  Table,
+  type ISectionOptions,
+} from 'docx';
 import { Relation } from 'src/lib/Relation';
+import { v4 as createUuid } from 'uuid';
 
 export const ELEMENT_TYPES = [
   'document',
   'pagesGroup',
   'header',
-  'content',
   'footer',
   'paragraph',
   'textrun',
@@ -29,6 +37,11 @@ export type Renderer<TElement = unknown> = (
   parsedNode: ParsedElement,
 ) => TElement;
 
+const pageTypeSchema = Type.Object({
+  header: Type.Optional(Relation({ type: ['header'], single: true })),
+  footer: Type.Optional(Relation({ type: ['footer'], single: true })),
+});
+
 export type ElementSchemas = Record<ElementType, TSchema>;
 
 export const elementSchemas: ElementSchemas = {
@@ -36,6 +49,14 @@ export const elementSchemas: ElementSchemas = {
     children: Relation({ type: 'pagesGroup', required: true }),
   }),
   pagesGroup: Type.Object({
+    pageTypes: Type.Partial(
+      Type.Object({
+        default: pageTypeSchema,
+        first: pageTypeSchema,
+        even: pageTypeSchema,
+        odd: pageTypeSchema,
+      }),
+    ),
     headers: Type.Optional(
       Type.Partial(
         Type.Object({
@@ -46,7 +67,10 @@ export const elementSchemas: ElementSchemas = {
         }),
       ),
     ),
-    children: Relation({ type: 'content', single: true, required: true }),
+    children: Relation({
+      type: ['paragraph', 'table'],
+      required: true,
+    }),
     footers: Type.Optional(
       Type.Partial(
         Type.Object({
@@ -59,12 +83,6 @@ export const elementSchemas: ElementSchemas = {
     ),
   }),
   header: Type.Object({
-    children: Relation({
-      type: ['paragraph', 'table'],
-      required: true,
-    }),
-  }),
-  content: Type.Object({
     children: Relation({
       type: ['paragraph', 'table'],
       required: true,
@@ -95,10 +113,35 @@ export const docxRenderer: Renderer<any> = ({ type, props }) => {
   switch (type) {
     case 'document': {
       const { children, ...options } = props;
-      return new Document({ ...options, sections: children });
+      const sections = children.map(
+        ({ children, pageTypes, ...options }): ISectionOptions => {
+          // Because docxjs does not have an odd page, assign all values
+          const headers: ISectionOptions['headers'] = {
+            first: pageTypes.first?.header ?? pageTypes.default?.header,
+            even: pageTypes.even?.header ?? pageTypes.default?.header,
+            default: pageTypes.odd?.header ?? pageTypes.default?.header,
+          };
+          const footers: ISectionOptions['footers'] = {
+            first: pageTypes.first?.footer ?? pageTypes.default?.footer,
+            even: pageTypes.even?.footer ?? pageTypes.default?.footer,
+            default: pageTypes.odd?.footer ?? pageTypes.default?.footer,
+          };
+          return {
+            ...options,
+            headers,
+            footers,
+            children,
+          };
+        },
+      );
+      console.log(sections);
+
+      return new Document({
+        ...options,
+        sections,
+      });
     }
     case 'pagesGroup': {
-      // TODO: merge odd pages with default.
       return props;
     }
     case 'header': {
@@ -121,6 +164,7 @@ export const docxRenderer: Renderer<any> = ({ type, props }) => {
       return new Table(props);
     }
   }
+  throw new TypeError(`Invalid element type ${type}.`);
 };
 
 export const htmlRenderer: Renderer = ({ type, props }) => {
@@ -133,8 +177,16 @@ export const htmlRenderer: Renderer = ({ type, props }) => {
       };
     }
     case 'pagesGroup': {
-      const { children, ...options } = props;
-      return props;
+      const { children, pageTypes, ...options } = props;
+      return {
+        ...options,
+        pageTypes: mapObjectValues(pageTypes, (key, { header, footer }) => ({
+          headerHtml: header,
+          footerHtml: footer,
+        })),
+        id: createUuid(),
+        contentHtml: `<content>${asArray(children).join('')}</content>`,
+      };
     }
     case 'header': {
       const { children } = props;
@@ -145,16 +197,17 @@ export const htmlRenderer: Renderer = ({ type, props }) => {
       return `<footer>${asArray(children).join('')}</footer>`;
     }
     case 'paragraph': {
-      const { children } = props;
-      return `<p>${asArray(children).join('')}</p>`;
+      const { children, text } = props;
+      return `<p>${text ?? asArray(children).join('')}</p>`;
     }
     case 'textrun': {
       const { children, text } = props;
-      return `<p>${asArray(children).join('')}</p>`;
+      return `<p>${text ?? asArray(children).join('')}</p>`;
     }
     case 'table': {
       const { children } = props;
       return `<table>${asArray(children).join('')}</table>`;
     }
   }
+  throw new TypeError(`Invalid element type ${type}.`);
 };

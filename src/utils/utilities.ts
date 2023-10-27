@@ -14,7 +14,7 @@ export type UnFlat<T> = Flat<T> | ReadonlyArray<Flat<T>>;
 
 export type AsArray<T> = ReadonlyArray<Flat<T>>;
 
-export const asArray = <T>(value: unknown) =>
+export const asArray = <T = unknown>(value: unknown) =>
   (Array.isArray(value) ? value : [value]) as AsArray<T>;
 
 // export type AsMutableArray<T> = Array<Flat<T>>;
