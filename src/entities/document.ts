@@ -86,3 +86,7 @@ export type PagesGroupOptions = {
   id: string;
   pageTypes?: PageTypesOptions;
 };
+
+export type DocumentOptions = {
+  pagesGroups: ReadonlyArray<PagesGroupOptions>;
+};

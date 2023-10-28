@@ -1,6 +1,5 @@
 import { createPageCss, createPagesGroupCss } from './createCss';
 import {
-  type DocumentOptions,
   type PageHandler,
   type Renderer,
   PREFIX,
@@ -9,7 +8,12 @@ import {
   FOOTER_CLASS_NAME,
   PAGES_GROUP_CLASS_NAME,
 } from './entities';
-import { type PageType, parsePageTypes, mapPageTypes } from 'src/entities';
+import {
+  type PageType,
+  parsePageTypes,
+  mapPageTypes,
+  type DocumentOptions,
+} from 'src/entities';
 import {
   mathUnits,
   createEl,
@@ -27,7 +31,7 @@ export const createRenderer = ({ pagesGroups }: DocumentOptions): Renderer => {
     Record<PageType, Record<'headerEl' | 'footerEl', null | HTMLElement>>
   > = {};
 
-  pagesGroups.forEach(({ contentHtml, id, pageTypes }) => {
+  pagesGroups.forEach(({ contentHtml, id, pageTypes = {} }) => {
     if (!contentHtml) {
       return;
     }

@@ -1,4 +1,4 @@
-import { Type, type TSchema } from '@sinclair/typebox';
+import { Type, type TSchema, type Static } from '@sinclair/typebox';
 import { asArray, mapObjectValues } from 'src/utils';
 import {
   Document,
@@ -42,13 +42,12 @@ const pageTypeSchema = Type.Object({
   footer: Type.Optional(Relation({ type: ['footer'], single: true })),
 });
 
-export type ElementSchemas = Record<ElementType, TSchema>;
-
-export const elementSchemas: ElementSchemas = {
+export const elementSchemas = {
   document: Type.Object({
     children: Relation({ type: 'pagesGroup', required: true }),
   }),
   pagesGroup: Type.Object({
+    id: Type.String(),
     pageTypes: Type.Partial(
       Type.Object({
         default: pageTypeSchema,
@@ -57,30 +56,10 @@ export const elementSchemas: ElementSchemas = {
         odd: pageTypeSchema,
       }),
     ),
-    headers: Type.Optional(
-      Type.Partial(
-        Type.Object({
-          default: Relation({ type: 'header', single: true }),
-          first: Relation({ type: 'header', single: true }),
-          even: Relation({ type: 'header', single: true }),
-          odd: Relation({ type: 'header', single: true }),
-        }),
-      ),
-    ),
     children: Relation({
       type: ['paragraph', 'table'],
       required: true,
     }),
-    footers: Type.Optional(
-      Type.Partial(
-        Type.Object({
-          default: Relation({ type: 'footer', single: true }),
-          first: Relation({ type: 'footer', single: true }),
-          even: Relation({ type: 'footer', single: true }),
-          odd: Relation({ type: 'footer', single: true }),
-        }),
-      ),
-    ),
   }),
   header: Type.Object({
     children: Relation({
@@ -101,6 +80,10 @@ export const elementSchemas: ElementSchemas = {
     children: Relation({ type: 'textrun' }),
   }),
   table: Type.Never({}),
+} as const satisfies Record<ElementType, TSchema>;
+
+export type ElementProps = {
+  [TElementType in ElementType]: Static<(typeof elementSchemas)[TElementType]>;
 };
 
 export type ElementRenderers = Record<ElementType, Renderer>;
@@ -134,7 +117,6 @@ export const docxRenderer: Renderer<any> = ({ type, props }) => {
           };
         },
       );
-      console.log(sections);
 
       return new Document({
         ...options,
@@ -184,8 +166,7 @@ export const htmlRenderer: Renderer = ({ type, props }) => {
           headerHtml: header,
           footerHtml: footer,
         })),
-        id: createUuid(),
-        contentHtml: `<content>${asArray(children).join('')}</content>`,
+        contentHtml: `<article>${asArray(children).join('')}</article>`,
       };
     }
     case 'header': {
@@ -202,7 +183,7 @@ export const htmlRenderer: Renderer = ({ type, props }) => {
     }
     case 'textrun': {
       const { children, text } = props;
-      return `<p>${text ?? asArray(children).join('')}</p>`;
+      return `<span>${text ?? asArray(children).join('')}</span>`;
     }
     case 'table': {
       const { children } = props;

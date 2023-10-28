@@ -49,9 +49,12 @@
   "dependencies": {
     "@sinclair/typebox": "^0.31.18",
     "docx": "^8.2.3",
+    "hast-util-from-html": "^2.0.1",
+    "hast-util-to-html": "^9.0.0",
     "jszip": "^3.10.1",
     "pagedjs": "^0.4.3",
     "puppeteer": "^21.4.1",
+    "unist-util-visit": "^5.0.0",
     "uuid": "^9.0.1",
     "vite": "^4.5.0",
     "vitest": "^0.34.6",

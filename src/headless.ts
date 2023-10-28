@@ -1,4 +1,5 @@
-import { createPager, type DocumentOptions } from 'src/lib/pager';
+import { type DocumentOptions } from 'src/entities';
+import { createPager } from 'src/lib/pager';
 
 const rootEl = document.createElement('div');
 document.body.appendChild(rootEl);

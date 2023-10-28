@@ -1,8 +1,8 @@
 import { createElement, Children } from 'react';
 import { useIsDocX } from 'src/react';
-import { type IntrinsicElementProps } from 'src/entities';
+import { type ElementProps } from 'src/entities';
 
-export function Footer<TProps extends IntrinsicElementProps['footer']>({
+export function Footer<TProps extends ElementProps['footer']>({
   children,
   ...options
 }: TProps) {
