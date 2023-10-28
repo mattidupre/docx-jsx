@@ -1,6 +1,9 @@
 import { Handler, registerHandlers } from 'pagedjs';
-import { type PageHandler, PAGES_GROUP_DATA_ATTRIBUTE } from './entities';
-import { type PageType } from 'src/entities';
+import {
+  type PageType,
+  type PageHandler,
+  PAGES_GROUP_DATA_ATTRIBUTE,
+} from 'src/entities';
 
 const pageHandlers: Set<PageHandler> = new Set();
 

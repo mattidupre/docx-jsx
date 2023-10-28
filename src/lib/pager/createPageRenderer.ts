@@ -2,13 +2,10 @@ import { createPageCss, createPagesGroupCss } from './createCss';
 import {
   type PageHandler,
   type Renderer,
-  PREFIX,
   PAGES_GROUP_DATA_ATTRIBUTE,
   HEADER_CLASS_NAME,
   FOOTER_CLASS_NAME,
   PAGES_GROUP_CLASS_NAME,
-} from './entities';
-import {
   type PageType,
   parsePageTypes,
   mapPageTypes,
@@ -31,12 +28,10 @@ export const createRenderer = ({ pagesGroups }: DocumentOptions): Renderer => {
     Record<PageType, Record<'headerEl' | 'footerEl', null | HTMLElement>>
   > = {};
 
-  pagesGroups.forEach(({ contentHtml, id, pageTypes = {} }) => {
+  pagesGroups.forEach(({ contentHtml, id: pagesGroupId, pageTypes = {} }) => {
     if (!contentHtml) {
       return;
     }
-
-    const pagesGroupId = `${PREFIX}_${id}`;
 
     documentCss += createPagesGroupCss(pagesGroupId);
 
