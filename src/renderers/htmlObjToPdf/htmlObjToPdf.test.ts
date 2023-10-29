@@ -1,5 +1,5 @@
 import { mockDoc } from 'src/mocks';
-import { reactToHtmlObj } from 'src/reactToHtmlObj/reactToHtmlObj';
+import { reactToHtmlObj } from 'src/renderers/reactToHtmlObj/reactToHtmlObj';
 import { it, afterAll } from 'vitest';
 import { MOCK_DIST_PATH } from 'src/mocks';
 import { Packer } from 'docx';

@@ -1,16 +1,18 @@
 import { createPageCss, createPagesGroupCss } from './createCss';
 import {
+  type PageType,
+  parsePageTypes,
+  mapPageTypes,
+  type DocumentOptions,
+} from 'src/entities';
+import {
   type PageHandler,
   type Renderer,
   PAGES_GROUP_DATA_ATTRIBUTE,
   HEADER_CLASS_NAME,
   FOOTER_CLASS_NAME,
   PAGES_GROUP_CLASS_NAME,
-  type PageType,
-  parsePageTypes,
-  mapPageTypes,
-  type DocumentOptions,
-} from 'src/entities';
+} from './entities';
 import {
   mathUnits,
   createEl,

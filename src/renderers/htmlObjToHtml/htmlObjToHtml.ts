@@ -7,7 +7,7 @@ import { addStyleSheet } from 'src/utils';
 const previewer = new Previewer();
 
 export const htmlObjToHtml = async (
-  rootElement: HTMLElement,
+  rootElement: any,
   documentOptions: DocumentOptions,
 ) => {
   const { documentHtml, documentCss, pageHandler } =

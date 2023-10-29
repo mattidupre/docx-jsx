@@ -1,9 +1,10 @@
 import puppeteer, { type Browser, type Page } from 'puppeteer';
-import { type Headless } from 'src/headlessBundle';
+import { type Headless } from 'src/headless';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { type DocumentOptions } from 'src/entities';
 
+// TODO: Require.resolve self, i.e., require.resolve('docx-jsx')/headless
 const FRONTEND_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../dist-headless/headlessBundle.js',

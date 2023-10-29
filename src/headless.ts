@@ -1,5 +1,5 @@
 import { type DocumentOptions } from 'src/entities';
-import { htmlObjToHtml } from 'src/htmlObjToHtml';
+import { htmlObjToHtml } from 'src/renderers/htmlObjToHtml';
 
 const rootEl = document.createElement('div');
 document.body.appendChild(rootEl);

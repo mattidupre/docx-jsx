@@ -1,6 +1,6 @@
 import { type ReactElement } from 'react';
 import { type Node, type Parent } from 'hast';
-import { reactToAst } from 'src/reactToAst';
+import { reactToAst } from 'src/renderers/reactToAst';
 import { Document, Header, Footer, TextRun, Paragraph } from 'docx';
 
 const renderers = {

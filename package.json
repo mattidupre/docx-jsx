@@ -43,6 +43,7 @@
     "react-dom": "18"
   },
   "scripts": {
+    "vite": "vite",
     "backend:build": "rm -rf dist-backend/* ||: && tsc --declaration --project ./tsconfig-dist.json",
     "backend:dev": "pnpm run backend:build --watch",
     "mock:dev": "vite",

@@ -1,11 +1,9 @@
+import { type PageType, assertPageType, type PageOptions } from 'src/entities';
 import {
-  type PageType,
-  assertPageType,
-  type PageOptions,
   PAGES_GROUP_DATA_ATTRIBUTE,
   HEADER_CLASS_NAME,
   FOOTER_CLASS_NAME,
-} from 'src/entities';
+} from './entities';
 import { jsToCss } from 'src/utils';
 
 type Options = Pick<

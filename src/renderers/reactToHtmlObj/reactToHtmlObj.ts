@@ -1,7 +1,7 @@
 import { type ReactElement } from 'react';
 import { type Node, type Parent } from 'hast';
 import { toHtml } from 'hast-util-to-html';
-import { reactToAst } from 'src/reactToAst';
+import { reactToAst } from 'src/renderers/reactToAst';
 
 const mapPageGroups = (element: Parent) => {
   if (element.elementType === 'pagegroup') {
