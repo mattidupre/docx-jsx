@@ -23,7 +23,9 @@ export const htmlObjToHtml = async (
 
   await previewer.preview(documentHtml, [{ _: documentCss }], rootElement);
 
-  console.log(documentCss);
+  // rootElement.querySelectorAll('[class^=pagedjs_margin').forEach((el) => {
+  //   el.remove();
+  // });
 
   console.log(
     `Pages created in ${Math.round(performance.now() - startTime)}ms.`,
