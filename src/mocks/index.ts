@@ -1,2 +1,2 @@
-export * from './mockDocument';
-export * from './typeHelpers';
+export * from './mockDoc';
+export * from './mockPaths';

@@ -1,5 +1,7 @@
 import ReactReconciler from 'react-reconciler';
 import { type ReactElement } from 'react';
+import { type RootContent } from 'hast';
+import { HTML_TYPE_ATTRIBUTE, HTML_DATA_ATTRIBUTE } from 'src/entities';
 
 const unused = () => {
   throw new Error('Unused Renderer method called.');
@@ -24,13 +26,31 @@ const hostConfig: Partial<
 > = {
   supportsMutation: true,
   supportsPersistence: false,
-  createInstance: (type, { children, ...properties }) => ({
-    type: 'element',
-    tagName: type,
-    properties,
-    children: [],
+  createInstance: (type, { children, ...props }) => {
+    if (props.value) {
+      console.log(type, props);
+    }
+
+    const elementType = props[HTML_TYPE_ATTRIBUTE];
+    const elementDataStr = props[HTML_DATA_ATTRIBUTE];
+    const elementData = elementDataStr
+      ? JSON.parse(decodeURI(elementDataStr))
+      : undefined;
+    const properties = props;
+    return {
+      type: 'element',
+      tagName: type,
+      properties,
+      children: [],
+      elementType,
+      elementData,
+    };
+  },
+  createTextInstance: (text) => ({
+    type: 'text',
+    elementType: 'text',
+    value: text,
   }),
-  createTextInstance: (text) => ({ type: 'text', value: text }),
   appendInitialChild: (parent, child) => {
     parent.children.push(child);
   },
@@ -57,8 +77,11 @@ const hostConfig: Partial<
 
 const Renderer = (ReactReconciler as any)(hostConfig);
 
-export const reactToAst = async (reactElement: ReactElement) => {
+export const reactToAst = async (
+  reactElement: ReactElement,
+): Promise<RootContent> => {
   const root = {
+    elementType: 'root',
     type: 'root',
     children: [],
   };
@@ -67,7 +90,7 @@ export const reactToAst = async (reactElement: ReactElement) => {
 
   return new Promise((resolve) => {
     Renderer.updateContainer(reactElement, node, null, () => {
-      resolve(root);
+      resolve(root as any);
     });
   });
 };

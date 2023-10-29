@@ -88,5 +88,5 @@ export type PagesGroupOptions = {
 };
 
 export type DocumentOptions = {
-  pagesGroups: ReadonlyArray<PagesGroupOptions>;
+  pageGroups: ReadonlyArray<PagesGroupOptions>;
 };

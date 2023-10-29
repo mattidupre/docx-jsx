@@ -1,1 +1,0 @@
-export { createPager } from './createPager';

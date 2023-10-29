@@ -11,6 +11,9 @@ dependencies:
   '@types/fbjs':
     specifier: ^3.0.8
     version: 3.0.8
+  '@types/hast':
+    specifier: ^3.0.2
+    version: 3.0.2
   '@types/react-reconciler':
     specifier: ^0.28.6
     version: 0.28.6

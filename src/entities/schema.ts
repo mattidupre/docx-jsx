@@ -9,8 +9,7 @@ import {
   Table,
   type ISectionOptions,
 } from 'docx';
-import { Relation } from 'src/lib/Relation';
-import { v4 as createUuid } from 'uuid';
+import { Relation } from 'src/Relation';
 
 export const ELEMENT_TYPES = [
   'document',

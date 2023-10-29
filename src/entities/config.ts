@@ -1,12 +1,10 @@
-import type { ElementType } from './schema';
-
 export const ID_PREFIX: Lowercase<string> = 'docx-jsx';
 
 export const HTML_TYPE_ATTRIBUTE = `data-${ID_PREFIX}-type`;
 export const HTML_DATA_ATTRIBUTE = `data-${ID_PREFIX}-data`;
 
 export const encodeHtmlDataAttributes = (
-  data: Record<string, any> & { elementType: ElementType },
+  data: Record<string, any> & { elementType: string },
 ) => ({
   [HTML_TYPE_ATTRIBUTE]: data.elementType,
   [HTML_DATA_ATTRIBUTE]: encodeURI(JSON.stringify(data)),
