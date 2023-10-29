@@ -1,12 +1,12 @@
 import puppeteer, { type Browser, type Page } from 'puppeteer';
-import { type Headless } from 'src/headless';
+import { type Headless } from 'src/headlessBundle';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { type DocumentOptions } from 'src/entities';
 
 const FRONTEND_PATH = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../dist-headless/headless.js',
+  '../../dist-headless/headlessBundle.js',
 );
 
 let browserPromise: null | Promise<Browser>;

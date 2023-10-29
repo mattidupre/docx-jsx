@@ -10,8 +10,6 @@ export const htmlObjToHtml = async (
   rootElement: HTMLElement,
   documentOptions: DocumentOptions,
 ) => {
-  console.log(documentOptions);
-
   const { documentHtml, documentCss, pageHandler } =
     createRenderer(documentOptions);
 
@@ -24,6 +22,8 @@ export const htmlObjToHtml = async (
   const startTime = performance.now();
 
   await previewer.preview(documentHtml, [{ _: documentCss }], rootElement);
+
+  console.log(documentCss);
 
   console.log(
     `Pages created in ${Math.round(performance.now() - startTime)}ms.`,

@@ -1,7 +1,8 @@
 import { type ElementProps, encodeHtmlDataAttributes } from 'src/entities';
 import { useState, createElement, Children } from 'react';
 
-const useGuid = () => useState(() => `id_${Math.random()}`)[0];
+let counter = 0;
+const useGuid = () => useState(() => `id_${counter++}`)[0];
 
 export function PageGroup<TProps extends ElementProps['pagegroup']>({
   children,

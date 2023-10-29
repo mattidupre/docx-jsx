@@ -45,7 +45,8 @@
   "scripts": {
     "backend:build": "rm -rf dist-backend/* ||: && tsc --declaration --project ./tsconfig-dist.json",
     "backend:dev": "pnpm run backend:build --watch",
-    "headless:build": "rm -rf dist-headless/* ||: && esbuild src/headless.ts --bundle --format=iife --outdir=dist-headless",
+    "mock:dev": "vite",
+    "headless:build": "rm -rf dist-headless/* ||: && esbuild src/headlessBundle.ts --bundle --format=iife --outdir=dist-headless",
     "headless:dev": "pnpm run headless:build --watch",
     "test": "vitest"
   },
