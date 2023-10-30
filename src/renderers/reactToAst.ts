@@ -27,10 +27,6 @@ const hostConfig: Partial<
   supportsMutation: true,
   supportsPersistence: false,
   createInstance: (type, { children, ...props }) => {
-    if (props.value) {
-      console.log(type, props);
-    }
-
     const elementType = props[HTML_TYPE_ATTRIBUTE];
     const elementDataStr = props[HTML_DATA_ATTRIBUTE];
     const elementData = elementDataStr

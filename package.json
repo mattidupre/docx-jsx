@@ -54,11 +54,11 @@
   "scripts": {
     "build": "concurrently \"npm:build:src\" \"npm:build:types\"",
     "build:src": "node esbuild",
-    "build:types": "tsc --declaration --emitdeclarationonly",
+    "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
     "dev": "concurrently \"npm:dev:src\" \"npm:dev:types\" \"npm:dev:link\"",
     "dev:src": "npm run build:src -- --watch",
     "dev:types": "npm run build:types -- --watch",
-    "dev:link": "npm exec nodemon -- --preserve-output --watch dist --exec 'npm exec yalc push --changed'",
+    "dev:link": "npm exec nodemon -- --watch dist --exec 'npm exec yalc push --changed'",
     "test": "vitest"
   }
 }

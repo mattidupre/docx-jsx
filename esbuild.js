@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import * as esbuild from 'esbuild';
 
 const BUILD_OPTIONS = {
-  color: true,
+  // color: true,
   logLimit: 0,
 };
 
@@ -49,10 +49,8 @@ try {
   if (process.argv.includes('--watch')) {
     const contexts = await Promise.all(
       SRC_OPTIONS.map(async (options) => {
-        const context = await esbuild.context(options);
-        context.watch({
-          ...BUILD_OPTIONS,
-        });
+        const context = await esbuild.context({ ...BUILD_OPTIONS, ...options });
+        context.watch();
         return context;
       }),
     );
