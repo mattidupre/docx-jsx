@@ -1,13 +1,12 @@
-import puppeteer, { type Browser, type Page } from 'puppeteer';
+import puppeteer, {
+  type Browser,
+  type Page,
+  type PuppeteerLaunchOptions,
+} from 'puppeteer-core';
 import { type Headless } from 'src/headless';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { type DocumentOptions } from 'src/entities';
 import { createRequire } from 'node:module';
 
-const FRONTEND_PATH = createRequire(import.meta.url).resolve(
-  'matti-docs/headless',
-);
 let browserPromise: null | Promise<Browser>;
 
 export const resetHtmlObjToPdf = async () => {
@@ -17,19 +16,35 @@ export const resetHtmlObjToPdf = async () => {
   }
 };
 
-export const htmlObjToPdf = async (documentOptions: DocumentOptions) => {
+export const htmlObjToPdf = async (
+  documentOptions: DocumentOptions,
+  puppeteerOptions: PuppeteerLaunchOptions,
+) => {
+  let FRONTEND_PATH = '';
+  if (import.meta.url === undefined) {
+    // Netlify transpiles back to CJS.
+    // https://github.com/netlify/cli/issues/4601
+    // This file is explicitly included by netlify.toml.
+    FRONTEND_PATH = './.yalc/matti-docs/dist/headless.js';
+  } else {
+    FRONTEND_PATH = createRequire(import.meta.url).resolve(
+      'matti-docs/headless',
+    );
+  }
+
   let page: undefined | Page = undefined;
   try {
     if (!browserPromise) {
-      browserPromise = puppeteer.launch({ dumpio: true, headless: 'new' });
+      browserPromise = puppeteer.launch({
+        ...puppeteerOptions,
+        dumpio: true,
+      });
     }
+
     const browser = await browserPromise;
-
     page = await browser.newPage();
-
     page.on('console', (msg) => console[msg.type()]('Puppeteer:', msg.text()));
     await page.addScriptTag({ path: FRONTEND_PATH });
-
     await page.evaluate(async (document) => {
       const headless = (window as any).headless as Headless;
       if (!headless) {
@@ -37,7 +52,6 @@ export const htmlObjToPdf = async (documentOptions: DocumentOptions) => {
       }
       await headless.renderPages(document);
     }, documentOptions);
-
     return await page.pdf({
       format: 'letter', // TODO: Get this from config.
       printBackground: true,

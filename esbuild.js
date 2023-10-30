@@ -9,6 +9,7 @@ const BUILD_OPTIONS = {
 const SHARED_OPTIONS = {
   logLevel: 'info',
   outdir: './dist',
+  sourcemap: true,
 };
 
 const SRC_OPTIONS = [

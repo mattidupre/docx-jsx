@@ -7,10 +7,6 @@
     "dist/",
     "src/"
   ],
-  "engines": {
-    "node": ">=19",
-    "pnpm": ">=8"
-  },
   "main": "./dist/components.mjs",
   "exports": {
     "./components": "./dist/components.mjs",
@@ -41,11 +37,12 @@
   },
   "dependencies": {
     "docx": "^8.2.3",
+    "es-dirname": "^0.1.0",
     "hast-util-to-html": "^9.0.0",
     "nodemon": "^3.0.1",
     "pagedjs": "^0.4.3",
     "prop-types": "^15.8.1",
-    "puppeteer": "^21.4.1",
+    "puppeteer-core": "21.4.1",
     "react-reconciler": "^0.29.0",
     "uuid": "^9.0.1",
     "vitest": "^0.34.6",
