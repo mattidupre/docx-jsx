@@ -54,7 +54,7 @@ const mockPageTypes = (prefix: string) => ({
   },
 });
 
-export const mockDoc = (
+export const mockDocument = (
   <Document>
     <PageGroup pageTypes={mockPageTypes('FIRST SECTION')}>
       <Paragraph>{`Generated at ${new Date().toLocaleTimeString()}`}</Paragraph>

@@ -1,4 +1,4 @@
-export const ID_PREFIX: Lowercase<string> = 'docx-jsx';
+export const ID_PREFIX: Lowercase<string> = 'matti-docs';
 
 export const HTML_TYPE_ATTRIBUTE = `data-${ID_PREFIX}-type`;
 export const HTML_DATA_ATTRIBUTE = `data-${ID_PREFIX}-data`;

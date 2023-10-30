@@ -1,1 +1,0 @@
-export { reactToDocx } from './reactToDocx';

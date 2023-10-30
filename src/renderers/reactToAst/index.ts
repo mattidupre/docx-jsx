@@ -1,1 +1,0 @@
-export { reactToAst } from './reactToAst';
