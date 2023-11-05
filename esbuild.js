@@ -28,7 +28,8 @@ const SRC_OPTIONS = [
     bundle: true,
     treeShaking: true,
     platform: 'browser',
-    external: ['react'],
+    // external: ['react', 'react-dom'],
+    packages: 'external',
     format: 'esm',
     outExtension: { '.js': '.mjs' },
   },
@@ -48,11 +49,10 @@ try {
   await fs.rm(SHARED_OPTIONS.outdir, { recursive: true, force: true });
 
   if (process.argv.includes('--watch')) {
-    const contexts = await Promise.all(
+    await Promise.all(
       SRC_OPTIONS.map(async (options) => {
         const context = await esbuild.context({ ...BUILD_OPTIONS, ...options });
         context.watch();
-        return context;
       }),
     );
   } else {

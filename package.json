@@ -9,13 +9,25 @@
   ],
   "main": "./dist/components.mjs",
   "exports": {
-    "./components": "./dist/components.mjs",
-    "./server": "./dist/server.mjs",
-    "./headless": "./dist/headless.js",
-    "./package.json": "./package.json"
+    ".": {
+      "default": "./dist/components.mjs"
+    },
+    "./components": {
+      "default": "./dist/components.mjs"
+    },
+    "./server": {
+      "default": "./dist/server.mjs"
+    },
+    "./headless": {
+      "require": "./dist/headless.js"
+    },
+    "./package.json": {
+      "default": "./package.json"
+    }
   },
   "devDependencies": {
     "@types/hast": "^3.0.2",
+    "@types/node": "^20.8.10",
     "@types/react": "~18.2.25",
     "@types/react-dom": "~18.2.10",
     "@types/react-reconciler": "^0.28.6",
@@ -32,8 +44,28 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "@types/react": "^17.0.0 || ^18.0.0",
+    "@types/react-dom": "^17.0.0 || ^18.0.0",
+    "react": "^17.0.0 || ^18.0.0",
+    "react-dom": "^17.0.0 || ^18.0.0",
+    "react-reconciler": "^0.29.0"
+  },
+  "peerDependenciesMeta": {
+    "react-reconciler": {
+      "optional": true
+    },
+    "@types/react": {
+      "optional": true
+    },
+    "@types/react-dom": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "dependencies": {
     "docx": "^8.2.3",
@@ -43,7 +75,6 @@
     "pagedjs": "^0.4.3",
     "prop-types": "^15.8.1",
     "puppeteer-core": "21.4.1",
-    "react-reconciler": "^0.29.0",
     "uuid": "^9.0.1",
     "vitest": "^0.34.6",
     "yalc": "^1.0.0-pre.53"
