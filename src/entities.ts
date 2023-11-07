@@ -1,15 +1,32 @@
-export const ID_PREFIX: Lowercase<string> = 'matti-docs';
+type DocElementType =
+  | 'root'
+  | 'document'
+  | 'pagegroup'
+  | 'header'
+  | 'footer'
+  | 'paragraph'
+  | 'textrun'
+  | 'text';
 
+export type ReactAst = {
+  type: 'element' | 'text' | 'root';
+  tagName?: string;
+  properties?: Record<string, unknown>;
+  children?: ReadonlyArray<ReactAst>;
+  elementType: DocElementType;
+  elementData?: { elementType: DocElementType } & Record<string, unknown>;
+  value?: string;
+};
+
+export const ID_PREFIX: Lowercase<string> = 'matti-docs';
 export const HTML_TYPE_ATTRIBUTE = `data-${ID_PREFIX}-type`;
 export const HTML_DATA_ATTRIBUTE = `data-${ID_PREFIX}-data`;
-
 export const encodeHtmlDataAttributes = (
   data: Record<string, any> & { elementType: string },
 ) => ({
   [HTML_TYPE_ATTRIBUTE]: data.elementType,
   [HTML_DATA_ATTRIBUTE]: encodeURI(JSON.stringify(data)),
 });
-
 const AST_DATA_ATTRIBUTE = HTML_DATA_ATTRIBUTE.replace(
   /\-[a-z]/g,
   (char) => `${char[1].toUpperCase()}`,
@@ -21,9 +38,7 @@ export const decodeAstDataAttributes = (elAttributes: any) =>
 import { type UnitsNumber } from 'src/utils';
 
 export const PAGE_TYPES = ['default', 'even', 'odd', 'first'] as const;
-
 export type PageType = (typeof PAGE_TYPES)[number];
-
 export function assertPageType(value: any): asserts value is PageType {
   if (!PAGE_TYPES.includes(value)) {
     throw new TypeError(`Invalid Page Type "${value}".`);
@@ -55,7 +70,7 @@ export type PageOptions = {
   footerHtml: false | string;
 };
 
-const DEFAULT_PAGE_OPTIONS: PageOptions = {
+export const DEFAULT_PAGE_OPTIONS: PageOptions = {
   width: '8.5in',
   height: '11in',
   marginTop: '0.5in',
@@ -84,7 +99,7 @@ const extendPageOptions = (
   ) as PageOptions;
 };
 
-type PageTypesOptions = Partial<Record<PageType, Partial<PageOptions>>>;
+export type PageTypesOptions = Partial<Record<PageType, Partial<PageOptions>>>;
 
 export const parsePageTypes = (pageTypes: PageTypesOptions = {}) => {
   const defaultOptions = extendPageOptions(

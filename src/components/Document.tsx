@@ -1,11 +1,11 @@
-import { type ElementProps, encodeHtmlDataAttributes } from 'src/entities';
+import { type ReactNode } from 'react';
+import { elementDataToAttributes } from 'src/entities/elements';
+import { PageSize } from 'src/entities/options';
 
-export function Document<TProps extends ElementProps['document']>({
-  children,
-}: TProps) {
+export type DocumentProps = { pageSize: PageSize; children: ReactNode };
+
+export function Document({ children, ...options }: DocumentProps) {
   return (
-    <main {...encodeHtmlDataAttributes({ elementType: 'document' })}>
-      {children}
-    </main>
+    <main {...elementDataToAttributes('document', options)}>{children}</main>
   );
 }

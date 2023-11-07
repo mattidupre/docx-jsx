@@ -1,11 +1,10 @@
-import { type ElementProps, encodeHtmlDataAttributes } from 'src/entities';
+import { type ReactNode } from 'react';
+import { elementDataToAttributes } from 'src/entities/elements';
 
-export function TextRun<TProps extends ElementProps['textrun']>({
-  children,
-}: TProps) {
-  return (
-    <span {...encodeHtmlDataAttributes({ elementType: 'textrun' })}>
-      {children}
-    </span>
-  );
+export type ParagraphProps = {
+  children: ReactNode;
+};
+
+export function TextRun({ children }: ParagraphProps) {
+  return <span {...elementDataToAttributes('textrun', {})}>{children}</span>;
 }

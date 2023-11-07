@@ -1,47 +1,56 @@
 import { type ReactElement } from 'react';
-import { type Node, type Parent } from 'hast';
 import { toHtml } from 'hast-util-to-html';
 import { reactToAst } from 'src/renderers/reactToAst';
+import {
+  type ReactAst,
+  type PageType,
+  type PageOptions,
+  type PageTypesOptions,
+  type PagesGroupOptions,
+  type DocumentOptions,
+} from 'src/entities';
 
-const mapPageGroups = (element: Parent) => {
+const astToHtml = (element: ReactAst) => toHtml(element as any);
+
+/**
+ * Iterate recursively through AST to find PageGroup elements.
+ * Then check immediate children for <header> and <footer> elemenets.
+ */
+const mapPageGroups = (element: ReactAst): ReadonlyArray<PagesGroupOptions> => {
   if (element.elementType === 'pagegroup') {
-    const { pageGroupId } = element.elementData;
-    const pageTypes = {};
+    const pageGroupId = element.elementData!.pageGroupId as string;
+    const pageTypes: PageTypesOptions = {};
     let contentHtml = '';
 
-    element.children.forEach((child) => {
-      if (['header', 'footer'].includes(child.elementType)) {
-        const { pageType } = child.elementData;
-        if (!pageTypes[pageType]) {
-          pageTypes[pageType] = {};
-        }
-        pageTypes[pageType][`${child.elementType}Html`] = toHtml(child);
+    element.children!.forEach((child) => {
+      if (child.elementType === 'header' || child.elementType === 'footer') {
+        const pageType = child.elementData!.pageType as PageType;
+        const pageOptions: Partial<PageOptions> =
+          pageTypes[pageType] ?? (pageTypes[pageType] = {});
+        pageOptions[`${child.elementType}Html`] = astToHtml(child);
       } else {
-        contentHtml += toHtml(child);
+        contentHtml += astToHtml(child);
       }
     });
 
-    return {
-      id: pageGroupId,
-      pageTypes,
-      contentHtml,
-    };
+    return [
+      {
+        id: pageGroupId,
+        pageTypes,
+        contentHtml,
+      },
+    ];
   }
 
-  return element.children.map((child) => {
-    const parsedChild = mapPageGroups(child);
-    if (Array.isArray(parsedChild)) {
-      return parsedChild.flat();
-    }
-    return [parsedChild];
-  });
+  if (!element.children) {
+    return [];
+  }
+
+  return element.children.flatMap((child) => mapPageGroups(child));
 };
 
-export const reactToHtmlObj = async (rootElement: ReactElement) => {
-  const ast = await reactToAst(rootElement);
-
-  const htmlObj = {
-    pageGroups: mapPageGroups(ast).flat(),
-  };
-  return htmlObj;
-};
+export const reactToHtmlObj = async (
+  rootElement: ReactElement,
+): Promise<DocumentOptions> => ({
+  pageGroups: mapPageGroups(await reactToAst(rootElement)).flat(),
+});

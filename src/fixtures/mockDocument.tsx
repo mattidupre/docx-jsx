@@ -47,16 +47,32 @@ const ComponentA = createMockComponent(() => {
   );
 });
 
-const mockPageTypes = (prefix: string) => ({
-  default: {
-    header: <Paragraph>{prefix} HEADER TEXT</Paragraph>,
-    footer: <Paragraph>{prefix} FOOTER TEXT</Paragraph>,
-  },
-});
+const mockPageTypes = (prefix: string) =>
+  ({
+    default: {
+      header: <Paragraph>{prefix} DEFAULT HEADER TEXT</Paragraph>,
+      footer: <Paragraph>{prefix} DEFAULT FOOTER TEXT</Paragraph>,
+    },
+    first: {
+      margins: {
+        marginTop: '0in',
+      },
+      header: false, // <Paragraph>{prefix} FIRST HEADER TEXT</Paragraph>,
+      // footer: <Paragraph>{prefix} FIRST FOOTER TEXT</Paragraph>,
+    },
+    even: {
+      header: <Paragraph>{prefix} EVEN HEADER TEXT</Paragraph>,
+      footer: <Paragraph>{prefix} EVEN FOOTER TEXT</Paragraph>,
+    },
+    odd: {
+      header: <Paragraph>{prefix} ODD HEADER TEXT</Paragraph>,
+      footer: <Paragraph>{prefix} ODD FOOTER TEXT</Paragraph>,
+    },
+  }) as const;
 
 export const mockDocument = (
-  <Document>
-    <PageGroup pageTypes={mockPageTypes('FIRST SECTION')}>
+  <Document pageSize={{ width: '11in', height: '8.5in' }}>
+    <PageGroup pages={mockPageTypes('FIRST SECTION')}>
       <Paragraph>{`Generated at ${new Date().toLocaleTimeString()}`}</Paragraph>
       <ComponentA />
       <LoremIpsum />
@@ -65,20 +81,20 @@ export const mockDocument = (
       <LoremIpsum />
       <LoremIpsum />
     </PageGroup>
-    <PageGroup pageTypes={mockPageTypes('SECOND SECTION')}>
+    {/* <PageGroup pages={mockPageTypes('SECOND SECTION')}>
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
     </PageGroup>
-    <PageGroup pageTypes={mockPageTypes('THIRD SECTION')}>
+    <PageGroup pages={mockPageTypes('THIRD SECTION')}>
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
-    </PageGroup>
+    </PageGroup> */}
   </Document>
 );
 

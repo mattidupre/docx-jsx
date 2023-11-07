@@ -1,10 +1,43 @@
 import ReactReconciler from 'react-reconciler';
 import { type ReactElement } from 'react';
 import { type RootContent } from 'hast';
-import { HTML_TYPE_ATTRIBUTE, HTML_DATA_ATTRIBUTE } from 'src/entities';
+import {
+  HTML_TYPE_ATTRIBUTE,
+  HTML_DATA_ATTRIBUTE,
+  PAGE_TYPES,
+  type PageTypesOptions,
+} from 'src/entities';
+import { type UnitsNumber } from 'src/utils/units';
+
+const mutatePageGroupElement = (element: ReactAst) => {
+  const pageTypes: Record<PageType, { header?: ReactAst; footer?: ReactAst }> =
+    {
+      default: { ...DEFAULT_PAGE_OPTIONS },
+      first: { ...DEFAULT_PAGE_OPTIONS },
+      even: { ...DEFAULT_PAGE_OPTIONS },
+      odd: { ...DEFAULT_PAGE_OPTIONS },
+    };
+
+  element.children = element.children!.flatMap((child) => {
+    if (isHeader(child) || isFooter(child)) {
+      pageTypes[child.elementData.pageType][child.elementType] = child;
+      return [];
+    }
+    return child;
+  });
+
+  element.elementData = {
+    ...element,
+  };
+};
 
 const unused = () => {
-  throw new Error('Unused Renderer method called.');
+  throw new Error(
+    [
+      'Unused Renderer method called.',
+      'If encountering this, ReactReconciler hostConfig needs to be updated.',
+    ].join(' '),
+  );
 };
 
 const hostConfig: Partial<
@@ -26,7 +59,7 @@ const hostConfig: Partial<
 > = {
   supportsMutation: true,
   supportsPersistence: false,
-  createInstance: (type, { children, ...props }) => {
+  createInstance: (type, { children, ...props }): ReactAst => {
     const elementType = props[HTML_TYPE_ATTRIBUTE];
     const elementDataStr = props[HTML_DATA_ATTRIBUTE];
     const elementData = elementDataStr
@@ -42,7 +75,7 @@ const hostConfig: Partial<
       elementData,
     };
   },
-  createTextInstance: (text) => ({
+  createTextInstance: (text): ReactAst => ({
     type: 'text',
     elementType: 'text',
     value: text,
@@ -59,7 +92,12 @@ const hostConfig: Partial<
   commitTextUpdate: unused,
   removeChild: unused,
   clearContainer: () => {},
-  finalizeInitialChildren: () => false,
+  finalizeInitialChildren: (element: ReactAst) => {
+    if (element.elementType === 'pagegroup') {
+      mutatePageGroupElement(element);
+    }
+    return false;
+  },
   prepareForCommit: () => null,
   getRootHostContext: () => null,
   getChildHostContext: () => null,
@@ -75,8 +113,8 @@ const Renderer = (ReactReconciler as any)(hostConfig);
 
 export const reactToAst = async (
   reactElement: ReactElement,
-): Promise<RootContent> => {
-  const root = {
+): Promise<ReactAst> => {
+  const root: ReactAst = {
     elementType: 'root',
     type: 'root',
     children: [],
@@ -86,6 +124,7 @@ export const reactToAst = async (
 
   return new Promise((resolve) => {
     Renderer.updateContainer(reactElement, node, null, () => {
+      console.log(root.children[0].children[0]);
       resolve(root as any);
     });
   });

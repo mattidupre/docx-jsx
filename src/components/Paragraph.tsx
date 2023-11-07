@@ -1,11 +1,10 @@
-import { type ElementProps, encodeHtmlDataAttributes } from 'src/entities';
+import { type ReactNode } from 'react';
+import { elementDataToAttributes } from 'src/entities/elements';
 
-export function Paragraph<TProps extends ElementProps['paragraph']>({
-  children,
-}: TProps) {
-  return (
-    <p {...encodeHtmlDataAttributes({ elementType: 'paragraph' })}>
-      {children}
-    </p>
-  );
+export type ParagraphProps = {
+  children: ReactNode;
+};
+
+export function Paragraph({ children }: ParagraphProps) {
+  return <p {...elementDataToAttributes('paragraph', {})}>{children}</p>;
 }
