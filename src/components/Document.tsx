@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { elementDataToAttributes } from 'src/entities/elements';
+import { elementDataToAttributes } from 'src/entities/tree';
 import { PageSize } from 'src/entities/options';
 
 export type DocumentProps = { pageSize: PageSize; children: ReactNode };

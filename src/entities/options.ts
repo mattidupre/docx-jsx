@@ -1,5 +1,10 @@
-import { type RequiredDeep, type PartialDeep } from 'type-fest';
-import { type UnitsNumber } from 'src/utils';
+import {
+  type RequiredDeep,
+  type PartialDeep,
+  type ReadonlyDeep,
+} from 'type-fest';
+import { type UnitsNumber, type TreeRoot } from 'src/utils';
+import { type ReplaceUnknownDeep } from 'src/utils';
 import { merge } from 'lodash';
 
 export type PageSize = {
@@ -26,19 +31,34 @@ export const DEFAULT_PAGE_MARGINS: Required<PageMargins> = {
   marginLeft: '0.5in',
 };
 
-export const PAGE_TYPES = ['default', 'first', 'even', 'odd'] as const;
+// Deliberately ordered so odd and even can extend default, first can extend odd.
+export const PAGE_TYPES = ['default', 'odd', 'even', 'first'] as const;
 
 export type PageType = (typeof PAGE_TYPES)[number];
 
+// export const mapPageTypes = <TValue>(
+//   callback: (pageType: PageType) => TValue,
+// ) =>
+//   Object.fromEntries(
+//     PAGE_TYPES.map((pageType) => [pageType, callback(pageType)]),
+//   ) as Record<PageType, TValue>;
+
 export const mapPageTypes = <TValue>(
-  callback: (pageType: PageType) => TValue,
-) =>
-  Object.fromEntries(
-    PAGE_TYPES.map((pageType) => [pageType, callback(pageType)]),
-  ) as Record<PageType, TValue>;
+  callback: (
+    pageType: PageType,
+    newPageTypes: ReadonlyDeep<Partial<Record<PageType, TValue>>>,
+  ) => TValue,
+) => {
+  const newPageTypes: Partial<Record<PageType, TValue>> = {};
+  PAGE_TYPES.forEach((pageType) => {
+    newPageTypes[pageType] = callback(pageType, newPageTypes as any);
+  });
+  return newPageTypes;
+};
 
 export type TextOptions = Record<string, never>;
 
+// TODO: Swap implementations out for mapPageTypes?
 export const extendValuesByPageType = <TValue extends Record<string, unknown>>(
   baseValue: TValue,
   pageTypes: PartialDeep<Record<PageType, TValue>> = {},
@@ -54,3 +74,20 @@ export const extendValuesByPageType = <TValue extends Record<string, unknown>>(
     odd: oddValue,
   };
 };
+
+type DocumentSchema<TContentType> = {
+  pageSize: PageSize;
+  pageGroups: Array<{
+    page: Record<
+      PageType,
+      {
+        margins: PageMargins;
+        header: undefined | TContentType;
+        footer: undefined | TContentType;
+      }
+    >;
+    content: TContentType;
+  }>;
+};
+
+export type DocumentTree = DocumentSchema<TreeRoot>;

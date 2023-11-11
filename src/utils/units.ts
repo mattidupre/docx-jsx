@@ -22,12 +22,13 @@ export const toUnits = (value: number, units: Units): UnitsNumber => {
 };
 
 export const mathUnits = (
-  method: 'add' | 'subtract',
+  method: 'add' | 'subtract' | 'multiply',
   str1: UnitsNumber,
-  str2: UnitsNumber,
+  str2: number | UnitsNumber,
 ) => {
   const [value1, units1] = parseUnits(str1);
-  const [value2, units2] = parseUnits(str2);
+  const [value2, units2] =
+    typeof str2 === 'number' ? [str2, units1] : parseUnits(str2);
   if (units1 !== units2) {
     throw new TypeError(`Cannot add units ${units1} and ${units2}.`);
   }
@@ -36,6 +37,9 @@ export const mathUnits = (
   }
   if (method === 'subtract') {
     return toUnits(value1 - value2, units2);
+  }
+  if (method === 'multiply') {
+    return toUnits(value1 * value2, units2);
   }
   throw new TypeError(`Invalid math method "${method}".`);
 };

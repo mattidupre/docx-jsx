@@ -1,8 +1,7 @@
 import { type RequiredDeep } from 'type-fest';
 import {
   type PageType,
-  type PageMargins,
-  type PageSize,
+  type DocumentTree,
   DEFAULT_PAGE_SIZE,
   DEFAULT_PAGE_MARGINS,
   mapPageTypes,
@@ -14,7 +13,7 @@ import {
   isElementOfType,
   type Element,
   type ElementData,
-} from 'src/entities/elements';
+} from 'src/entities/tree';
 import {
   type TreeRoot,
   type TreeChild,
@@ -22,23 +21,6 @@ import {
   findTreeNodes,
   type TreeElement,
 } from 'src/utils/tree';
-
-type Content = TreeRoot;
-
-export type Document = {
-  pageSize: PageSize;
-  pageGroups: Array<{
-    page: Record<
-      PageType,
-      {
-        margins: PageMargins;
-        header: undefined | Content;
-        footer: undefined | Content;
-      }
-    >;
-    content: Content;
-  }>;
-};
 
 const createContent = (
   {
@@ -48,13 +30,15 @@ const createContent = (
     data?: ElementData;
     children?: Array<TreeChild>;
   } = { data: {}, children: [] },
-): Content => ({
+): TreeRoot => ({
   type: 'root',
   data,
   children,
 });
 
-export const treeToDocument = (rootNode: TreeNode): Document => {
+// TODO: Add unique IDs to Document / PageGroup / Header / Footer / Content for memoization.
+
+export const treeToDocument = (rootNode: TreeNode): DocumentTree => {
   const documentNodes = findTreeNodes<Element<'document'>>(
     rootNode,
     (thisNode) => {
@@ -75,7 +59,7 @@ export const treeToDocument = (rootNode: TreeNode): Document => {
   }
 
   const { pageSize = DEFAULT_PAGE_SIZE } = getElementData(documentNode);
-  const pageGroups = [] as Document['pageGroups'];
+  const pageGroups = [] as DocumentTree['pageGroups'];
 
   for (const pageGroupNode of pageGroupNodes) {
     const { pages: pagesData } = getElementData(pageGroupNode);

@@ -16,9 +16,6 @@ type Options = Pick<
   | 'marginLeft'
 >;
 
-const getDataSelector = (pagesGroupId: string) =>
-  `[${PAGES_GROUP_DATA_ATTRIBUTE}="${pagesGroupId}"]`;
-
 const getPageTypeSelector = (pagesGroupId: string, pageType: PageType) => {
   assertPageType(pageType);
   const baseSelector = `.pagedjs_named_page.pagedjs_${pagesGroupId}_page`;
@@ -52,6 +49,9 @@ const getAtPageSelector = (pagesGroupId: string, pageType: PageType) => {
   }
 };
 
+const getDataSelector = (pagesGroupId: string) =>
+  `[${PAGES_GROUP_DATA_ATTRIBUTE}="${pagesGroupId}"]`;
+
 export const createPagesGroupCss = (pagesGroupId: string) =>
   [
     `${getDataSelector(pagesGroupId)} {\n${jsToCss({
@@ -73,6 +73,7 @@ export const createPageCss = (
       marginLeft,
     })}}`,
 
+    //
     `${getPageTypeSelector(pagesGroupId, pageType)} {\n${jsToCss({
       position: 'relative',
       overflow: 'hidden',
@@ -80,6 +81,7 @@ export const createPageCss = (
       height,
     })}}`,
 
+    // Headers
     `${getPageTypeSelector(
       pagesGroupId,
       pageType,
@@ -89,6 +91,7 @@ export const createPageCss = (
       position: 'absolute',
     })}}`,
 
+    // Footers
     `${getPageTypeSelector(
       pagesGroupId,
       pageType,

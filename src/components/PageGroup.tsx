@@ -1,8 +1,5 @@
 import { type ReactNode, type ReactElement, Fragment } from 'react';
-import {
-  elementDataToAttributes,
-  type ElementData,
-} from 'src/entities/elements';
+import { elementDataToAttributes, type ElementData } from 'src/entities/tree';
 import {
   type PageType,
   type PageMargins,
