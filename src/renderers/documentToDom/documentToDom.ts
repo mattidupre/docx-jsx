@@ -2,43 +2,29 @@ import {
   type DocumentTree,
   type PageType,
   mapPageTypes,
+  pageIndexToPageType,
 } from 'src/entities/options';
 import { treeToDom } from 'src/renderers/treeToDom';
-import { CHUNKER_STYLE, createPagedjsLayoutRule, chunkPages } from './chunker';
-import { PageLayout, PAGE_STYLE_BASE, PAGE_STYLE_PRINT } from './pageLayout';
-import { buildPageGroupId, buildPageGroupClassName } from './entities';
+import { Pager } from 'src/utils/pager';
+import { PageLayout } from './pageLayout';
 
-// TODO: Figure out how odd / even and left / right pages compare between docx and pagedjs.
-// TODO: Rename pageGroup.page to layouts, document.pageWidth to document.layout[no S].pageWidth
-// TODO: HERE: Rename PageGroups to Stacks.
-// Add Stack.layouts / Stack.layout / Document.layouts / Document.layout
 export const documentToDom = async ({
+  styleSheets: styleSheetsOption = [],
   pageSize,
   pageGroups,
 }: DocumentTree): Promise<HTMLDivElement> => {
-  // Create a shadow element in which to render temporary pages.
-  const hostEl = document.createElement('div');
-  hostEl.style.visibility = 'hidden';
-  hostEl.style.position = 'absolute';
-  hostEl.style.pointerEvents = 'none';
-  hostEl.style.zIndex = '-9999';
-  document.body.appendChild(hostEl);
-  const renderEl = hostEl.attachShadow({ mode: 'open' });
+  // Create a temporary element in which to calculate / render pages.
+  const renderEl = document.createElement('div');
 
-  const pagesStyleSheet = new CSSStyleSheet();
-  pagesStyleSheet.replaceSync(PAGE_STYLE_BASE);
-  renderEl.adoptedStyleSheets.push(pagesStyleSheet);
-
-  const chunkerStyleSheet = new CSSStyleSheet();
-  chunkerStyleSheet.replaceSync(CHUNKER_STYLE);
-  renderEl.adoptedStyleSheets.push(chunkerStyleSheet);
+  renderEl.style.visibility = 'hidden';
+  renderEl.style.position = 'absolute';
+  renderEl.style.pointerEvents = 'none';
+  renderEl.style.zIndex = '-9999';
+  document.body.appendChild(renderEl);
 
   const allPageEls = await Promise.all(
-    pageGroups.map(async ({ page, content }, pageGroupIndex) => {
-      const pageGroupId = buildPageGroupId(pageGroupIndex);
-
+    pageGroups.map(async ({ page, content }) => {
       const pageGroupEl = document.createElement('div');
-      pageGroupEl.classList.add(buildPageGroupClassName(pageGroupId));
       renderEl.appendChild(pageGroupEl);
 
       const layouts = {} as Record<PageType, PageLayout>;
@@ -46,51 +32,56 @@ export const documentToDom = async ({
         const { margins, header, footer } = page[pageType];
 
         const layout = new PageLayout({
-          pageGroupId,
           pageType,
           pageSize,
           margins,
           header: header && treeToDom(header),
           footer: footer && treeToDom(footer),
         });
-        pageGroupEl.appendChild(layout.pageEl);
+        pageGroupEl.appendChild(layout.element);
         layouts[pageType] = layout;
-
-        // TODO: If performance is an issue, refactor this to run in a separate loop so it batches.
-        chunkerStyleSheet.insertRule(
-          createPagedjsLayoutRule({
-            pageGroupId,
-            pageType,
-            contentSize: layout.getContentSize(),
-          }),
-        );
       });
 
-      const chunkedPages = await chunkPages(treeToDom(content), pageGroupEl);
+      const pageEls: Array<Element> = [];
 
-      const pageEls = chunkedPages.map(({ pageType, contentEl }) =>
-        layouts[pageType].cloneEl({ content: contentEl }),
-      );
-
-      pageGroupEl.remove();
+      const pager = new Pager({ styleSheets: styleSheetsOption });
+      await pager.toPages({
+        content: treeToDom(content),
+        onContentChunked: ({ index, setPageVars }) => {
+          const layout = layouts[pageIndexToPageType(index)];
+          const { width, height } = layout.getContentSize();
+          setPageVars({
+            // PagerJS doesn't like 0 margins so use them temporarily.
+            width: `calc(${width} + 1in)`,
+            height: `calc(${height} + 1in)`,
+            marginTop: '0.5in',
+            marginRight: '0.5in',
+            marginBottom: '0.5in',
+            marginLeft: '0.5in',
+          });
+        },
+        onPageRendered: ({ contentElement, index }) => {
+          const content = contentElement.cloneNode(true);
+          pageEls.push(
+            layouts[pageIndexToPageType(index)].toPage({
+              content,
+            }),
+          );
+        },
+      });
 
       return pageEls;
     }),
   );
 
-  hostEl.remove();
+  renderEl.remove();
 
   const pagesEl = document.createElement('div');
-
-  // TODO: Confirm print styles work in shadow DOM.
-  const printStyleSheet = new CSSStyleSheet();
-  printStyleSheet.replaceSync(PAGE_STYLE_PRINT);
 
   allPageEls.flat().forEach((pageEl) => {
     const newPageEl = document.createElement('div');
     const newPageShadow = newPageEl.attachShadow({ mode: 'closed' });
     newPageShadow.appendChild(pageEl);
-    newPageShadow.adoptedStyleSheets.push(pagesStyleSheet, printStyleSheet);
     pagesEl.append(newPageEl);
   });
 

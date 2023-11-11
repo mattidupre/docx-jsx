@@ -7,6 +7,9 @@ import { type UnitsNumber, type TreeRoot } from 'src/utils';
 import { type ReplaceUnknownDeep } from 'src/utils';
 import { merge } from 'lodash';
 
+// TODO: HERE: Rename PageGroups to Stacks.
+// Add Stack.layouts / Stack.layout / Document.layouts / Document.layout
+
 export type PageSize = {
   width: UnitsNumber;
   height: UnitsNumber;
@@ -35,6 +38,22 @@ export const DEFAULT_PAGE_MARGINS: Required<PageMargins> = {
 export const PAGE_TYPES = ['default', 'odd', 'even', 'first'] as const;
 
 export type PageType = (typeof PAGE_TYPES)[number];
+
+// TODO: Figure out how odd / even and left / right pages compare between docx and pagedjs.
+export const pageIndexToPageType = (
+  index: number,
+): Exclude<PageType, 'default'> => {
+  if (index === 0) {
+    return 'first';
+  }
+  if (index % 2 === 0) {
+    return 'even';
+  }
+  if (index % 2 === 1) {
+    return 'odd';
+  }
+  throw new Error('Invalid index.');
+};
 
 // export const mapPageTypes = <TValue>(
 //   callback: (pageType: PageType) => TValue,
@@ -76,6 +95,7 @@ export const extendValuesByPageType = <TValue extends Record<string, unknown>>(
 };
 
 type DocumentSchema<TContentType> = {
+  styleSheets?: Array<CSSStyleSheet>;
   pageSize: PageSize;
   pageGroups: Array<{
     page: Record<
