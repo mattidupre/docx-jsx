@@ -1,10 +1,6 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
 import { mockDocument } from './mockDocument';
-import { treeToDocument } from 'src/renderers/treeToDocument';
-import { treeToMarkup } from 'src/renderers/treeToMarkup';
-import { documentToDom } from 'src/renderers/documentToDom';
-import { reactToTree } from 'src/utils';
+import { reactToDocumentRoot } from 'src/lib/reactToDocumentRoot';
+import { documentRootToDom } from 'src/lib/documentRootToDom';
 
 const rootEl = document.getElementById('root')!;
 
@@ -12,7 +8,6 @@ const rootEl = document.getElementById('root')!;
 //   <React.StrictMode>{mockDocument}</React.StrictMode>,
 // );
 
-const tree = await reactToTree(mockDocument);
-const doc = treeToDocument(tree);
-const previewEl = await documentToDom(doc);
+const documentRoot = await reactToDocumentRoot(mockDocument);
+const previewEl = await documentRootToDom(documentRoot);
 rootEl.appendChild(previewEl);

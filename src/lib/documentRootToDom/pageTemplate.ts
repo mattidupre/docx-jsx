@@ -1,82 +1,92 @@
-import { ID_PREFIX } from 'src/entities/config';
 import {
-  type PageSize,
-  type PageMargins,
+  ID_PREFIX,
+  type Size,
+  type PageMargin,
+  type Margin,
   type LayoutType,
-} from 'src/entities/elements';
+} from 'src/entities/primitives';
 import { mathUnits } from 'src/utils';
 
 type InnerNode = undefined | Node | NodeList;
 
 type PageOptions = {
-  pageType: LayoutType;
-  pageSize: PageSize;
-  margins: PageMargins;
+  layoutType: LayoutType;
+  size: Size;
+  margin: PageMargin;
   header?: InnerNode;
   content?: InnerNode;
   footer?: InnerNode;
   styleSheets?: Array<CSSStyleSheet>;
 };
 
-export class PageLayout {
+export class PageTemplate {
   public element: Element;
 
   private static baseStyleSheet: undefined | CSSStyleSheet;
 
   private styleSheets: ReadonlyArray<CSSStyleSheet>;
 
-  private readonly pageSize: PageSize;
+  private readonly pageSize: Size;
 
   private readonly pageEl: Element;
   private static pageClassName = `${ID_PREFIX}-page`;
 
   private readonly headerEl: Element;
-  private static headerClassName = `${PageLayout.pageClassName}__header`;
+  private static headerClassName = `${PageTemplate.pageClassName}__header`;
 
   private readonly contentEl: Element;
-  private static contentClassName = `${PageLayout.pageClassName}__content`;
+  private static contentClassName = `${PageTemplate.pageClassName}__content`;
 
   private readonly footerEl: Element;
-  private static footerClassName = `${PageLayout.pageClassName}__footer`;
+  private static footerClassName = `${PageTemplate.pageClassName}__footer`;
+
+  private cachedContentSize: undefined | Size;
+  public get contentSize() {
+    return this.cachedContentSize
+      ? { ...this.cachedContentSize }
+      : this.getContentSize();
+  }
 
   constructor(options: PageOptions) {
-    if (!PageLayout.baseStyleSheet) {
-      PageLayout.baseStyleSheet = new CSSStyleSheet();
-      PageLayout.baseStyleSheet.replaceSync(PageLayout.innerStyle);
+    console.log(options.margin);
+
+    if (!PageTemplate.baseStyleSheet) {
+      PageTemplate.baseStyleSheet = new CSSStyleSheet();
+      PageTemplate.baseStyleSheet.replaceSync(PageTemplate.innerStyle);
     }
 
     this.styleSheets = [
-      PageLayout.baseStyleSheet,
+      PageTemplate.baseStyleSheet,
       ...(options.styleSheets ?? []),
     ];
-    this.pageSize = { ...options.pageSize };
+    this.pageSize = { ...options.size };
 
     this.pageEl = document.createElement('div');
-    this.pageEl.classList.add(PageLayout.pageClassName);
-    this.pageEl.setAttribute('style', PageLayout.createCssVars(options));
+    this.pageEl.classList.add(PageTemplate.pageClassName);
+    this.pageEl.setAttribute('style', PageTemplate.createCssVars(options));
 
     this.headerEl = document.createElement('div');
-    this.headerEl.classList.add(PageLayout.headerClassName);
-    PageLayout.appendInnerNodes(this.headerEl, options.header);
+    this.headerEl.classList.add(PageTemplate.headerClassName);
+    PageTemplate.appendInnerNodes(this.headerEl, options.header);
     this.pageEl.appendChild(this.headerEl);
 
     this.contentEl = document.createElement('div');
-    this.contentEl.classList.add(PageLayout.contentClassName);
-    PageLayout.appendInnerNodes(this.contentEl, options.content);
+    this.contentEl.classList.add(PageTemplate.contentClassName);
+    PageTemplate.appendInnerNodes(this.contentEl, options.content);
     this.pageEl.appendChild(this.contentEl);
 
     this.footerEl = document.createElement('div');
-    this.footerEl.classList.add(PageLayout.footerClassName);
-    PageLayout.appendInnerNodes(this.footerEl, options.footer);
+    this.footerEl.classList.add(PageTemplate.footerClassName);
+    PageTemplate.appendInnerNodes(this.footerEl, options.footer);
     this.pageEl.appendChild(this.footerEl);
 
-    this.element = PageLayout.createRoot({
+    this.element = PageTemplate.createRoot({
       innerEl: this.pageEl,
       styleSheets: this.styleSheets,
     });
   }
 
-  public getContentSize(): PageSize {
+  public getContentSize(): Size {
     if (!this.contentEl.isConnected) {
       throw new Error(
         'Cannot determine page content size if it is not attached to DOM.',
@@ -90,14 +100,15 @@ export class PageLayout {
       throw new Error('Page must have dimensions.');
     }
 
-    const { width: contentWidth, height: contentHeight } =
-      this.contentEl.getBoundingClientRect();
+    const style = window.getComputedStyle(this.contentEl, null);
+    const contentWidth = parseInt(style.width, 10);
+    const contentHeight = parseInt(style.height, 10);
 
-    if (contentWidth === 0 || contentHeight === 0) {
+    if (!(contentWidth > 0 && contentHeight > 0)) {
       throw new Error('Content must have dimensions.');
     }
 
-    return {
+    this.cachedContentSize = {
       width: mathUnits(
         'multiply',
         this.pageSize.width,
@@ -109,15 +120,17 @@ export class PageLayout {
         contentHeight / pageHeight,
       ),
     };
+
+    return this.contentSize;
   }
 
   public toPage({ content }: Pick<PageOptions, 'content'>) {
     const innerEl = this.pageEl.cloneNode(true) as Element;
-    PageLayout.appendInnerNodes(
-      innerEl.querySelector(`.${PageLayout.contentClassName}`)!,
+    PageTemplate.appendInnerNodes(
+      innerEl.querySelector(`.${PageTemplate.contentClassName}`)!,
       content,
     );
-    return PageLayout.createRoot({
+    return PageTemplate.createRoot({
       innerEl,
       styleSheets: this.styleSheets,
     });
@@ -150,22 +163,21 @@ export class PageLayout {
     return parentEl.append(...('length' in el ? [...el] : [el]));
   }
 
-  private static createCssVars({
-    pageSize: size,
-    margins,
-  }: Pick<PageOptions, 'pageSize' | 'margins'>) {
+  private static createCssVars({ size, margin }: PageOptions) {
     return `
       --page-width: ${size.width};
       --page-height: ${size.height};
-      --page-margin-top: ${margins.marginTop};
-      --page-margin-right: ${margins.marginRight};
-      --page-margin-bottom: ${margins.marginBottom};
-      --page-margin-left: ${margins.marginLeft};
+      --page-margin-header: ${margin.header};
+      --page-margin-top: ${margin.top};
+      --page-margin-right: ${margin.right};
+      --page-margin-bottom: ${margin.bottom};
+      --page-margin-footer: ${margin.footer};
+      --page-margin-left: ${margin.left};
     `;
   }
 
   private static innerStyle = `
-    .${PageLayout.pageClassName} {
+    .${PageTemplate.pageClassName} {
       position: relative;
       display: flex;
       flex-direction: column;
@@ -179,50 +191,61 @@ export class PageLayout {
       min-height: var(--page-height);
       max-height: var(--page-height);
 
-      padding-top: var(--page-margin-top);
       padding-right: var(--page-margin-right);
-      padding-bottom: var(--page-margin-bottom);
       padding-left: var(--page-margin-left);
     }
 
-    .${PageLayout.headerClassName} {
+    .${PageTemplate.headerClassName} {
       flex-shrink: 0;
     }
 
-    .${PageLayout.contentClassName} {
+    :where(.${PageTemplate.headerClassName} > :first-child) {
+      display: flow-root;
+      margin-top: var(--page-margin-header);
+    }
+
+    .${PageTemplate.contentClassName} {
       display: block;
       position: relative;
       width: 100%;
       min-height: 0;
       flex-grow: 1;
       columns: auto;
+
+      padding-top: var(--page-margin-top);
+      padding-bottom: var(--page-margin-bottom);
     }
 
-    .${PageLayout.footerClassName} {
+    .${PageTemplate.footerClassName} {
       flex-shrink: 0;
+    }
+
+    :where(.${PageTemplate.footerClassName} > :last-child) {
+      display: flow-root;
+      margin-bottom: var(--page-margin-header);
     }
 
     /* From PagedJS */
 
-    .${PageLayout.pageClassName} [data-split-from] {
+    .${PageTemplate.pageClassName} [data-split-from] {
       counter-increment: unset;
       counter-reset: unset;
     }
 
-    .${PageLayout.pageClassName} [data-split-to] {
+    .${PageTemplate.pageClassName} [data-split-to] {
       margin-bottom: unset;
       padding-bottom: unset;
     }
 
-    .${PageLayout.pageClassName} [data-split-from] {
+    .${PageTemplate.pageClassName} [data-split-from] {
       text-indent: unset;
       margin-top: unset;
       padding-top: unset;
       initial-letter: unset;
     }
 
-    .${PageLayout.pageClassName} [data-split-from] > *::first-letter,
-    .${PageLayout.pageClassName} [data-split-from]::first-letter {
+    .${PageTemplate.pageClassName} [data-split-from] > *::first-letter,
+    .${PageTemplate.pageClassName} [data-split-from]::first-letter {
       color: unset;
       font-size: unset;
       font-weight: unset;
@@ -234,21 +257,21 @@ export class PageLayout {
       margin: unset;
     }
 
-    .${PageLayout.pageClassName} [data-split-to]:not([data-footnote-call]):after,
-    .${PageLayout.pageClassName} [data-split-to]:not([data-footnote-call])::after {
+    .${PageTemplate.pageClassName} [data-split-to]:not([data-footnote-call]):after,
+    .${PageTemplate.pageClassName} [data-split-to]:not([data-footnote-call])::after {
       content: unset;
     }
 
-    .${PageLayout.pageClassName} [data-split-from]:not([data-footnote-call]):before,
-    .${PageLayout.pageClassName} [data-split-from]:not([data-footnote-call])::before {
+    .${PageTemplate.pageClassName} [data-split-from]:not([data-footnote-call]):before,
+    .${PageTemplate.pageClassName} [data-split-from]:not([data-footnote-call])::before {
       content: unset;
     }
 
-    .${PageLayout.pageClassName} li[data-split-from]:first-of-type {
+    .${PageTemplate.pageClassName} li[data-split-from]:first-of-type {
       list-style: none;
     }
 
-    .${PageLayout.pageClassName} [data-align-last-split-element='justify'] {
+    .${PageTemplate.pageClassName} [data-align-last-split-element='justify'] {
       text-align-last: justify;
     }
   `;

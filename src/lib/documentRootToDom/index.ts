@@ -1,0 +1,1 @@
+export { documentRootToDom } from './documentRootToDom';

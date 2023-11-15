@@ -1,18 +1,26 @@
+import { getLayoutByIndex } from 'src/entities/primitives';
 import {
-  type LayoutType,
-  mapPageTypes,
-  pageIndexToPageType,
+  type DocumentRoot,
+  DEFAULT_DOCUMENT_OPTIONS,
+  DEFAULT_STACK_OPTIONS,
 } from 'src/entities/elements';
-import { type DocumentTree } from 'src/entities/document';
-import { treeToDom } from 'src/renderers/treeToDom';
 import { Pager } from 'src/utils/pager';
-import { PageLayout } from './pageLayout';
+import { treeToFragment, type TreeRoot } from 'src/entities/tree';
+import { layoutsToTemplates } from './layoutsToTemplates';
+import { merge } from 'lodash';
 
-export const documentToDom = async ({
-  styleSheets: styleSheetsOption = [],
-  pageSize,
-  pageGroups,
-}: DocumentTree): Promise<HTMLDivElement> => {
+type Options = {
+  styleSheets?: Array<CSSStyleSheet>;
+};
+
+const LAYOUT_START_POSITION = 'right';
+
+export const documentRootToDom = async (
+  { options: documentOptions, stacks: stacksOption }: DocumentRoot<TreeRoot>,
+  { styleSheets: styleSheetsOption = [] }: Options = {},
+): Promise<HTMLDivElement> => {
+  const { size } = merge(DEFAULT_DOCUMENT_OPTIONS, documentOptions);
+
   // Create a temporary element in which to calculate / render pages.
   const renderEl = document.createElement('div');
 
@@ -23,35 +31,34 @@ export const documentToDom = async ({
   document.body.appendChild(renderEl);
 
   const allPageEls = await Promise.all(
-    pageGroups.map(async ({ page, content }) => {
+    stacksOption.map(async ({ options: stackOptions = {}, content }) => {
+      const { layouts, margin } = merge(DEFAULT_STACK_OPTIONS, stackOptions);
+
       const pageGroupEl = document.createElement('div');
       renderEl.appendChild(pageGroupEl);
 
-      const layouts = {} as Record<LayoutType, PageLayout>;
-      mapPageTypes((pageType) => {
-        const { margins, header, footer } = page[pageType];
-
-        const layout = new PageLayout({
-          pageType,
-          pageSize,
-          margins,
-          header: header && treeToDom(header),
-          footer: footer && treeToDom(footer),
-        });
-        pageGroupEl.appendChild(layout.element);
-        layouts[pageType] = layout;
+      const templates = layoutsToTemplates(layouts, {
+        parent: renderEl,
+        size,
+        margin,
+        styleSheets: styleSheetsOption,
       });
 
       const pageEls: Array<Element> = [];
 
       const pager = new Pager({ styleSheets: styleSheetsOption });
       await pager.toPages({
-        content: treeToDom(content),
+        content: treeToFragment(content),
         onContentChunked: ({ index, setPageVars }) => {
-          const layout = layouts[pageIndexToPageType(index)];
-          const { width, height } = layout.getContentSize();
+          const layout = getLayoutByIndex(
+            templates,
+            LAYOUT_START_POSITION,
+            index,
+          );
+          const { width, height } = layout.contentSize;
+
           setPageVars({
-            // PagerJS doesn't like 0 margins so use them temporarily.
+            // PagerJS doesn't like 0 margins so use 0.5in margins temporarily.
             width: `calc(${width} + 1in)`,
             height: `calc(${height} + 1in)`,
             marginTop: '0.5in',
@@ -60,10 +67,10 @@ export const documentToDom = async ({
             marginLeft: '0.5in',
           });
         },
-        onPageRendered: ({ contentElement, index }) => {
+        onPageRendered: ({ index, contentElement }) => {
           const content = contentElement.cloneNode(true);
           pageEls.push(
-            layouts[pageIndexToPageType(index)].toPage({
+            getLayoutByIndex(templates, LAYOUT_START_POSITION, index).toPage({
               content,
             }),
           );

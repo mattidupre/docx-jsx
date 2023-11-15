@@ -54,25 +54,25 @@ const mockPageTypes = (prefix: string) =>
       footer: <Paragraph>{prefix} DEFAULT FOOTER TEXT</Paragraph>,
     },
     first: {
-      margins: {
-        marginTop: '0in',
-      },
-      header: false, // <Paragraph>{prefix} FIRST HEADER TEXT</Paragraph>,
-      // footer: <Paragraph>{prefix} FIRST FOOTER TEXT</Paragraph>,
+      header: <Paragraph>{prefix} FIRST HEADER TEXT</Paragraph>,
+      footer: <Paragraph>{prefix} FIRST FOOTER TEXT</Paragraph>,
     },
-    even: {
-      header: <Paragraph>{prefix} EVEN HEADER TEXT</Paragraph>,
-      footer: <Paragraph>{prefix} EVEN FOOTER TEXT</Paragraph>,
+    left: {
+      header: <Paragraph>{prefix} LEFT HEADER TEXT</Paragraph>,
+      footer: <Paragraph>{prefix} LEFT FOOTER TEXT</Paragraph>,
     },
-    odd: {
-      header: <Paragraph>{prefix} ODD HEADER TEXT</Paragraph>,
-      footer: <Paragraph>{prefix} ODD FOOTER TEXT</Paragraph>,
+    right: {
+      header: <Paragraph>{prefix} RIGHT HEADER TEXT</Paragraph>,
+      footer: <Paragraph>{prefix} RIGHT FOOTER TEXT</Paragraph>,
     },
   }) as const;
 
 export const mockDocument = (
-  <Document pageSize={{ width: '8.5in', height: '11in' }}>
-    <PageGroup pages={mockPageTypes('FIRST SECTION')}>
+  <Document size={{ width: '8.5in', height: '11in' }}>
+    <PageGroup
+      layouts={mockPageTypes('FIRST SECTION')}
+      margin={{ top: '2in', header: '0.25in' }}
+    >
       <Paragraph>{`Generated at ${new Date().toLocaleTimeString()}`}</Paragraph>
       <ComponentA />
       <LoremIpsum />

@@ -1,94 +1,169 @@
-import { type IfAny } from 'type-fest';
-import {
-  type TreeElement,
-  type TreeNode,
-  treeDataToAttributes,
-  // type ArrayOfAll,
-} from 'src/utils';
-import {
-  type TextOptions,
-  type PageMargins,
-  type PageSize,
-  type PageType,
-} from './options';
+import { ID_PREFIX } from './primitives';
+import type * as Hast from 'hast';
+import { type Simplify } from 'type-fest';
+import { type JsonObject } from 'type-fest';
+import { toDom } from 'hast-util-to-dom';
 
-type ElementDataByType = {
-  document: {
-    pageSize?: PageSize;
-  };
-  pagegroup: {
-    pages: Partial<
-      Record<
-        PageType,
-        {
-          margins: Partial<PageMargins>;
-          disableHeader: boolean;
-          disableFooter: boolean;
-        }
-      >
-    >;
-    pageGroupId: string;
-  };
-  paragraph: TextOptions;
-  textrun: TextOptions;
-  header: { pageType: PageType };
-  footer: { pageType: PageType };
+type Data = {
+  elementType: string;
+  options: Record<string, unknown>;
 };
 
-export type ElementType = keyof ElementDataByType;
+type ExtendNode<TNode> = TNode extends unknown
+  ? Simplify<
+      Omit<TNode, 'data' | 'children'> &
+        ('data' extends keyof TNode ? { data: Data } : unknown) &
+        ('children' extends keyof TNode
+          ? { children: Array<ExtendNode<Hast.Element | Hast.Text>> }
+          : unknown)
+    >
+  : never;
 
-export type ElementData<TType extends ElementType = any> = IfAny<
-  TType,
-  Record<string, unknown>,
-  ElementDataByType[TType]
->;
+export type TreeRoot = Omit<Hast.Root, 'children'> & {
+  children: Array<TreeChild>;
+};
 
-// const ELEMENT_TYPES: ArrayOfAll<ElementType> = [
-//   'document',
-//   'pagegroup',
-//   'paragraph',
-//   'textrun',
-//   'header',
-//   'footer',
-// ];
+export type TreeElement = ExtendNode<Hast.Element>;
 
-export type Element<TType extends ElementType = any> = TreeElement<
-  IfAny<
-    TType,
-    Record<string, unknown>,
-    {
-      type: TType;
-      data: ElementData<TType>;
+export type TreeText = ExtendNode<Hast.Text>;
+
+export type TreeChild = TreeElement | TreeText;
+
+export type TreeNode = TreeRoot | TreeElement | TreeText;
+
+const HTML_TREE_OPTIONS_ATTRIBUTE = `data-${ID_PREFIX}-data`;
+
+const HTML_TREE_TYPE_ATTRIBUTE = `data-${ID_PREFIX}-type`;
+
+export const dataToHtmlAttributes = (
+  data: Data,
+): Record<`data-${Lowercase<string>}`, string> => ({
+  [HTML_TREE_TYPE_ATTRIBUTE]: data.elementType,
+  [HTML_TREE_OPTIONS_ATTRIBUTE]: encodeURI(JSON.stringify(data.options)),
+});
+
+export const htmlAttributesToData = (
+  attributes: Record<string, unknown>,
+): Data => {
+  const elementType = attributes[HTML_TREE_TYPE_ATTRIBUTE] as string;
+  if (elementType) {
+    return {
+      elementType,
+      options: JSON.parse(
+        decodeURI(attributes[HTML_TREE_OPTIONS_ATTRIBUTE] as string),
+      ),
+    };
+  }
+  return {
+    elementType: 'htmltag',
+    options: {},
+  };
+};
+
+export const getElementOptions = <T extends JsonObject>(element: TreeElement) =>
+  element.data.options as T;
+
+export const getElementType = (element: TreeChild) => element.data.elementType;
+
+const isElement = (value: any): value is TreeElement =>
+  value.type === 'element';
+
+const isParent = (value: any): value is { children: Array<TreeChild> } =>
+  'children' in value;
+
+export const findElement = (
+  node: TreeNode,
+  callback: (node: TreeElement, parentNode?: TreeNode) => boolean,
+  parentNode?: TreeNode,
+): undefined | TreeElement => {
+  if (isElement(node) && callback(node, parentNode)) {
+    return node;
+  }
+  if (isParent(node)) {
+    return node.children.find((child) => findElement(child, callback, node)) as
+      | undefined
+      | TreeElement;
+  }
+  return undefined;
+};
+
+export const findElements = (
+  node: TreeNode,
+  callback: (node: TreeElement, parentNode?: TreeNode) => boolean,
+  parentNode?: TreeNode,
+): Array<TreeElement> => {
+  if (isElement(node) && callback(node, parentNode)) {
+    return [node];
+  }
+  if (isParent(node)) {
+    return node.children.flatMap((child) =>
+      findElements(child, callback, node),
+    );
+  }
+  return [];
+};
+
+export const extractElements = (
+  node: TreeNode,
+  callback: (node: TreeElement, parentNode?: TreeNode) => boolean,
+  parentNode?: TreeNode,
+): Array<TreeElement> => {
+  if (isElement(node) && callback(node, parentNode)) {
+    if (parentNode && 'children' in parentNode) {
+      parentNode.children.splice(parentNode.children.indexOf(node), 1);
     }
-  >,
-  Record<string, unknown>
->;
-
-export const elementDataToAttributes = <TType extends ElementType>(
-  type: TType,
-  data: ElementData<TType>,
-) =>
-  treeDataToAttributes({
-    type,
-    data,
-  });
-
-export const getElementType = <TNode extends TreeNode>(node: TNode) =>
-  node?.data?.type as TNode extends Element<infer T> ? T : undefined | string;
-
-export const getElementData = <TNode extends TreeNode>(node: TNode) =>
-  node?.data?.data as TNode extends Element<infer T> ? ElementData<T> : unknown;
-
-export const isElementOfType = <TType extends ElementType>(
-  value: any,
-  type: TType | ReadonlyArray<TType>,
-): value is Element<TType> => {
-  const elementType = getElementType(value);
-  if (!elementType) {
-    return false;
+    return [node];
   }
-  if (!(Array.isArray(type) ? type : [type]).includes(elementType)) {
-    return false;
+  if (isParent(node)) {
+    return [...node.children].flatMap((child) => {
+      return extractElements(child, callback, node);
+    });
   }
-  return true;
+  return [];
 };
+
+export const flatMapNodes = <T>(
+  node: TreeNode,
+  callback: (
+    node: TreeNode,
+    mapChildren: (node: TreeNode) => Array<T>,
+    parentNode?: TreeNode,
+  ) => T | Array<T>,
+  parentNode?: TreeNode,
+): Array<T> => {
+  const mapChildren = (node: TreeNode) => {
+    if (isParent(node)) {
+      return node.children.flatMap((child) =>
+        flatMapNodes(child, callback, node),
+      );
+    }
+    return [];
+  };
+  const result = callback(node, mapChildren, parentNode);
+  return Array.isArray(result) ? result : [result];
+};
+
+export const treeToRoot = (node: TreeNode | Array<TreeChild>): TreeRoot => {
+  if (Array.isArray(node)) {
+    return {
+      type: 'root',
+      data: {},
+      children: node,
+    };
+  }
+  if (node.type === 'root') {
+    return node;
+  }
+  return {
+    type: 'root',
+    data: {},
+    children: [node],
+  };
+};
+
+export const treeToFragment = (
+  tree: null | undefined | false | TreeNode,
+): DocumentFragment =>
+  tree
+    ? (toDom(treeToRoot(tree), { fragment: true }) as DocumentFragment)
+    : document.createDocumentFragment();

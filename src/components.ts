@@ -1,4 +1,4 @@
 export { Document } from './components/Document';
-export { PageGroup } from './components/PageGroup';
+export { Stack as PageGroup } from './components/Stack';
 export { Paragraph } from './components/Paragraph';
 export { TextRun } from './components/TextRun';

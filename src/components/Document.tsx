@@ -1,11 +1,15 @@
 import { type ReactNode } from 'react';
-import { elementDataToAttributes } from 'src/entities/tree';
-import { PageSize } from 'src/entities/options';
+import { dataToHtmlAttributes } from 'src/entities/tree';
+import { DocumentOptions } from 'src/entities/elements';
 
-export type DocumentProps = { pageSize: PageSize; children: ReactNode };
+export type DocumentProps = DocumentOptions<false> & { children: ReactNode };
 
-export function Document({ children, ...options }: DocumentProps) {
+export function Document({ children, size }: DocumentProps) {
   return (
-    <main {...elementDataToAttributes('document', options)}>{children}</main>
+    <main
+      {...dataToHtmlAttributes({ elementType: 'document', options: { size } })}
+    >
+      {children}
+    </main>
   );
 }

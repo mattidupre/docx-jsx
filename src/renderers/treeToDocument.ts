@@ -1,12 +1,12 @@
 import { type RequiredDeep } from 'type-fest';
 import {
-  type PageType,
-  type DocumentTree,
-  DEFAULT_PAGE_SIZE,
+  type LayoutType,
+  DEFAULT_SIZE,
   DEFAULT_PAGE_MARGINS,
   mapPageTypes,
   extendValuesByPageType,
-} from 'src/entities/options';
+} from 'src/entities/elements';
+import { type DocumentTree } from 'src/entities/document';
 import {
   getElementData,
   getElementType,
@@ -58,7 +58,7 @@ export const treeToDocument = (rootNode: TreeNode): DocumentTree => {
     throw new TypeError('Expected at least one page group element.');
   }
 
-  const { pageSize = DEFAULT_PAGE_SIZE } = getElementData(documentNode);
+  const { pageSize = DEFAULT_SIZE } = getElementData(documentNode);
   const pageGroups = [] as DocumentTree['pageGroups'];
 
   for (const pageGroupNode of pageGroupNodes) {
@@ -84,7 +84,7 @@ export const treeToDocument = (rootNode: TreeNode): DocumentTree => {
     });
 
     const pagesDataExpanded = extendValuesByPageType<
-      RequiredDeep<ElementData<'pagegroup'>>['pages'][PageType]
+      RequiredDeep<ElementData<'pagegroup'>>['pages'][LayoutType]
     >(
       {
         margins: DEFAULT_PAGE_MARGINS,

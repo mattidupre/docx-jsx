@@ -1,0 +1,1 @@
+export { documentRootToDocx } from './documentRootToDocx';

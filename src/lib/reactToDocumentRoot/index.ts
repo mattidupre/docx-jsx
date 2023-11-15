@@ -1,0 +1,1 @@
+export { reactToDocumentRoot } from './reactToDocumentRoot';
