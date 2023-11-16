@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 
-import { Document, PageGroup, TextRun, Paragraph } from 'src/components';
+import { Document, Stack, TextRun, Paragraph, Counter } from 'src/components';
 import { type FunctionComponent } from 'react';
 
 const createMockComponent = <TComponent extends FunctionComponent>(
@@ -47,29 +47,78 @@ const ComponentA = createMockComponent(() => {
   );
 });
 
+const PageCounter = () => (
+  <span>
+    Page <Counter type="page-number" /> of <Counter type="page-count" />
+  </span>
+);
+
 const mockPageTypes = (prefix: string) =>
   ({
     default: {
-      header: <Paragraph>{prefix} DEFAULT HEADER TEXT</Paragraph>,
-      footer: <Paragraph>{prefix} DEFAULT FOOTER TEXT</Paragraph>,
+      header: (
+        <Paragraph>
+          {prefix} DEFAULT HEADER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
+      footer: (
+        <Paragraph>
+          {prefix} DEFAULT FOOTER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
     },
     first: {
-      header: <Paragraph>{prefix} FIRST HEADER TEXT</Paragraph>,
-      footer: <Paragraph>{prefix} FIRST FOOTER TEXT</Paragraph>,
+      header: (
+        <Paragraph>
+          {prefix} FIRST HEADER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
+      footer: (
+        <Paragraph>
+          {prefix} FIRST FOOTER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
     },
     left: {
-      header: <Paragraph>{prefix} LEFT HEADER TEXT</Paragraph>,
-      footer: <Paragraph>{prefix} LEFT FOOTER TEXT</Paragraph>,
+      header: (
+        <Paragraph>
+          {prefix} LEFT HEADER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
+      footer: (
+        <Paragraph>
+          {prefix} LEFT FOOTER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
     },
     right: {
-      header: <Paragraph>{prefix} RIGHT HEADER TEXT</Paragraph>,
-      footer: <Paragraph>{prefix} RIGHT FOOTER TEXT</Paragraph>,
+      header: (
+        <Paragraph>
+          {prefix} RIGHT HEADER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
+      footer: (
+        <Paragraph>
+          {prefix} RIGHT FOOTER TEXT&nbsp;
+          <PageCounter />
+        </Paragraph>
+      ),
     },
   }) as const;
 
 export const mockDocument = (
-  <Document size={{ width: '8.5in', height: '11in' }}>
-    <PageGroup
+  <Document
+    size={{ width: '8.5in', height: '11in' }}
+    pages={{ enableCoverPage: false }}
+  >
+    <Stack
       layouts={mockPageTypes('FIRST SECTION')}
       margin={{ top: '2in', header: '0.25in' }}
     >
@@ -80,21 +129,29 @@ export const mockDocument = (
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
-    </PageGroup>
-    {/* <PageGroup pages={mockPageTypes('SECOND SECTION')}>
+    </Stack>
+
+    <Stack
+      layouts={mockPageTypes('FIRST SECTION')}
+      margin={{ top: '2in', header: '0.25in' }}
+    >
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
-    </PageGroup>
-    <PageGroup pages={mockPageTypes('THIRD SECTION')}>
+    </Stack>
+
+    <Stack
+      layouts={mockPageTypes('FIRST SECTION')}
+      margin={{ top: '2in', header: '0.25in' }}
+    >
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
-    </PageGroup> */}
+    </Stack>
   </Document>
 );
 

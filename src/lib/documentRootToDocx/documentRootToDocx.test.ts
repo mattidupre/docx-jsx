@@ -20,6 +20,7 @@ it('runs without error', async () => {
         sections: [
           {
             properties: {
+              type: D.SectionType.EVEN_PAGE,
               titlePage: true,
               page: {
                 margin: {

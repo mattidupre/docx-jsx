@@ -1,4 +1,3 @@
-import { getLayoutByIndex } from 'src/entities/primitives';
 import {
   type DocumentRoot,
   DEFAULT_DOCUMENT_OPTIONS,
@@ -6,20 +5,45 @@ import {
 } from 'src/entities/elements';
 import { Pager } from 'src/utils/pager';
 import { treeToFragment, type TreeRoot } from 'src/entities/tree';
+import { type LayoutTypeMerged } from 'src/entities/primitives';
 import { layoutsToTemplates } from './layoutsToTemplates';
+import { type PageTemplate } from './pageTemplate';
 import { merge } from 'lodash';
 
 type Options = {
   styleSheets?: Array<CSSStyleSheet>;
 };
 
-const LAYOUT_START_POSITION = 'right';
+const getLayoutType = ({
+  pageNumberStack,
+  pageNumberPage,
+}: {
+  pageNumberStack: number;
+  pageNumberPage: number;
+}): LayoutTypeMerged => {
+  if (pageNumberPage === pageNumberStack) {
+    return 'first';
+  }
+  if (pageNumberPage % 2 === 1) {
+    return 'left';
+  }
+  if (pageNumberPage % 2 === 0) {
+    return 'right';
+  }
+  throw new TypeError('Invalid page numbers.');
+};
 
 export const documentRootToDom = async (
   { options: documentOptions, stacks: stacksOption }: DocumentRoot<TreeRoot>,
   { styleSheets: styleSheetsOption = [] }: Options = {},
 ): Promise<HTMLDivElement> => {
-  const { size } = merge(DEFAULT_DOCUMENT_OPTIONS, documentOptions);
+  const perf = performance.now();
+
+  const { size, pages } = merge(DEFAULT_DOCUMENT_OPTIONS, documentOptions);
+
+  console.log(pages);
+
+  const pageNumberDocument = pages.enableCoverPage ? 0 : 1;
 
   // Create a temporary element in which to calculate / render pages.
   const renderEl = document.createElement('div');
@@ -30,8 +54,12 @@ export const documentRootToDom = async (
   renderEl.style.zIndex = '-9999';
   document.body.appendChild(renderEl);
 
-  const allPageEls = await Promise.all(
-    stacksOption.map(async ({ options: stackOptions = {}, content }) => {
+  let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
+
+  stacksOption.forEach(({ options: stackOptions = {}, content }) => {
+    allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
+      const pageNumberStack = pageNumberDocument + allTemplates.length;
+
       const { layouts, margin } = merge(DEFAULT_STACK_OPTIONS, stackOptions);
 
       const pageGroupEl = document.createElement('div');
@@ -44,18 +72,15 @@ export const documentRootToDom = async (
         styleSheets: styleSheetsOption,
       });
 
-      const pageEls: Array<Element> = [];
-
       const pager = new Pager({ styleSheets: styleSheetsOption });
       await pager.toPages({
         content: treeToFragment(content),
         onContentChunked: ({ index, setPageVars }) => {
-          const layout = getLayoutByIndex(
-            templates,
-            LAYOUT_START_POSITION,
-            index,
-          );
-          const { width, height } = layout.contentSize;
+          const layoutType = getLayoutType({
+            pageNumberStack,
+            pageNumberPage: pageNumberStack + index,
+          });
+          const { width, height } = templates[layoutType].contentSize;
 
           setPageVars({
             // PagerJS doesn't like 0 margins so use 0.5in margins temporarily.
@@ -68,29 +93,40 @@ export const documentRootToDom = async (
           });
         },
         onPageRendered: ({ index, contentElement }) => {
-          const content = contentElement.cloneNode(true);
-          pageEls.push(
-            getLayoutByIndex(templates, LAYOUT_START_POSITION, index).toPage({
-              content,
+          const layoutType = getLayoutType({
+            pageNumberStack,
+            pageNumberPage: pageNumberStack + index,
+          });
+
+          // Note that contentElement is NOT cloned. It will be detached from pager.
+          allTemplates.push(
+            templates[layoutType].extend({
+              content: contentElement,
             }),
           );
         },
       });
 
-      return pageEls;
-    }),
-  );
-
-  renderEl.remove();
+      return allTemplates;
+    });
+  });
 
   const pagesEl = document.createElement('div');
 
-  allPageEls.flat().forEach((pageEl) => {
-    const newPageEl = document.createElement('div');
-    const newPageShadow = newPageEl.attachShadow({ mode: 'closed' });
-    newPageShadow.appendChild(pageEl);
-    pagesEl.append(newPageEl);
+  const allTemplates = await allTemplatesPromise;
+
+  const pageCount = allTemplates.length;
+  allTemplates.forEach((template, pageIndex) => {
+    template.replaceCounters({
+      pageNumber: pageIndex + pageNumberDocument,
+      pageCount,
+    });
+    pagesEl.append(template.element);
   });
+
+  renderEl.remove();
+
+  console.log(Math.round(performance.now() - perf));
 
   return pagesEl;
 };

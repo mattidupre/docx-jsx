@@ -60,10 +60,28 @@ export const htmlAttributesToData = (
   };
 };
 
+export const domElementToData = (element: Element): Data =>
+  htmlAttributesToData({
+    [HTML_TREE_TYPE_ATTRIBUTE]: element.getAttribute(HTML_TREE_TYPE_ATTRIBUTE),
+    [HTML_TREE_OPTIONS_ATTRIBUTE]: element.getAttribute(
+      HTML_TREE_OPTIONS_ATTRIBUTE,
+    ),
+  });
+
 export const getElementOptions = <T extends JsonObject>(element: TreeElement) =>
   element.data.options as T;
 
 export const getElementType = (element: TreeChild) => element.data.elementType;
+
+export const findElementsDom = (
+  node: Element,
+  elementType: Data['elementType'],
+) =>
+  Array.from(
+    node.querySelectorAll(`[${HTML_TREE_TYPE_ATTRIBUTE}="${elementType}"]`),
+  ).map((element) => {
+    return { element, data: domElementToData(element) };
+  });
 
 const isElement = (value: any): value is TreeElement =>
   value.type === 'element';

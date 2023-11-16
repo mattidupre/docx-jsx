@@ -5,6 +5,10 @@ export const ID_PREFIX: Lowercase<string> = 'matti-docs';
 
 export const APP_NAME = 'Matti Docs';
 
+export type CounterType = (typeof COUNTER_TYPES)[number];
+
+export const COUNTER_TYPES = ['page-number', 'page-count'] as const;
+
 export type Size = {
   width: UnitsNumber;
   height: UnitsNumber;
@@ -84,22 +88,4 @@ export const mergeLayouts = <TElement>(
     left: merge({}, baseLayout, ...layoutsArrays.left),
     right: merge({}, baseLayout, ...layoutsArrays.right),
   };
-};
-
-export const getLayoutByIndex = <TLayout>(
-  layouts: Record<LayoutTypeMerged, TLayout>,
-  startPosition: 'left' | 'right',
-  stackIndex: number,
-): TLayout => {
-  const offset = startPosition === 'right' ? 1 : 0;
-  if (stackIndex === 0) {
-    return layouts.first;
-  }
-  if ((stackIndex + offset) % 2 === 0) {
-    return layouts.left;
-  }
-  if ((stackIndex + offset) % 2 === 1) {
-    return layouts.right;
-  }
-  throw new Error('Invalid index.');
 };

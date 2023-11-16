@@ -42,3 +42,19 @@ export const layoutsToTemplates = (
   }
   return templates;
 };
+
+// export const getLayoutByPageNumber = <TLayout>(
+//   layouts: Record<LayoutTypeMerged, TLayout>,
+//   pageNumber: number,
+// ): TLayout => {
+//   if (pageNumber === 0) {
+//     return layouts.first;
+//   }
+//   if (pageNumber % 2 === 0) {
+//     return layouts.left;
+//   }
+//   if (pageNumber % 2 === 1) {
+//     return layouts.right;
+//   }
+//   throw new Error('Invalid index.');
+// };

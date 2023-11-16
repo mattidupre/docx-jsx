@@ -2,14 +2,14 @@ import {
   ID_PREFIX,
   type Size,
   type PageMargin,
-  type Margin,
   type LayoutType,
 } from 'src/entities/primitives';
+import { findElementsDom } from 'src/entities/tree';
 import { mathUnits } from 'src/utils';
 
 type InnerNode = undefined | Node | NodeList;
 
-type PageOptions = {
+export type PageTemplateOptions = {
   layoutType: LayoutType;
   size: Size;
   margin: PageMargin;
@@ -17,28 +17,62 @@ type PageOptions = {
   content?: InnerNode;
   footer?: InnerNode;
   styleSheets?: Array<CSSStyleSheet>;
+  cached?: never;
+};
+
+export type CloneOptions = {
+  content?: InnerNode;
+};
+
+export type ReplaceCountersOptions = {
+  pageNumber: number;
+  pageCount: number;
+};
+
+const appendNodes = (parentEl: Element, el: undefined | InnerNode) => {
+  if (!el) {
+    return;
+  }
+  return parentEl.append(...('length' in el ? [...el] : [el]));
+};
+
+const cloneNodes = (el: undefined | InnerNode, deep?: boolean): typeof el => {
+  if (el === undefined) {
+    return undefined;
+  }
+  if (el instanceof Node) {
+    return el.cloneNode(deep);
+  }
+  if (typeof el[Symbol.iterator] === 'function') {
+    return Array.prototype.map.call(el, (thisEl) =>
+      thisEl.cloneNode(deep),
+    ) as unknown as NodeList;
+  }
+  throw new TypeError('Invalid element.');
 };
 
 export class PageTemplate {
-  public element: Element;
+  private readonly options: PageTemplateOptions;
+
+  public readonly element: Element;
 
   private static baseStyleSheet: undefined | CSSStyleSheet;
 
-  private styleSheets: ReadonlyArray<CSSStyleSheet>;
+  private readonly styleSheets: ReadonlyArray<CSSStyleSheet>;
 
   private readonly pageSize: Size;
 
-  private readonly pageEl: Element;
-  private static pageClassName = `${ID_PREFIX}-page`;
+  public readonly pageEl: Element;
+  public static readonly pageClassName = `${ID_PREFIX}-page`;
 
-  private readonly headerEl: Element;
-  private static headerClassName = `${PageTemplate.pageClassName}__header`;
+  public readonly headerEl: Element;
+  public static readonly headerClassName = `${PageTemplate.pageClassName}__header`;
 
-  private readonly contentEl: Element;
-  private static contentClassName = `${PageTemplate.pageClassName}__content`;
+  public readonly contentEl: Element;
+  public static readonly contentClassName = `${PageTemplate.pageClassName}__content`;
 
-  private readonly footerEl: Element;
-  private static footerClassName = `${PageTemplate.pageClassName}__footer`;
+  public readonly footerEl: Element;
+  public static readonly footerClassName = `${PageTemplate.pageClassName}__footer`;
 
   private cachedContentSize: undefined | Size;
   public get contentSize() {
@@ -47,9 +81,22 @@ export class PageTemplate {
       : this.getContentSize();
   }
 
-  constructor(options: PageOptions) {
-    console.log(options.margin);
+  private static cloneOptions(
+    options: PageTemplateOptions,
+  ): PageTemplateOptions {
+    return {
+      ...options,
+      header: cloneNodes(options.header, true),
+      // Don't preserve content.
+      content: cloneNodes(options.header, false),
+      footer: cloneNodes(options.footer, true),
+    };
+  }
 
+  constructor({ content, ...options }: PageTemplateOptions) {
+    this.options = PageTemplate.cloneOptions(options);
+
+    // Memoize static creation of baseStyleSheet.
     if (!PageTemplate.baseStyleSheet) {
       PageTemplate.baseStyleSheet = new CSSStyleSheet();
       PageTemplate.baseStyleSheet.replaceSync(PageTemplate.innerStyle);
@@ -67,22 +114,29 @@ export class PageTemplate {
 
     this.headerEl = document.createElement('div');
     this.headerEl.classList.add(PageTemplate.headerClassName);
-    PageTemplate.appendInnerNodes(this.headerEl, options.header);
+    appendNodes(this.headerEl, options.header);
     this.pageEl.appendChild(this.headerEl);
 
     this.contentEl = document.createElement('div');
     this.contentEl.classList.add(PageTemplate.contentClassName);
-    PageTemplate.appendInnerNodes(this.contentEl, options.content);
+    appendNodes(this.contentEl, content);
     this.pageEl.appendChild(this.contentEl);
 
     this.footerEl = document.createElement('div');
     this.footerEl.classList.add(PageTemplate.footerClassName);
-    PageTemplate.appendInnerNodes(this.footerEl, options.footer);
+    appendNodes(this.footerEl, options.footer);
     this.pageEl.appendChild(this.footerEl);
 
     this.element = PageTemplate.createRoot({
       innerEl: this.pageEl,
       styleSheets: this.styleSheets,
+    });
+  }
+
+  public extend({ content }: CloneOptions) {
+    return new PageTemplate({
+      ...PageTemplate.cloneOptions(this.options),
+      content,
     });
   }
 
@@ -124,15 +178,22 @@ export class PageTemplate {
     return this.contentSize;
   }
 
-  public toPage({ content }: Pick<PageOptions, 'content'>) {
-    const innerEl = this.pageEl.cloneNode(true) as Element;
-    PageTemplate.appendInnerNodes(
-      innerEl.querySelector(`.${PageTemplate.contentClassName}`)!,
-      content,
-    );
-    return PageTemplate.createRoot({
-      innerEl,
-      styleSheets: this.styleSheets,
+  public replaceCounters({ pageNumber, pageCount }: ReplaceCountersOptions) {
+    [this.headerEl, this.footerEl].forEach((headerFooterEl) => {
+      findElementsDom(headerFooterEl, 'counter').forEach(
+        ({
+          element,
+          data: {
+            options: { counterType },
+          },
+        }) => {
+          if (counterType === 'page-number') {
+            element.replaceWith(document.createTextNode(`${pageNumber}`));
+          } else if (counterType === 'page-count') {
+            element.replaceWith(document.createTextNode(`${pageCount}`));
+          }
+        },
+      );
     });
   }
 
@@ -153,17 +214,7 @@ export class PageTemplate {
     return rootEl;
   }
 
-  private static appendInnerNodes(
-    parentEl: Element,
-    el: undefined | InnerNode,
-  ) {
-    if (!el) {
-      return;
-    }
-    return parentEl.append(...('length' in el ? [...el] : [el]));
-  }
-
-  private static createCssVars({ size, margin }: PageOptions) {
+  private static createCssVars({ size, margin }: PageTemplateOptions) {
     return `
       --page-width: ${size.width};
       --page-height: ${size.height};

@@ -7,12 +7,18 @@ import {
 
 export type DocumentOptions<TContent> = {
   size?: Size;
+  pages?: {
+    enableCoverPage?: boolean;
+  };
 };
 
 export const DEFAULT_DOCUMENT_OPTIONS = {
   size: {
     width: '8.5in',
     height: '11in',
+  },
+  pages: {
+    enableCoverPage: false,
   },
 } as const satisfies DocumentOptions<unknown>;
 
