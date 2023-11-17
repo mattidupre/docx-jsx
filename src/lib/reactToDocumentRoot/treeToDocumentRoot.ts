@@ -4,12 +4,7 @@ import {
   type DocumentRoot,
   type DocumentStack,
 } from 'src/entities/elements';
-import { cloneDeep } from 'lodash';
-import {
-  LAYOUT_TYPES,
-  type Layout,
-  type LayoutType,
-} from 'src/entities/primitives';
+import { type LayoutType } from 'src/entities/primitives';
 import {
   type TreeRoot,
   type TreeElement,
@@ -19,6 +14,7 @@ import {
   getElementOptions,
   treeToRoot,
 } from 'src/entities/tree';
+import { mapValues } from 'lodash';
 
 // TODO: Replace TreeElements with TreeRoots.
 
@@ -38,9 +34,6 @@ export const treeToDocumentRoot = (root: TreeRoot): DocumentRoot<TreeRoot> => {
 
   const documentStacks = stackElements.map(
     (stackElement): DocumentStack<TreeRoot> => {
-      const { layouts = {}, ...restStackOptions } =
-        getElementOptions<StackOptions<boolean>>(stackElement);
-
       const [headerElements, footerElements] = ['header', 'footer'].map(
         (elementType) =>
           extractElements(
@@ -65,22 +58,32 @@ export const treeToDocumentRoot = (root: TreeRoot): DocumentRoot<TreeRoot> => {
           ),
       );
 
-      const layoutsWithElements: DocumentStack<TreeRoot>['options']['layouts'] =
-        {};
-      LAYOUT_TYPES.forEach((layoutType) => {
-        if (layouts[layoutType]) {
-          const { header, footer, ...restLayout } = layouts[layoutType]!;
-          const newLayout = cloneDeep(restLayout) as Layout<TreeRoot>;
-          newLayout.header =
-            header === false ? false : headerElements[layoutType]!;
-          newLayout.footer =
-            header === false ? false : footerElements[layoutType]!;
-          layoutsWithElements[layoutType] = newLayout;
-        }
-      });
+      const { layouts: layoutsOption, ...restOptions } =
+        getElementOptions<StackOptions<boolean>>(stackElement);
+
+      const options = {
+        ...restOptions,
+        layouts:
+          layoutsOption &&
+          mapValues(layoutsOption, (layout, layoutType: LayoutType) => {
+            if (!layout) {
+              return layout;
+            }
+            if (layout.header && !headerElements[layoutType]) {
+              throw new Error(`${layoutType} header React Element not found.`);
+            }
+            if (layout.footer && !footerElements[layoutType]) {
+              throw new Error(`${layoutType} footer React Element not found.`);
+            }
+            return {
+              header: headerElements[layoutType],
+              footer: footerElements[layoutType],
+            };
+          }),
+      };
 
       return {
-        options: { ...restStackOptions, layouts: layoutsWithElements },
+        options,
         content: treeToRoot(stackElement.children),
       };
     },

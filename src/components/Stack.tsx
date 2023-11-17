@@ -27,6 +27,7 @@ export function Stack({ children, layouts, margin }: StackProps) {
     for (const layoutType of LAYOUT_TYPES) {
       const layoutProp = layouts[layoutType];
       if (!layoutProp) {
+        stackOptions.layouts[layoutType] = layoutProp;
         continue;
       }
 
@@ -35,9 +36,7 @@ export function Stack({ children, layouts, margin }: StackProps) {
 
       for (const elementType of ['header', 'footer'] as const) {
         const element = layoutProp[elementType];
-        if (element === false) {
-          layoutWithoutElements[elementType] = false;
-        } else if (element) {
+        if (element) {
           layoutWithoutElements[elementType] = true;
           encodedElements[elementType].push(
             <div

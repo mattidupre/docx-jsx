@@ -3,6 +3,7 @@ import {
   type LayoutPartial,
   type LayoutType,
   type PageMargin,
+  type LayoutsPartial,
 } from './primitives';
 
 export type DocumentOptions<TContent> = {
@@ -23,7 +24,7 @@ export const DEFAULT_DOCUMENT_OPTIONS = {
 } as const satisfies DocumentOptions<unknown>;
 
 export type StackOptions<TContent> = {
-  layouts?: Partial<Record<LayoutType, LayoutPartial<TContent>>>;
+  layouts?: LayoutsPartial<TContent>;
   margin?: Partial<PageMargin>;
 };
 

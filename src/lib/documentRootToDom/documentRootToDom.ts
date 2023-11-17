@@ -5,49 +5,53 @@ import {
 } from 'src/entities/elements';
 import { Pager } from 'src/utils/pager';
 import { treeToFragment, type TreeRoot } from 'src/entities/tree';
-import { type LayoutTypeMerged } from 'src/entities/primitives';
-import { layoutsToTemplates } from './layoutsToTemplates';
-import { type PageTemplate } from './pageTemplate';
+import { checkLayouts } from 'src/entities/primitives';
+import { PageTemplate } from './pageTemplate';
 import { merge } from 'lodash';
 
-type Options = {
+type DocumentRootToDomOptions = {
   styleSheets?: Array<CSSStyleSheet>;
 };
 
-const getLayoutType = ({
+const TEMPLATE_TYPES = [
+  'first-left',
+  'first-right',
+  'default-left',
+  'default-right',
+] as const;
+
+type TemplateType = (typeof TEMPLATE_TYPES)[number];
+
+const getTemplateType = ({
   pageNumberStack,
   pageNumberPage,
 }: {
   pageNumberStack: number;
   pageNumberPage: number;
-}): LayoutTypeMerged => {
-  if (pageNumberPage === pageNumberStack) {
-    return 'first';
-  }
+}): TemplateType => {
+  const prefix = pageNumberPage === pageNumberStack ? 'first' : 'default';
   if (pageNumberPage % 2 === 1) {
-    return 'left';
+    return `${prefix}-left`;
   }
   if (pageNumberPage % 2 === 0) {
-    return 'right';
+    return `${prefix}-right`;
   }
   throw new TypeError('Invalid page numbers.');
 };
 
 export const documentRootToDom = async (
   { options: documentOptions, stacks: stacksOption }: DocumentRoot<TreeRoot>,
-  { styleSheets: styleSheetsOption = [] }: Options = {},
+  { styleSheets: styleSheetsOption = [] }: DocumentRootToDomOptions = {},
 ): Promise<HTMLDivElement> => {
-  const perf = performance.now();
+  // const perf = performance.now();
 
   const { size, pages } = merge(DEFAULT_DOCUMENT_OPTIONS, documentOptions);
-
-  console.log(pages);
 
   const pageNumberDocument = pages.enableCoverPage ? 0 : 1;
 
   // Create a temporary element in which to calculate / render pages.
+  // Pager and PageTemplate operate in their own respective Shadow DOMs.
   const renderEl = document.createElement('div');
-
   renderEl.style.visibility = 'hidden';
   renderEl.style.position = 'absolute';
   renderEl.style.pointerEvents = 'none';
@@ -60,23 +64,49 @@ export const documentRootToDom = async (
     allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
       const pageNumberStack = pageNumberDocument + allTemplates.length;
 
-      const { layouts, margin } = merge(DEFAULT_STACK_OPTIONS, stackOptions);
+      const { layouts = {}, margin } = merge(
+        DEFAULT_STACK_OPTIONS,
+        stackOptions,
+      );
 
-      const pageGroupEl = document.createElement('div');
-      renderEl.appendChild(pageGroupEl);
+      checkLayouts(layouts);
 
-      const templates = layoutsToTemplates(layouts, {
-        parent: renderEl,
-        size,
-        margin,
-        styleSheets: styleSheetsOption,
-      });
+      const templates = {} as Record<TemplateType, PageTemplate>;
+      for (const layoutType of ['left', 'right'] as const) {
+        const defaultTemplate = new PageTemplate({
+          size,
+          margin,
+          header: treeToFragment(layouts[layoutType]?.header),
+          footer: treeToFragment(layouts[layoutType]?.footer),
+          styleSheets: styleSheetsOption,
+        });
+        renderEl.appendChild(defaultTemplate.element);
+        // Undefined first layout defaults to left / right.
+        // False first layout renders with no header or footer.
+        const firstTemplate =
+          layouts.first === undefined
+            ? defaultTemplate
+            : new PageTemplate({
+                size,
+                margin,
+                header: treeToFragment(
+                  layouts.first ? layouts.first.header : undefined,
+                ),
+                footer: treeToFragment(
+                  layouts.first ? layouts.first.header : undefined,
+                ),
+                styleSheets: styleSheetsOption,
+              });
+        renderEl.appendChild(firstTemplate.element);
+        templates[`default-${layoutType}`] = defaultTemplate;
+        templates[`first-${layoutType}`] = firstTemplate;
+      }
 
       const pager = new Pager({ styleSheets: styleSheetsOption });
       await pager.toPages({
         content: treeToFragment(content),
         onContentChunked: ({ index, setPageVars }) => {
-          const layoutType = getLayoutType({
+          const layoutType = getTemplateType({
             pageNumberStack,
             pageNumberPage: pageNumberStack + index,
           });
@@ -93,7 +123,7 @@ export const documentRootToDom = async (
           });
         },
         onPageRendered: ({ index, contentElement }) => {
-          const layoutType = getLayoutType({
+          const layoutType = getTemplateType({
             pageNumberStack,
             pageNumberPage: pageNumberStack + index,
           });
@@ -126,7 +156,7 @@ export const documentRootToDom = async (
 
   renderEl.remove();
 
-  console.log(Math.round(performance.now() - perf));
+  // console.log(Math.round(performance.now() - perf));
 
   return pagesEl;
 };

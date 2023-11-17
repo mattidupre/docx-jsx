@@ -26,66 +26,28 @@ export type PageMargin = Margin & {
   footer: UnitsNumber;
 };
 
-export type Layout<TElement> = {
-  header: false | TElement;
-  footer: false | TElement;
-};
-
 export type LayoutPartial<TElement> = {
-  header?: false | TElement;
-  footer?: false | TElement;
+  header?: TElement;
+  footer?: TElement;
 };
-
-export type LayoutTypeMerged = (typeof LAYOUT_TYPES_MERGED)[number];
-
-export const LAYOUT_TYPES_MERGED = ['first', 'left', 'right'] as const;
 
 export type LayoutType = (typeof LAYOUT_TYPES)[number];
 
-export const LAYOUT_TYPES = ['default', ...LAYOUT_TYPES_MERGED] as const;
+export const LAYOUT_TYPES = ['first', 'left', 'right'] as const;
 
-export type LayoutsPartial<TElement> = Partial<
-  Record<LayoutType, LayoutPartial<TElement>>
->;
+export type LayoutsPartial<TElement> = {
+  first?: false | LayoutPartial<TElement>;
+  left?: LayoutPartial<TElement>;
+  right?: LayoutPartial<TElement>;
+};
 
-export type LayoutsMerged<TElement> = Record<
-  LayoutTypeMerged,
-  Layout<TElement>
->;
-
-const BASE_LAYOUT: Layout<unknown> = {
-  header: false,
-  footer: false,
-} satisfies Layout<unknown>;
-
-export const mergeLayouts = <TElement>(
-  layoutsArgs: ReadonlyArray<undefined | LayoutsPartial<TElement>>,
-): LayoutsMerged<TElement> => {
-  const layoutsArrays = layoutsArgs.reduce<
-    Record<LayoutType, Array<LayoutPartial<TElement>>>
-  >(
-    (obj, layouts) => {
-      for (const layoutType of LAYOUT_TYPES) {
-        if (layouts?.[layoutType]) {
-          obj[layoutType].push(layouts[layoutType]!);
-        }
-      }
-      return obj;
-    },
-    {
-      default: [],
-      first: [],
-      left: [],
-      right: [],
-    },
-  );
-  const baseLayout = merge(
-    BASE_LAYOUT,
-    ...layoutsArrays.default,
-  ) as Layout<TElement>;
-  return {
-    first: merge({}, baseLayout, ...layoutsArrays.first),
-    left: merge({}, baseLayout, ...layoutsArrays.left),
-    right: merge({}, baseLayout, ...layoutsArrays.right),
-  };
+export const checkLayouts = (layouts: undefined | LayoutsPartial<unknown>) => {
+  if (!layouts) {
+    return;
+  }
+  if ((!layouts.left && layouts.right) || (layouts.left && !layouts.right)) {
+    console.warn(
+      'Providing only one left or right layout will cause layout problems.',
+    );
+  }
 };

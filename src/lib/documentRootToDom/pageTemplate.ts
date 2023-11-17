@@ -10,14 +10,12 @@ import { mathUnits } from 'src/utils';
 type InnerNode = undefined | Node | NodeList;
 
 export type PageTemplateOptions = {
-  layoutType: LayoutType;
   size: Size;
   margin: PageMargin;
   header?: InnerNode;
   content?: InnerNode;
   footer?: InnerNode;
   styleSheets?: Array<CSSStyleSheet>;
-  cached?: never;
 };
 
 export type CloneOptions = {

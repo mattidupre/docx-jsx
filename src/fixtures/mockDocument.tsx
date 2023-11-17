@@ -55,20 +55,6 @@ const PageCounter = () => (
 
 const mockPageTypes = (prefix: string) =>
   ({
-    default: {
-      header: (
-        <Paragraph>
-          {prefix} DEFAULT HEADER TEXT&nbsp;
-          <PageCounter />
-        </Paragraph>
-      ),
-      footer: (
-        <Paragraph>
-          {prefix} DEFAULT FOOTER TEXT&nbsp;
-          <PageCounter />
-        </Paragraph>
-      ),
-    },
     first: {
       header: (
         <Paragraph>
@@ -116,7 +102,7 @@ const mockPageTypes = (prefix: string) =>
 export const mockDocument = (
   <Document
     size={{ width: '8.5in', height: '11in' }}
-    pages={{ enableCoverPage: false }}
+    pages={{ enableCoverPage: true }}
   >
     <Stack
       layouts={mockPageTypes('FIRST SECTION')}

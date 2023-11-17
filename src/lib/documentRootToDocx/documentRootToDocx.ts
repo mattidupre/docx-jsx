@@ -3,9 +3,10 @@ import {
   DEFAULT_DOCUMENT_OPTIONS,
 } from 'src/entities/elements';
 import {
-  mergeLayouts,
-  LAYOUT_TYPES_MERGED,
-  type LayoutTypeMerged,
+  checkLayouts,
+  LAYOUT_TYPES,
+  LayoutsPartial,
+  type LayoutType,
 } from 'src/entities/primitives';
 import { flatMapNodes, type TreeRoot } from 'src/entities/tree';
 import {
@@ -27,13 +28,13 @@ type Content = Paragraph;
 
 type Element = Paragraph | TextRun;
 
-type PageType = (typeof PAGE_TYPE_BY_LAYOUT_TYPE)[LayoutTypeMerged];
+type PageType = (typeof PAGE_TYPE_BY_LAYOUT_TYPE)[LayoutType];
 
 const PAGE_TYPE_BY_LAYOUT_TYPE = {
   first: 'first',
   left: 'default',
   right: 'even',
-} as const satisfies Record<LayoutTypeMerged, 'first' | 'default' | 'even'>;
+} as const satisfies Record<LayoutType, 'first' | 'default' | 'even'>;
 
 const treeToDocx = (
   treeRoot: TreeRoot,
@@ -90,6 +91,8 @@ export const documentRootToDocx = ({
       },
       stackIndex,
     ) => {
+      checkLayouts(layoutsOption);
+
       const sectionType =
         stackIndex === 0
           ? enableCoverPage
@@ -108,9 +111,8 @@ export const documentRootToDocx = ({
       const headers: Partial<Record<PageType, Header>> = {};
       const footers: Partial<Record<PageType, Footer>> = {};
 
-      const layoutsMerged = mergeLayouts([layoutsOption]);
-      for (const layoutType of LAYOUT_TYPES_MERGED) {
-        const { header, footer } = layoutsMerged[layoutType];
+      for (const layoutType of LAYOUT_TYPES) {
+        const { header, footer } = layoutsOption?.[layoutType] || {};
         if (header) {
           headers[PAGE_TYPE_BY_LAYOUT_TYPE[layoutType]] = new Header({
             children: treeToDocx(header, { isContent: false }),
@@ -123,13 +125,11 @@ export const documentRootToDocx = ({
         }
       }
 
-      // console.log(headers.first?.options.children[0].root[2].root[1].root[1]);
-      // console.log(headers.even?.options.children[0].root[2].root[1].root[1]);
-      // console.log(headers.default?.options.children[0].root[2].root[1].root[1]);
-
       return {
         properties: {
-          titlePage: true,
+          // Undefined first layout defaults to left / right.
+          // False first layout renders with no header or footer.
+          titlePage: layoutsOption?.first !== undefined,
           type: sectionType,
           page: {
             pageNumbers: {
