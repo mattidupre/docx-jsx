@@ -104,11 +104,8 @@ export const mockDocument = (
     size={{ width: '8.5in', height: '11in' }}
     pages={{ enableCoverPage: true }}
   >
-    <Stack
-      layouts={mockPageTypes('FIRST SECTION')}
-      margin={{ top: '2in', header: '0.25in' }}
-    >
-      <Paragraph>{`Generated at ${new Date().toLocaleTimeString()}`}</Paragraph>
+    <Stack layouts={mockPageTypes('FIRST SECTION')}>
+      <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
       <ComponentA />
       <LoremIpsum />
       <LoremIpsum />
@@ -117,10 +114,7 @@ export const mockDocument = (
       <LoremIpsum />
     </Stack>
 
-    <Stack
-      layouts={mockPageTypes('FIRST SECTION')}
-      margin={{ top: '2in', header: '0.25in' }}
-    >
+    <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
@@ -128,10 +122,7 @@ export const mockDocument = (
       <LoremIpsum />
     </Stack>
 
-    <Stack
-      layouts={mockPageTypes('FIRST SECTION')}
-      margin={{ top: '2in', header: '0.25in' }}
-    >
+    <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />

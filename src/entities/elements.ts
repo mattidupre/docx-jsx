@@ -1,10 +1,4 @@
-import {
-  type Size,
-  type LayoutPartial,
-  type LayoutType,
-  type PageMargin,
-  type LayoutsPartial,
-} from './primitives';
+import { type Size, type PageMargin, type LayoutsPartial } from './primitives';
 
 export type DocumentOptions<TContent> = {
   size?: Size;
@@ -31,11 +25,11 @@ export type StackOptions<TContent> = {
 export const DEFAULT_STACK_OPTIONS = {
   layouts: {},
   margin: {
-    header: '0.5in',
-    top: '0.5in',
+    header: '0.25in',
+    top: '0.25in',
     right: '0.5in',
-    bottom: '0.5in',
-    footer: '0.5in',
+    bottom: '0.25in',
+    footer: '0.25in',
     left: '0.5in',
   },
 } as const satisfies StackOptions<unknown>;

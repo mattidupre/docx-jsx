@@ -1,9 +1,4 @@
-import {
-  ID_PREFIX,
-  type Size,
-  type PageMargin,
-  type LayoutType,
-} from 'src/entities/primitives';
+import { ID_PREFIX, type Size, type PageMargin } from 'src/entities/primitives';
 import { findElementsDom } from 'src/entities/tree';
 import { mathUnits } from 'src/utils';
 
@@ -15,6 +10,7 @@ export type PageTemplateOptions = {
   header?: InnerNode;
   content?: InnerNode;
   footer?: InnerNode;
+  className?: string;
   styleSheets?: Array<CSSStyleSheet>;
 };
 
@@ -61,7 +57,7 @@ export class PageTemplate {
   private readonly pageSize: Size;
 
   public readonly pageEl: Element;
-  public static readonly pageClassName = `${ID_PREFIX}-page`;
+  public static readonly pageClassName = 'page';
 
   public readonly headerEl: Element;
   public static readonly headerClassName = `${PageTemplate.pageClassName}__header`;
@@ -128,6 +124,8 @@ export class PageTemplate {
     this.element = PageTemplate.createRoot({
       innerEl: this.pageEl,
       styleSheets: this.styleSheets,
+      className: options.className,
+      size: options.size,
     });
   }
 
@@ -198,13 +196,22 @@ export class PageTemplate {
   private static createRoot({
     innerEl,
     styleSheets,
+    className,
+    size,
   }: {
     innerEl: Element;
     styleSheets: ReadonlyArray<CSSStyleSheet>;
+    className?: string;
+    size: Size;
   }) {
     const rootEl = document.createElement('div');
+    if (className) {
+      rootEl.classList.add(...className.split(/\s+/));
+    }
     rootEl.style.setProperty('break-inside', 'avoid');
     rootEl.style.setProperty('break-after', 'page');
+    rootEl.style.setProperty('width', size.width);
+    rootEl.style.setProperty('height', size.height);
 
     const shadowEl = rootEl.attachShadow({ mode: 'closed' });
     shadowEl.adoptedStyleSheets.push(...styleSheets);

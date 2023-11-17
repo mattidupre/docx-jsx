@@ -11,6 +11,7 @@ import { merge } from 'lodash';
 
 type DocumentRootToDomOptions = {
   styleSheets?: Array<CSSStyleSheet>;
+  pageClassName?: string;
 };
 
 const TEMPLATE_TYPES = [
@@ -41,7 +42,10 @@ const getTemplateType = ({
 
 export const documentRootToDom = async (
   { options: documentOptions, stacks: stacksOption }: DocumentRoot<TreeRoot>,
-  { styleSheets: styleSheetsOption = [] }: DocumentRootToDomOptions = {},
+  {
+    styleSheets: styleSheetsOption = [],
+    pageClassName,
+  }: DocumentRootToDomOptions = {},
 ): Promise<HTMLDivElement> => {
   // const perf = performance.now();
 
@@ -79,6 +83,7 @@ export const documentRootToDom = async (
           header: treeToFragment(layouts[layoutType]?.header),
           footer: treeToFragment(layouts[layoutType]?.footer),
           styleSheets: styleSheetsOption,
+          className: pageClassName,
         });
         renderEl.appendChild(defaultTemplate.element);
         // Undefined first layout defaults to left / right.
@@ -96,6 +101,7 @@ export const documentRootToDom = async (
                   layouts.first ? layouts.first.header : undefined,
                 ),
                 styleSheets: styleSheetsOption,
+                className: pageClassName,
               });
         renderEl.appendChild(firstTemplate.element);
         templates[`default-${layoutType}`] = defaultTemplate;
