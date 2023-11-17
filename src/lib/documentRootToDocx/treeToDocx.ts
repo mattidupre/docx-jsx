@@ -22,7 +22,7 @@ export const treeToDocx = (
     if (node.data.elementType === 'textrun') {
       return new TextRun({ children: mapChildren(node) });
     }
-    if (node.data.elementType === 'paragraph') {
+    if (node.data.elementType === 'paragraph' || node.tagName === 'p') {
       return new Paragraph({ children: mapChildren(node) });
     }
     if (node.data.elementType === 'counter') {
