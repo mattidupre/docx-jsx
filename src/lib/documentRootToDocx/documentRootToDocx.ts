@@ -5,28 +5,18 @@ import {
 import {
   checkLayouts,
   LAYOUT_TYPES,
-  LayoutsPartial,
   type LayoutType,
 } from 'src/entities/primitives';
-import { flatMapNodes, type TreeRoot } from 'src/entities/tree';
+import { type TreeRoot } from 'src/entities/tree';
 import {
   Document,
   Header,
   Footer,
-  TextRun,
-  Paragraph,
-  PageNumber,
   SectionType,
   type ISectionOptions,
 } from 'docx';
+import { treeToDocx } from './treeToDocx';
 import { merge } from 'lodash';
-
-// TODO: Create a function that checks Paragraph, TextRun, etc. order by tree appearance.
-// Put it in treeToDocumentRoot.
-
-type Content = Paragraph;
-
-type Element = Paragraph | TextRun;
 
 type PageType = (typeof PAGE_TYPE_BY_LAYOUT_TYPE)[LayoutType];
 
@@ -35,42 +25,6 @@ const PAGE_TYPE_BY_LAYOUT_TYPE = {
   left: 'default',
   right: 'even',
 } as const satisfies Record<LayoutType, 'first' | 'default' | 'even'>;
-
-const treeToDocx = (
-  treeRoot: TreeRoot,
-  { isContent }: { isContent: boolean },
-) => {
-  const result = flatMapNodes<Element>(treeRoot, (node, mapChildren) => {
-    if (node.type === 'root') {
-      return mapChildren(node);
-    }
-    if (node.type === 'text') {
-      return new TextRun({ text: node.value });
-    }
-    if (node.data.elementType === 'textrun') {
-      return new TextRun({ children: mapChildren(node) });
-    }
-    if (node.data.elementType === 'paragraph') {
-      return new Paragraph({ children: mapChildren(node) });
-    }
-    if (node.data.elementType === 'counter') {
-      if (isContent) {
-        throw new Error('Counters cannot appear in page content.');
-      }
-      const { counterType } = node.data.options;
-      if (counterType === 'page-number') {
-        return new TextRun({ children: [PageNumber.CURRENT] });
-      }
-      if (counterType === 'page-count') {
-        return new TextRun({ children: [PageNumber.TOTAL_PAGES] });
-      }
-      throw new TypeError('Invalid counterType.');
-    }
-    return mapChildren(node);
-  });
-
-  return result as ReadonlyArray<Content>;
-};
 
 export const documentRootToDocx = ({
   options: documentOptions,

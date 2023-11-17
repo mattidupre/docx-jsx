@@ -58,7 +58,7 @@ const mockPageTypes = (prefix: string) =>
     first: {
       header: (
         <Paragraph>
-          {prefix} FIRST HEADER TEXT&nbsp;
+          {prefix} FIRST <b>HEADER</b> <em>TEXT</em>&nbsp;
           <PageCounter />
         </Paragraph>
       ),
