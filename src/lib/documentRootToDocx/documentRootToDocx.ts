@@ -16,7 +16,7 @@ import {
   type ISectionOptions,
 } from 'docx';
 import { treeToDocx } from './treeToDocx.js';
-import { merge } from 'lodash';
+import { merge } from 'lodash-es';
 
 type PageType = (typeof PAGE_TYPE_BY_LAYOUT_TYPE)[LayoutType];
 

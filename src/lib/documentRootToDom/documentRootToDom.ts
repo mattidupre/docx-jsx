@@ -7,7 +7,7 @@ import { Pager } from '../../utils/pager.js';
 import { treeToFragment, type TreeRoot } from '../../entities/tree.js';
 import { checkLayouts } from '../../entities/primitives.js';
 import { PageTemplate } from './pageTemplate.js';
-import { merge } from 'lodash';
+import { merge } from 'lodash-es';
 
 export type DocumentRootToDomOptions = {
   styleSheets?: Array<CSSStyleSheet>;

@@ -14,7 +14,7 @@ import {
   getElementOptions,
   treeToRoot,
 } from '../../entities/tree.js';
-import { mapValues } from 'lodash';
+import { mapValues } from 'lodash-es';
 
 // TODO: Replace TreeElements with TreeRoots.
 

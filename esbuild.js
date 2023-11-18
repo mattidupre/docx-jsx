@@ -51,7 +51,10 @@ try {
   if (process.argv.includes('--watch')) {
     await Promise.all(
       SRC_OPTIONS.map(async (options) => {
-        const context = await esbuild.context({ ...BUILD_OPTIONS, ...options });
+        const context = await esbuild.context({
+          ...BUILD_OPTIONS,
+          ...options,
+        });
         context.watch();
       }),
     );
