@@ -1,1 +1,0 @@
-export { documentToDom } from './documentToDom';

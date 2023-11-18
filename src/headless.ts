@@ -1,11 +1,6 @@
-import { type DocumentOptions } from 'src/entities';
-import { htmlObjToHtml } from 'src/renderers/htmlObjToHtml';
+import { documentRootToDom } from 'src/lib/documentRootToDom';
 
-const rootEl = document.createElement('div');
-document.body.appendChild(rootEl);
-const globalObj = {
-  renderPages: (document: DocumentOptions) => htmlObjToHtml(rootEl, document),
-};
+const globalObj = { documentRootToDom };
 
 export type Headless = typeof globalObj;
 

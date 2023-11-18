@@ -1,1 +1,4 @@
-export { documentRootToDom } from './documentRootToDom';
+export {
+  type DocumentRootToDomOptions,
+  documentRootToDom,
+} from './documentRootToDom';

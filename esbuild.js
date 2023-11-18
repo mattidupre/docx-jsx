@@ -24,7 +24,7 @@ const SRC_OPTIONS = [
   },
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/components', './src/frontend'],
+    entryPoints: ['./src/components', './src/reactToDom'],
     bundle: true,
     treeShaking: true,
     platform: 'browser',
@@ -35,7 +35,7 @@ const SRC_OPTIONS = [
   },
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/server'],
+    entryPoints: ['./src/reactToDocx', './src/reacctToPdf'],
     bundle: true,
     packages: 'external',
     treeShaking: true,

@@ -9,7 +9,7 @@ import { checkLayouts } from 'src/entities/primitives';
 import { PageTemplate } from './pageTemplate';
 import { merge } from 'lodash';
 
-type DocumentRootToDomOptions = {
+export type DocumentRootToDomOptions = {
   styleSheets?: Array<CSSStyleSheet>;
   pageClassName?: string;
 };

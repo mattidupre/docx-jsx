@@ -4,11 +4,14 @@ import puppeteer, {
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
 import { type Headless } from 'src/headless';
-import { type DocumentOptions } from 'src/entities';
+import { type DocumentRoot } from 'src/entities/elements';
+import { type DocumentRootToDomOptions } from '../documentRootToDom';
+import { type TreeRoot } from 'src/entities/tree';
 import { createRequire } from 'node:module';
 
 let browserPromise: null | Promise<Browser>;
 
+// Close off Puppeteer to prevent lingering processes during dev.
 export const resetHtmlObjToPdf = async () => {
   if (browserPromise) {
     const browser = await browserPromise;
@@ -16,21 +19,27 @@ export const resetHtmlObjToPdf = async () => {
   }
 };
 
-export const htmlObjToPdf = async (
-  documentOptions: DocumentOptions,
-  puppeteerOptions: PuppeteerLaunchOptions,
+export type DocumentRootToPdfOptions = DocumentRootToDomOptions &
+  PuppeteerLaunchOptions;
+
+export const documentRootToPdf = async (
+  documentRoot: DocumentRoot<TreeRoot>,
+  options: DocumentRootToPdfOptions,
 ) => {
   let FRONTEND_PATH = '';
   if (import.meta.url === undefined) {
     // Netlify transpiles back to CJS.
     // https://github.com/netlify/cli/issues/4601
     // This file is explicitly included by netlify.toml.
+    // TODO: Add to options, combined with puppeteerOptions.
     FRONTEND_PATH = './.yalc/matti-docs/dist/headless.js';
   } else {
     FRONTEND_PATH = createRequire(import.meta.url).resolve(
       'matti-docs/headless',
     );
   }
+
+  const puppeteerOptions = { ...options };
 
   let page: undefined | Page = undefined;
   try {
@@ -43,17 +52,18 @@ export const htmlObjToPdf = async (
 
     const browser = await browserPromise;
     page = await browser.newPage();
-    page.on('console', (msg) => console[msg.type()]('Puppeteer:', msg.text()));
+    page.on('console', (msg) => console.log('Puppeteer:', msg.text()));
     await page.addScriptTag({ path: FRONTEND_PATH });
-    await page.evaluate(async (document) => {
+    await page.evaluate(async (documentRoot) => {
       const headless = (window as any).headless as Headless;
       if (!headless) {
         throw new Error('Headless script not injected into browser.');
       }
-      await headless.renderPages(document);
-    }, documentOptions);
+      document.body.appendChild(await headless.documentRootToDom(documentRoot));
+    }, documentRoot);
     return await page.pdf({
-      format: 'letter', // TODO: Get this from config.
+      // ...documentRoot.options.size,
+      format: 'letter', // TODO: use above
       printBackground: true,
       displayHeaderFooter: false,
     });
