@@ -15,7 +15,7 @@ const SHARED_OPTIONS = {
 const SRC_OPTIONS = [
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/headless'],
+    entryPoints: ['./src/headless.ts'],
     bundle: true,
     splitting: false,
     treeShaking: true,
@@ -24,7 +24,7 @@ const SRC_OPTIONS = [
   },
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/components', './src/reactToDom'],
+    entryPoints: ['./src/components.ts', './src/reactToDom.ts'],
     bundle: true,
     treeShaking: true,
     platform: 'browser',
@@ -35,7 +35,7 @@ const SRC_OPTIONS = [
   },
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/reactToDocx', './src/reacctToPdf'],
+    entryPoints: ['./src/reactToDocx.ts', './src/reactToPdf.ts'],
     bundle: true,
     packages: 'external',
     treeShaking: true,

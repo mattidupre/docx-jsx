@@ -1,4 +1,4 @@
 export {
   type DocumentRootToDomOptions,
   documentRootToDom,
-} from './documentRootToDom';
+} from './documentRootToDom.js';

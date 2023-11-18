@@ -1,8 +1,8 @@
-import { reactToDocumentRoot } from './lib/reactToDocumentRoot';
+import { reactToDocumentRoot } from './lib/reactToDocumentRoot/index.js';
 import {
   type DocumentRootToPdfOptions,
   documentRootToPdf,
-} from './lib/documentRootToPdf';
+} from './lib/documentRootToPdf/index.js';
 import { ReactElement } from 'react';
 
 export type ReactToPdfOptions = DocumentRootToPdfOptions;

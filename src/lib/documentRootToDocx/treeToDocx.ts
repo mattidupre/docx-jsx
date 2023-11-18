@@ -1,4 +1,4 @@
-import { flatMapNodes, type TreeRoot } from 'src/entities/tree';
+import { flatMapNodes, type TreeRoot } from '../../entities/tree.js';
 import { TextRun, Paragraph, PageNumber } from 'docx';
 
 type Content = Paragraph;

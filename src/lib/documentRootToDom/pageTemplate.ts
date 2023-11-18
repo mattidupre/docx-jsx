@@ -1,6 +1,6 @@
-import { ID_PREFIX, type Size, type PageMargin } from 'src/entities/primitives';
-import { findElementsDom } from 'src/entities/tree';
-import { mathUnits } from 'src/utils';
+import { type Size, type PageMargin } from '../../entities/primitives.js';
+import { findElementsDom } from '../../entities/tree.js';
+import { mathUnits } from '../../utils/units.js';
 
 type InnerNode = undefined | Node | NodeList;
 

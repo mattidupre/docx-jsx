@@ -3,8 +3,8 @@ import {
   type DocumentOptions,
   type DocumentRoot,
   type DocumentStack,
-} from 'src/entities/elements';
-import { type LayoutType } from 'src/entities/primitives';
+} from '../../entities/elements.js';
+import { type LayoutType } from '../../entities/primitives.js';
 import {
   type TreeRoot,
   type TreeElement,
@@ -13,7 +13,7 @@ import {
   extractElements,
   getElementOptions,
   treeToRoot,
-} from 'src/entities/tree';
+} from '../../entities/tree.js';
 import { mapValues } from 'lodash';
 
 // TODO: Replace TreeElements with TreeRoots.

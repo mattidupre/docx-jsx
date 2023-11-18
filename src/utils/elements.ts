@@ -1,4 +1,4 @@
-import { type UnitsNumber, parseUnits, toUnits } from './units';
+import { type UnitsNumber, parseUnits, toUnits } from './units.js';
 
 export const createEl = (
   innerHtml: false | string,

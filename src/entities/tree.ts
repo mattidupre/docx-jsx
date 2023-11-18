@@ -1,8 +1,8 @@
-import { ID_PREFIX } from './primitives';
 import type * as Hast from 'hast';
 import { type Simplify } from 'type-fest';
 import { type JsonObject } from 'type-fest';
 import { toDom } from 'hast-util-to-dom';
+import { ID_PREFIX } from './primitives.js';
 
 type Data = {
   elementType: string;

@@ -1,13 +1,13 @@
 import ReactReconciler from 'react-reconciler';
 import { type ReactElement } from 'react';
-import { APP_NAME } from 'src/entities/primitives';
+import { APP_NAME } from '../../entities/primitives.js';
 import {
   htmlAttributesToData,
   type TreeElement,
   type TreeText,
   type TreeChild,
   type TreeRoot,
-} from 'src/entities/tree';
+} from '../../entities/tree.js';
 
 const throwIfInvoked = () => {
   throw new Error(

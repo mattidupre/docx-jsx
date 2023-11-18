@@ -1,1 +1,1 @@
-export { documentRootToDocx } from './documentRootToDocx';
+export { documentRootToDocx } from './documentRootToDocx.js';

@@ -2,11 +2,11 @@ import {
   type DocumentRoot,
   DEFAULT_DOCUMENT_OPTIONS,
   DEFAULT_STACK_OPTIONS,
-} from 'src/entities/elements';
-import { Pager } from 'src/utils/pager';
-import { treeToFragment, type TreeRoot } from 'src/entities/tree';
-import { checkLayouts } from 'src/entities/primitives';
-import { PageTemplate } from './pageTemplate';
+} from '../../entities/elements.js';
+import { Pager } from '../../utils/pager.js';
+import { treeToFragment, type TreeRoot } from '../../entities/tree.js';
+import { checkLayouts } from '../../entities/primitives.js';
+import { PageTemplate } from './pageTemplate.js';
 import { merge } from 'lodash';
 
 export type DocumentRootToDomOptions = {

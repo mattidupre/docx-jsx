@@ -1,4 +1,8 @@
-import { type Size, type PageMargin, type LayoutsPartial } from './primitives';
+import {
+  type Size,
+  type PageMargin,
+  type LayoutsPartial,
+} from './primitives.js';
 
 export type DocumentOptions<TContent> = {
   size?: Size;

@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
-import { mockDocument } from './mockDocument';
-import { reactToDocumentRoot } from 'src/lib/reactToDocumentRoot';
-import { documentRootToDom } from 'src/lib/documentRootToDom';
+import { mockDocument } from './mockDocument.js';
+import { reactToDocumentRoot } from '../lib/reactToDocumentRoot/index.js';
+import { documentRootToDom } from '../lib/documentRootToDom/index.js';
 
 const rootEl = document.getElementById('root')!;
 

@@ -1,5 +1,4 @@
-import { type UnitsNumber } from 'src/utils/units';
-import { merge } from 'lodash';
+import { type UnitsNumber } from '../utils/units.js';
 
 export const ID_PREFIX: Lowercase<string> = 'matti-docs';
 

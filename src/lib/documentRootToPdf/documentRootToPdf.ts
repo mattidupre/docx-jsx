@@ -3,10 +3,10 @@ import puppeteer, {
   type Page,
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
-import { type Headless } from 'src/headless';
-import { type DocumentRoot } from 'src/entities/elements';
-import { type DocumentRootToDomOptions } from '../documentRootToDom';
-import { type TreeRoot } from 'src/entities/tree';
+import { type Headless } from '../../headless.js';
+import { type DocumentRoot } from '../../entities/elements.js';
+import { type DocumentRootToDomOptions } from '../documentRootToDom/index.js';
+import { type TreeRoot } from '../../entities/tree.js';
 import { createRequire } from 'node:module';
 
 let browserPromise: null | Promise<Browser>;

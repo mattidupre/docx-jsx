@@ -1,6 +1,6 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 
-import { Document, Stack, TextRun, Paragraph, Counter } from 'src/components';
+import { Document, Stack, TextRun, Paragraph, Counter } from '../components.js';
 import { type FunctionComponent } from 'react';
 
 const createMockComponent = <TComponent extends FunctionComponent>(

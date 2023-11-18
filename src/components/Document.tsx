@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
-import { dataToHtmlAttributes } from 'src/entities/tree';
-import { DocumentOptions } from 'src/entities/elements';
+import { dataToHtmlAttributes } from '../entities/tree.js';
+import { DocumentOptions } from '../entities/elements.js';
 
 export type DocumentProps = DocumentOptions<false> & { children: ReactNode };
 

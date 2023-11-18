@@ -1,1 +1,1 @@
-export { reactToDocumentRoot } from './reactToDocumentRoot';
+export { reactToDocumentRoot } from './reactToDocumentRoot.js';

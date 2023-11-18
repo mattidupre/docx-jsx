@@ -1,4 +1,4 @@
 export {
   type DocumentRootToPdfOptions,
   documentRootToPdf,
-} from './documentRootToPdf';
+} from './documentRootToPdf.js';

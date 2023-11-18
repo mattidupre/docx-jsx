@@ -1,7 +1,7 @@
 import { type ReactNode, type ReactElement, Fragment } from 'react';
-import { dataToHtmlAttributes } from 'src/entities/tree';
-import { type StackOptions } from 'src/entities/elements';
-import { LAYOUT_TYPES, type LayoutPartial } from 'src/entities/primitives';
+import { dataToHtmlAttributes } from '../entities/tree.js';
+import { type StackOptions } from '../entities/elements.js';
+import { LAYOUT_TYPES, type LayoutPartial } from '../entities/primitives.js';
 
 export type StackProps = StackOptions<false | ReactElement> & {
   children: ReactNode;

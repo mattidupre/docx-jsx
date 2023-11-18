@@ -1,4 +1,4 @@
-import { documentRootToDom } from 'src/lib/documentRootToDom';
+import { documentRootToDom } from 'src/lib/documentRootToDom/index.js';
 
 const globalObj = { documentRootToDom };
 

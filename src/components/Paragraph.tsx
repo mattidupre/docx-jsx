@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { dataToHtmlAttributes } from 'src/entities/tree';
+import { dataToHtmlAttributes } from '../entities/tree.js';
 
 export type ParagraphProps = {
   children: ReactNode;

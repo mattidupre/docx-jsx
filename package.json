@@ -5,21 +5,34 @@
   "license": "UNLICENSED",
   "files": [
     "dist/",
-    "src/"
+    "src/",
+    "tsconfig.json"
   ],
   "main": "./dist/components.mjs",
   "exports": {
     ".": {
-      "default": "./dist/components.mjs"
+      "default": "./dist/components.mjs",
+      "types": "./dist/components.d.ts"
     },
     "./components": {
-      "default": "./dist/components.mjs"
-    },
-    "./server": {
-      "default": "./dist/server.mjs"
+      "default": "./dist/components.mjs",
+      "types": "./dist/components.d.ts"
     },
     "./headless": {
-      "require": "./dist/headless.js"
+      "require": "./dist/headless.js",
+      "types": "./dist/headless.d.ts"
+    },
+    "./reactToDocx": {
+      "require": "./dist/reactToDocx.mjs",
+      "types": "./dist/reactToDocx.d.ts"
+    },
+    "./reactToDom": {
+      "require": "./dist/reactToDom.mjs",
+      "types": "./dist/reactToDom.d.ts"
+    },
+    "./reactToPdf": {
+      "require": "./dist/reactToPdf.mjs",
+      "types": "./dist/reactToPdf.d.ts"
     },
     "./package.json": {
       "default": "./package.json"
@@ -36,6 +49,7 @@
     "@vitejs/plugin-react": "^4.1.1",
     "concurrently": "^8.2.2",
     "esbuild": "^0.19.5",
+    "eslint": "^8.54.0",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-airbnb-typescript": "^17.1.0",
     "eslint-config-prettier": "^8.10.0",

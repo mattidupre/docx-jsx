@@ -1,13 +1,13 @@
 import {
   type DocumentRoot,
   DEFAULT_DOCUMENT_OPTIONS,
-} from 'src/entities/elements';
+} from '../../entities/elements.js';
 import {
   checkLayouts,
   LAYOUT_TYPES,
   type LayoutType,
-} from 'src/entities/primitives';
-import { type TreeRoot } from 'src/entities/tree';
+} from '../../entities/primitives.js';
+import { type TreeRoot } from '../../entities/tree.js';
 import {
   Document,
   Header,
@@ -15,7 +15,7 @@ import {
   SectionType,
   type ISectionOptions,
 } from 'docx';
-import { treeToDocx } from './treeToDocx';
+import { treeToDocx } from './treeToDocx.js';
 import { merge } from 'lodash';
 
 type PageType = (typeof PAGE_TYPE_BY_LAYOUT_TYPE)[LayoutType];

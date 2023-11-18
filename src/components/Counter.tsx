@@ -1,5 +1,5 @@
-import { type CounterType } from 'src/entities/primitives';
-import { dataToHtmlAttributes } from 'src/entities/tree';
+import { type CounterType } from '../entities/primitives.js';
+import { dataToHtmlAttributes } from '../entities/tree.js';
 
 export type CounterProps = {
   type: CounterType;

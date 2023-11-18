@@ -1,5 +1,5 @@
-export { Counter } from './components/Counter';
-export { Document } from './components/Document';
-export { Paragraph } from './components/Paragraph';
-export { Stack } from './components/Stack';
-export { TextRun } from './components/TextRun';
+export { Counter } from './components/Counter.js';
+export { Document } from './components/Document.js';
+export { Paragraph } from './components/Paragraph.js';
+export { Stack } from './components/Stack.js';
+export { TextRun } from './components/TextRun.js';
