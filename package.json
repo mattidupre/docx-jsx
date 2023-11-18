@@ -63,10 +63,10 @@
     "typescript": "^5.2.2"
   },
   "peerDependencies": {
-    "@types/react": "^17.0.0 || ^18.0.0",
-    "@types/react-dom": "^17.0.0 || ^18.0.0",
-    "react": "^17.0.0 || ^18.0.0",
-    "react-dom": "^17.0.0 || ^18.0.0",
+    "@types/react": "18.x",
+    "@types/react-dom": "18.x",
+    "react": "18.x",
+    "react-dom": "18.x",
     "react-reconciler": "^0.29.0"
   },
   "peerDependenciesMeta": {
@@ -104,10 +104,11 @@
     "build": "concurrently \"pnpm:build:src\" \"pnpm:build:types\"",
     "build:src": "node esbuild",
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
-    "dev": "concurrently \"pnpm:dev:src\" \"pnpm:dev:types\" \"pnpm:dev:link\"",
+    "dev": "concurrently \"pnpm:dev:src\" \"pnpm:dev:types\" \"pnpm:dev:link\"  \"pnpm:dev:demo\"",
     "dev:src": "pnpm run build:src --watch",
     "dev:types": "pnpm run build:types --watch",
     "dev:link": "pnpm exec nodemon --delay 3s --watch dist/ --watch package.json --exec 'sleep 5 && pnpm push-link'",
+    "dev:demo": "vite",
     "test": "vitest",
     "push-link": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push --changed publish && rm -rf ./publish"
   }
