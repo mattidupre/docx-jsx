@@ -35,6 +35,7 @@
       "types": "./dist/reactToPdf.d.ts"
     },
     "./package.json": {
+      "require": "./package.json",
       "module": "./package.json"
     }
   },
