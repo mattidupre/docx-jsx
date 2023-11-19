@@ -11,11 +11,11 @@
   "main": "./dist/components.mjs",
   "exports": {
     ".": {
-      "default": "./dist/components.mjs",
+      "module": "./dist/components.mjs",
       "types": "./dist/components.d.ts"
     },
     "./components": {
-      "default": "./dist/components.mjs",
+      "module": "./dist/components.mjs",
       "types": "./dist/components.d.ts"
     },
     "./headless": {
@@ -23,19 +23,19 @@
       "types": "./dist/headless.d.ts"
     },
     "./reactToDocx": {
-      "default": "./dist/reactToDocx.mjs",
+      "module": "./dist/reactToDocx.mjs",
       "types": "./dist/reactToDocx.d.ts"
     },
     "./reactToDom": {
-      "default": "./dist/reactToDom.mjs",
+      "module": "./dist/reactToDom.mjs",
       "types": "./dist/reactToDom.d.ts"
     },
     "./reactToPdf": {
-      "default": "./dist/reactToPdf.mjs",
+      "module": "./dist/reactToPdf.mjs",
       "types": "./dist/reactToPdf.d.ts"
     },
     "./package.json": {
-      "default": "./package.json"
+      "module": "./package.json"
     }
   },
   "devDependencies": {
