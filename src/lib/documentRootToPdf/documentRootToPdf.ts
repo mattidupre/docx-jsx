@@ -4,10 +4,14 @@ import puppeteer, {
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
 import { type Headless } from '../../headless.js';
-import { type DocumentRoot } from '../../entities/elements.js';
+import {
+  type DocumentRoot,
+  DEFAULT_PAGE_SIZE,
+} from '../../entities/elements.js';
 import { type DocumentRootToDomOptions } from '../documentRootToDom/index.js';
 import { type TreeRoot } from '../../entities/tree.js';
 import { createRequire } from 'node:module';
+import { merge } from 'lodash-es';
 
 let browserPromise: null | Promise<Browser>;
 
@@ -26,12 +30,15 @@ export const documentRootToPdf = async (
   documentRoot: DocumentRoot<TreeRoot>,
   options: DocumentRootToPdfOptions,
 ) => {
+  const size = merge(DEFAULT_PAGE_SIZE, documentRoot.options.size);
+
   let FRONTEND_PATH = '';
   if (import.meta.url === undefined) {
     // Netlify transpiles back to CJS.
     // https://github.com/netlify/cli/issues/4601
     // This file is explicitly included by netlify.toml.
     // TODO: Add to options, combined with puppeteerOptions.
+    // TODO: Infer from __dirname
     FRONTEND_PATH = './.yalc/matti-docs/dist/headless.js';
   } else {
     FRONTEND_PATH = createRequire(import.meta.url).resolve(
@@ -61,9 +68,10 @@ export const documentRootToPdf = async (
       }
       document.body.appendChild(await headless.documentRootToDom(documentRoot));
     }, documentRoot);
+
     return await page.pdf({
-      // ...documentRoot.options.size,
-      format: 'letter', // TODO: use above
+      ...size,
+      // format: 'letter', // TODO: use above
       printBackground: true,
       displayHeaderFooter: false,
     });

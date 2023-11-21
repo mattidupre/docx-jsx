@@ -4,6 +4,11 @@ import {
   type LayoutsPartial,
 } from './primitives.js';
 
+export const DEFAULT_PAGE_SIZE = {
+  width: '8.5in',
+  height: '11in',
+} as const satisfies Size;
+
 export type DocumentOptions<TContent> = {
   size?: Size;
   pages?: {
@@ -12,10 +17,7 @@ export type DocumentOptions<TContent> = {
 };
 
 export const DEFAULT_DOCUMENT_OPTIONS = {
-  size: {
-    width: '8.5in',
-    height: '11in',
-  },
+  size: DEFAULT_PAGE_SIZE,
   pages: {
     enableCoverPage: false,
   },
