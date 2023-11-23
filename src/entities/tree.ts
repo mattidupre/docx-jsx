@@ -14,14 +14,12 @@ type ExtendNode<TNode> = TNode extends unknown
       Omit<TNode, 'data' | 'children'> &
         ('data' extends keyof TNode ? { data: Data } : unknown) &
         ('children' extends keyof TNode
-          ? { children: Array<ExtendNode<Hast.Element | Hast.Text>> }
+          ? { children: Array<TreeChild> }
           : unknown)
     >
   : never;
 
-export type TreeRoot = Omit<Hast.Root, 'children'> & {
-  children: Array<TreeChild>;
-};
+export type TreeRoot = ExtendNode<Hast.Root>;
 
 export type TreeElement = ExtendNode<Hast.Element>;
 
@@ -30,6 +28,8 @@ export type TreeText = ExtendNode<Hast.Text>;
 export type TreeChild = TreeElement | TreeText;
 
 export type TreeNode = TreeRoot | TreeElement | TreeText;
+
+export type TreeParent = TreeElement & { children: Array<TreeChild> };
 
 const HTML_TREE_OPTIONS_ATTRIBUTE = `data-${ID_PREFIX}-data`;
 
@@ -86,8 +86,7 @@ export const findElementsDom = (
 const isElement = (value: any): value is TreeElement =>
   value.type === 'element';
 
-const isParent = (value: any): value is { children: Array<TreeChild> } =>
-  'children' in value;
+const isParent = (value: any): value is TreeParent => 'children' in value;
 
 export const findElement = (
   node: TreeNode,
@@ -165,7 +164,7 @@ export const treeToRoot = (node: TreeNode | Array<TreeChild>): TreeRoot => {
   if (Array.isArray(node)) {
     return {
       type: 'root',
-      data: {},
+      data: { elementType: 'root', options: {} },
       children: node,
     };
   }
@@ -174,7 +173,7 @@ export const treeToRoot = (node: TreeNode | Array<TreeChild>): TreeRoot => {
   }
   return {
     type: 'root',
-    data: {},
+    data: { elementType: 'root', options: {} },
     children: [node],
   };
 };
@@ -183,5 +182,7 @@ export const treeToFragment = (
   tree: null | undefined | false | TreeNode,
 ): DocumentFragment =>
   tree
-    ? (toDom(treeToRoot(tree), { fragment: true }) as DocumentFragment)
+    ? (toDom(treeToRoot(tree) as Hast.Nodes, {
+        fragment: true,
+      }) as DocumentFragment)
     : document.createDocumentFragment();

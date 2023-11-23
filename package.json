@@ -90,6 +90,7 @@
   "dependencies": {
     "docx": "^8.2.3",
     "es-dirname": "^0.1.0",
+    "hast-util-from-html": "^2.0.1",
     "hast-util-to-dom": "^4.0.0",
     "hast-util-to-html": "^9.0.0",
     "lodash-es": "^4.17.21",
@@ -105,7 +106,7 @@
     "build": "concurrently \"pnpm:build:src\" \"pnpm:build:types\"",
     "build:src": "node esbuild",
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
-    "dev": "concurrently \"pnpm:dev:src\" \"pnpm:dev:types\" \"pnpm:dev:link\"  \"pnpm:dev:demo\"",
+    "dev": "concurrently \"pnpm:dev:src\" \"pnpm:dev:types\" \"pnpm:dev:demo\"",
     "dev:src": "pnpm run build:src --watch",
     "dev:types": "pnpm run build:types --watch",
     "dev:link": "pnpm exec nodemon --delay 3s --watch dist/ --watch package.json --exec 'sleep 5 && pnpm push-link'",

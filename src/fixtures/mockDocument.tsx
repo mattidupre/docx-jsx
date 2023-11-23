@@ -106,7 +106,16 @@ export const mockDocument = (
   >
     <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
-      <ComponentA />
+      <div dangerouslySetInnerHTML={{ __html: '<p>DANGEROUS HTML</p>' }} />
+      {/* <ComponentA />
+      <LoremIpsum />
+      <LoremIpsum />
+      <LoremIpsum />
+      <LoremIpsum />
+      <LoremIpsum /> */}
+    </Stack>
+
+    {/* <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
@@ -120,15 +129,7 @@ export const mockDocument = (
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
-    </Stack>
-
-    <Stack layouts={mockPageTypes('FIRST SECTION')}>
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-    </Stack>
+    </Stack> */}
   </Document>
 );
 

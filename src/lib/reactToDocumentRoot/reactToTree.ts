@@ -8,6 +8,7 @@ import {
   type TreeChild,
   type TreeRoot,
 } from '../../entities/tree.js';
+import { htmlToTree } from './htmlToTree.js';
 
 const throwIfInvoked = () => {
   throw new Error(
@@ -49,7 +50,21 @@ const hostConfig = {
   commitTextUpdate: throwIfInvoked,
   removeChild: throwIfInvoked,
   clearContainer: () => {},
-  finalizeInitialChildren: () => false,
+  finalizeInitialChildren: (instance, type, props) => {
+    if (props.dangerouslySetInnerHTML?.__html) {
+      if (props.children?.length) {
+        throw new Error(
+          'Do not combine dangerouslySetInnerHTML with children.',
+        );
+      }
+      const children = htmlToTree(
+        props.dangerouslySetInnerHTML.__html,
+      ).children;
+      instance.children = children;
+      delete instance.properties.dangerouslySetInnerHTML;
+    }
+    return false;
+  },
   prepareForCommit: () => null,
   getRootHostContext: () => null,
   getChildHostContext: () => null,
