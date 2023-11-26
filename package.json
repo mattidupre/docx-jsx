@@ -8,35 +8,18 @@
     "src/",
     "tsconfig.json"
   ],
-  "main": "./dist/components.mjs",
   "exports": {
     ".": {
       "module": "./dist/components.mjs",
       "types": "./dist/components.d.ts"
     },
-    "./components": {
-      "module": "./dist/components.mjs",
-      "types": "./dist/components.d.ts"
-    },
-    "./headless": {
-      "require": "./dist/headless.js",
-      "types": "./dist/headless.d.ts"
-    },
-    "./reactToDocx": {
-      "module": "./dist/reactToDocx.mjs",
-      "types": "./dist/reactToDocx.d.ts"
-    },
-    "./reactToDom": {
-      "module": "./dist/reactToDom.mjs",
-      "types": "./dist/reactToDom.d.ts"
-    },
-    "./reactToPdf": {
-      "module": "./dist/reactToPdf.mjs",
-      "types": "./dist/reactToPdf.d.ts"
-    },
     "./package.json": {
       "require": "./package.json",
       "module": "./package.json"
+    },
+    "./*": {
+      "module": "./dist/*.mjs",
+      "types": "./dist/*.d.ts"
     }
   },
   "devDependencies": {
@@ -88,6 +71,8 @@
     }
   },
   "dependencies": {
+    "@storybook/react": "^7.5.3",
+    "@storybook/react-vite": "^7.5.3",
     "docx": "^8.2.3",
     "es-dirname": "^0.1.0",
     "hast-util-from-html": "^2.0.1",
@@ -98,20 +83,33 @@
     "pagedjs": "^0.4.3",
     "prop-types": "^15.8.1",
     "puppeteer-core": "21.4.1",
+    "storybook": "^7.5.3",
     "uuid": "^9.0.1",
     "vitest": "^0.34.6",
     "yalc": "^1.0.0-pre.53"
   },
   "scripts": {
-    "build": "concurrently \"pnpm:build:src\" \"pnpm:build:types\"",
+    "clean": "rm -rf dist/*",
+    "build": "pnpm clean && pnpm build:all",
+    "dev": "pnpm clean && nodemon --exec pnpm run build:all",
+    "build:all": "pnpm run \"/^build:(src|types)$/\" && pnpm link:push",
     "build:src": "node esbuild",
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
-    "dev": "concurrently \"pnpm:dev:src\" \"pnpm:dev:types\" \"pnpm:dev:demo\"",
-    "dev:src": "pnpm run build:src --watch",
-    "dev:types": "pnpm run build:types --watch",
-    "dev:link": "pnpm exec nodemon --delay 3s --watch dist/ --watch package.json --exec 'sleep 5 && pnpm push-link'",
-    "dev:demo": "vite",
     "test": "vitest",
-    "push-link": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push --changed publish && rm -rf ./publish"
+    "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push --changed publish && rm -rf ./publish",
+    "storybook": "storybook dev"
+  },
+  "nodemonConfig": {
+    "ext": "ts,js,json",
+    "watch": [
+      "src/",
+      "package.json",
+      "esbuild.js"
+    ],
+    "ignore": [
+      "**/test/**",
+      "**/docs/**"
+    ],
+    "delay": 1000
   }
 }

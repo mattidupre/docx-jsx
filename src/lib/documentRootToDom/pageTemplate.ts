@@ -30,6 +30,24 @@ const appendNodes = (parentEl: Element, el: undefined | InnerNode) => {
   return parentEl.append(...('length' in el ? [...el] : [el]));
 };
 
+const mapNodes = (
+  el: undefined | InnerNode,
+  callback: (node: Node) => void,
+) => {
+  if (el === undefined) {
+    return undefined;
+  }
+  if (el instanceof Node) {
+    return callback(el);
+  }
+  if (typeof el[Symbol.iterator] === 'function') {
+    return Array.prototype.map.call(el, (thisEl) =>
+      callback(thisEl),
+    ) as unknown as NodeList;
+  }
+  throw new TypeError('Invalid element.');
+};
+
 const cloneNodes = (el: undefined | InnerNode, deep?: boolean): typeof el => {
   if (el === undefined) {
     return undefined;
@@ -43,6 +61,27 @@ const cloneNodes = (el: undefined | InnerNode, deep?: boolean): typeof el => {
     ) as unknown as NodeList;
   }
   throw new TypeError('Invalid element.');
+};
+
+const setClassName = (
+  innerNode: undefined | InnerNode,
+  className?: string | Array<string>,
+) => {
+  if (!className) {
+    return;
+  }
+
+  const classNames = (
+    Array.isArray(className) ? className : [className]
+  ).flatMap((cn) => cn.split(/\s+/));
+
+  return mapNodes(innerNode, (node) => {
+    for (const className of classNames) {
+      if ('classList' in node && className) {
+        (node as Element).classList.add(className);
+      }
+    }
+  });
 };
 
 export class PageTemplate {
@@ -103,21 +142,21 @@ export class PageTemplate {
     this.pageSize = { ...options.size };
 
     this.pageEl = document.createElement('div');
-    this.pageEl.classList.add(PageTemplate.pageClassName);
+    setClassName(this.pageEl, PageTemplate.pageClassName);
     this.pageEl.setAttribute('style', PageTemplate.createCssVars(options));
 
     this.headerEl = document.createElement('div');
-    this.headerEl.classList.add(PageTemplate.headerClassName);
+    setClassName(this.headerEl, PageTemplate.headerClassName);
     appendNodes(this.headerEl, options.header);
     this.pageEl.appendChild(this.headerEl);
 
     this.contentEl = document.createElement('div');
-    this.contentEl.classList.add(PageTemplate.contentClassName);
+    setClassName(this.contentEl, PageTemplate.contentClassName);
     appendNodes(this.contentEl, content);
     this.pageEl.appendChild(this.contentEl);
 
     this.footerEl = document.createElement('div');
-    this.footerEl.classList.add(PageTemplate.footerClassName);
+    setClassName(this.footerEl, PageTemplate.footerClassName);
     appendNodes(this.footerEl, options.footer);
     this.pageEl.appendChild(this.footerEl);
 
@@ -205,9 +244,7 @@ export class PageTemplate {
     size: Size;
   }) {
     const rootEl = document.createElement('div');
-    if (className) {
-      rootEl.classList.add(...className.split(/\s+/));
-    }
+    setClassName(rootEl, className);
     rootEl.style.setProperty('break-inside', 'avoid');
     rootEl.style.setProperty('break-after', 'page');
     rootEl.style.setProperty('width', size.width);

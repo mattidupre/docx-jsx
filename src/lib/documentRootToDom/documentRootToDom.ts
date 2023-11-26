@@ -162,7 +162,5 @@ export const documentRootToDom = async (
 
   renderEl.remove();
 
-  // console.log(Math.round(performance.now() - perf));
-
   return pagesEl;
 };

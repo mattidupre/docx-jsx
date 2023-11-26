@@ -10,4 +10,6 @@ export type ReactToDomOptions = DocumentRootToDomOptions;
 export const reactToDom = async (
   rootElement: ReactElement,
   options: ReactToDomOptions,
-) => documentRootToDom(await reactToDocumentRoot(rootElement), options);
+) => {
+  return documentRootToDom(await reactToDocumentRoot(rootElement), options);
+};

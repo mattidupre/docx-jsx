@@ -46,8 +46,6 @@ const SRC_OPTIONS = [
 ];
 
 try {
-  await fs.rm(SHARED_OPTIONS.outdir, { recursive: true, force: true });
-
   if (process.argv.includes('--watch')) {
     await Promise.all(
       SRC_OPTIONS.map(async (options) => {
