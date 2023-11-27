@@ -1,8 +1,9 @@
 import type * as Hast from 'hast';
 import { type Simplify } from 'type-fest';
 import { type JsonObject } from 'type-fest';
-import { toDom } from 'hast-util-to-dom';
 import { ID_PREFIX } from './primitives.js';
+import { fromHtml } from 'hast-util-from-html';
+import { cloneDeep, omit } from 'lodash-es';
 
 type Data = {
   elementType: string;
@@ -21,15 +22,30 @@ type ExtendNode<TNode> = TNode extends unknown
 
 export type TreeRoot = ExtendNode<Hast.Root>;
 
+export const isTreeRoot = (value: any): value is TreeRoot =>
+  value?.type === 'root';
+
 export type TreeElement = ExtendNode<Hast.Element>;
+
+export const isTreeElement = (value: any): value is TreeElement =>
+  value?.type === 'element';
 
 export type TreeText = ExtendNode<Hast.Text>;
 
+export const isTreeText = (value: any): value is TreeText =>
+  value?.type === 'text';
+
 export type TreeChild = TreeElement | TreeText;
+
+export const isTreeChild = (value: any): value is TreeChild =>
+  isTreeElement(value) || isTreeText(value);
 
 export type TreeNode = TreeRoot | TreeElement | TreeText;
 
 export type TreeParent = TreeElement & { children: Array<TreeChild> };
+
+export const isTreeParent = (value: any): value is TreeParent =>
+  (isTreeRoot(value) || isElement(value)) && 'children' in value;
 
 const HTML_TREE_OPTIONS_ATTRIBUTE = `data-${ID_PREFIX}-data`;
 
@@ -86,8 +102,6 @@ export const findElementsDom = (
 const isElement = (value: any): value is TreeElement =>
   value.type === 'element';
 
-const isParent = (value: any): value is TreeParent => 'children' in value;
-
 export const findElement = (
   node: TreeNode,
   callback: (node: TreeElement, parentNode?: TreeNode) => boolean,
@@ -96,7 +110,7 @@ export const findElement = (
   if (isElement(node) && callback(node, parentNode)) {
     return node;
   }
-  if (isParent(node)) {
+  if (isTreeParent(node)) {
     return node.children.find((child) => findElement(child, callback, node)) as
       | undefined
       | TreeElement;
@@ -112,7 +126,7 @@ export const findElements = (
   if (isElement(node) && callback(node, parentNode)) {
     return [node];
   }
-  if (isParent(node)) {
+  if (isTreeParent(node)) {
     return node.children.flatMap((child) =>
       findElements(child, callback, node),
     );
@@ -131,7 +145,7 @@ export const extractElements = (
     }
     return [node];
   }
-  if (isParent(node)) {
+  if (isTreeParent(node)) {
     return [...node.children].flatMap((child) => {
       return extractElements(child, callback, node);
     });
@@ -139,50 +153,61 @@ export const extractElements = (
   return [];
 };
 
-export const flatMapNodes = <T>(
+export const flatMapNodes = <TMappedNode, TContext>(
   node: TreeNode,
-  callback: (
-    node: TreeNode,
-    mapChildren: (node: TreeNode) => Array<T>,
-    parentNode?: TreeNode,
-  ) => T | Array<T>,
-  parentNode?: TreeNode,
-): Array<T> => {
-  const mapChildren = (node: TreeNode) => {
-    if (isParent(node)) {
-      return node.children.flatMap((child) =>
-        flatMapNodes(child, callback, node),
-      );
-    }
-    return [];
-  };
-  const result = callback(node, mapChildren, parentNode);
+  context: TContext,
+  callback: (arg: {
+    node: TreeNode;
+    context: TContext;
+    mapChildren: (context: TContext) => Array<TMappedNode>;
+  }) => TMappedNode | Array<TMappedNode>,
+): Array<TMappedNode> => {
+  const result = callback({
+    node,
+    context,
+    mapChildren: (childContext) => {
+      if (isTreeParent(node)) {
+        return node.children.flatMap((child) =>
+          flatMapNodes(child, childContext, callback),
+        );
+      }
+      return [];
+    },
+  });
   return Array.isArray(result) ? result : [result];
 };
 
-export const treeToRoot = (node: TreeNode | Array<TreeChild>): TreeRoot => {
-  if (Array.isArray(node)) {
+export const treeToRoot = (
+  rootElementType: string,
+  node: TreeNode | Array<TreeChild>,
+): TreeRoot => {
+  if (isTreeRoot(node)) {
     return {
       type: 'root',
-      data: { elementType: 'root', options: {} },
-      children: node,
+      data: {
+        elementType: rootElementType,
+        options: node?.data?.options ?? {},
+      },
+      children: node.children ?? [],
     };
-  }
-  if (node.type === 'root') {
-    return node;
   }
   return {
     type: 'root',
-    data: { elementType: 'root', options: {} },
-    children: [node],
+    data: { elementType: rootElementType, options: {} },
+    children: Array.isArray(node) ? node : [node],
   };
 };
 
-export const treeToFragment = (
-  tree: null | undefined | false | TreeNode,
-): DocumentFragment =>
-  tree
-    ? (toDom(treeToRoot(tree) as Hast.Nodes, {
-        fragment: true,
-      }) as DocumentFragment)
-    : document.createDocumentFragment();
+export const htmlToTree = (html: string) => {
+  const hast = fromHtml(html, { fragment: true }) as TreeNode;
+  return flatMapNodes(hast, {}, ({ node, mapChildren }) => {
+    const newNode = cloneDeep(omit(node, 'children')) as TreeNode;
+    if (isTreeRoot(node) || isTreeElement(node)) {
+      newNode.data = htmlAttributesToData((node as any).properties ?? {});
+    }
+    if (isTreeParent(node)) {
+      (newNode as TreeParent).children = mapChildren(node) as Array<TreeChild>;
+    }
+    return newNode;
+  })[0] as TreeRoot;
+};

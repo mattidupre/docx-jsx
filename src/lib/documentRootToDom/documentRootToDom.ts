@@ -4,7 +4,8 @@ import {
   DEFAULT_STACK_OPTIONS,
 } from '../../entities/elements.js';
 import { Pager } from '../../utils/pager.js';
-import { treeToFragment, type TreeRoot } from '../../entities/tree.js';
+import { type TreeRoot } from '../../entities/tree.js';
+import { treeContentToDom } from './treeContentToDom.js';
 import { checkLayouts } from '../../entities/primitives.js';
 import { PageTemplate } from './pageTemplate.js';
 import { merge } from 'lodash-es';
@@ -80,8 +81,8 @@ export const documentRootToDom = async (
         const defaultTemplate = new PageTemplate({
           size,
           margin,
-          header: treeToFragment(layouts[layoutType]?.header),
-          footer: treeToFragment(layouts[layoutType]?.footer),
+          header: treeContentToDom(layouts[layoutType]?.header),
+          footer: treeContentToDom(layouts[layoutType]?.footer),
           styleSheets: styleSheetsOption,
           className: pageClassName,
         });
@@ -94,10 +95,10 @@ export const documentRootToDom = async (
             : new PageTemplate({
                 size,
                 margin,
-                header: treeToFragment(
+                header: treeContentToDom(
                   layouts.first ? layouts.first.header : undefined,
                 ),
-                footer: treeToFragment(
+                footer: treeContentToDom(
                   layouts.first ? layouts.first.header : undefined,
                 ),
                 styleSheets: styleSheetsOption,
@@ -110,7 +111,7 @@ export const documentRootToDom = async (
 
       const pager = new Pager({ styleSheets: styleSheetsOption });
       await pager.toPages({
-        content: treeToFragment(content),
+        content: treeContentToDom(content),
         onContentChunked: ({ index, setPageVars }) => {
           const layoutType = getTemplateType({
             pageNumberStack,

@@ -1,4 +1,4 @@
-import { type Size, type PageMargin } from '../../entities/primitives.js';
+import { type Size, type Margin } from '../../entities/primitives.js';
 import { findElementsDom } from '../../entities/tree.js';
 import { mathUnits } from '../../utils/units.js';
 
@@ -6,7 +6,7 @@ type InnerNode = undefined | Node | NodeList;
 
 export type PageTemplateOptions = {
   size: Size;
-  margin: PageMargin;
+  margin: Margin;
   header?: InnerNode;
   content?: InnerNode;
   footer?: InnerNode;

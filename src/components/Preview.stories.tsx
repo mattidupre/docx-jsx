@@ -9,7 +9,7 @@ const meta: Meta<typeof Preview> = {
 export default meta;
 type Story = StoryObj<typeof Preview>;
 
-export const Primary: Story = {
+export const Document: Story = {
   render: () => {
     return <Preview pageClassName="preview__page">{mockDocument}</Preview>;
   },

@@ -106,7 +106,11 @@ export const mockDocument = (
   >
     <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
-      <div dangerouslySetInnerHTML={{ __html: '<p>DANGEROUS HTML</p>' }} />
+      <div dangerouslySetInnerHTML={{ __html: '<p>HTML from string</p>' }} />
+      <Paragraph>
+        <TextRun fontWeight="bold">Bold TextRun</TextRun>
+      </Paragraph>
+      <Paragraph fontWeight="bold">Bold Paragraph</Paragraph>
       <ComponentA />
       <LoremIpsum />
       <LoremIpsum />

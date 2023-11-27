@@ -4,6 +4,7 @@ import puppeteer, {
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
 import { type Headless } from '../../headless.js';
+import path from 'node:path';
 import {
   type DocumentRoot,
   DEFAULT_PAGE_SIZE,
@@ -41,8 +42,11 @@ export const documentRootToPdf = async (
     // TODO: Infer from __dirname
     FRONTEND_PATH = './.yalc/matti-docs/dist/headless.js';
   } else {
-    FRONTEND_PATH = createRequire(import.meta.url).resolve(
-      'matti-docs/headless',
+    FRONTEND_PATH = path.resolve(
+      path.dirname(
+        createRequire(import.meta.url).resolve('matti-docs/package.json'),
+      ),
+      './dist/headless.js',
     );
   }
 

@@ -50,7 +50,7 @@ export const treeToDocumentRoot = (root: TreeRoot): DocumentRoot<TreeRoot> => {
                 );
               }
               Object.assign(obj, {
-                [elementData.layoutType]: treeToRoot(element),
+                [elementData.layoutType]: treeToRoot(elementType, element),
               });
               return obj;
             },
@@ -84,7 +84,7 @@ export const treeToDocumentRoot = (root: TreeRoot): DocumentRoot<TreeRoot> => {
 
       return {
         options,
-        content: treeToRoot(stackElement.children),
+        content: treeToRoot('content', stackElement.children),
       };
     },
   );

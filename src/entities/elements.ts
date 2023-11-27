@@ -1,8 +1,35 @@
 import {
   type Size,
-  type PageMargin,
+  type Margin,
   type LayoutsPartial,
+  TagName,
 } from './primitives.js';
+import { cloneDeep } from 'lodash-es';
+import { type ReadonlyDeep } from 'type-fest';
+
+// TODO: Rename to document.ts?
+
+type ElementTypeLayout = 'document' | 'stack';
+
+type ElementTypeRoot = 'header' | 'content' | 'footer';
+
+type ElementTypeContent = 'paragraph' | 'textrun';
+
+type ElementType = ElementTypeLayout | ElementTypeRoot | ElementTypeContent;
+
+// type ElementOptions<TContent> = {
+//   document: DocumentOptions<TContent>;
+//   stack: StackOptions<TContent>;
+//   paragraph: ParagraphOptions;
+//   textrun: TextOptions;
+// };
+
+// export type ElementData<TContent> = {
+//   [T in keyof ElementOptions<TContent>]: {
+//     elementType: T;
+//     options: ElementOptions<TContent>[T];
+//   };
+// };
 
 export const DEFAULT_PAGE_SIZE = {
   width: '8.5in',
@@ -25,7 +52,7 @@ export const DEFAULT_DOCUMENT_OPTIONS = {
 
 export type StackOptions<TContent> = {
   layouts?: LayoutsPartial<TContent>;
-  margin?: Partial<PageMargin>;
+  margin?: Partial<Margin>;
 };
 
 export const DEFAULT_STACK_OPTIONS = {
@@ -50,6 +77,72 @@ export type DocumentStack<TContent> = {
   content: TContent;
 };
 
-export type ParagraphOptions = Record<string, never>;
+export type TextOptions = {
+  fontWeight?: 'bold';
+  fontStyle?: 'italic'; // docx "italics"
+  // color?: string; // docx hex without preceding #
+  // fontSize?: `${number}rem`; // docx "size" in half-points
+  // letterSpacing?: `${number}em`; // docx "characterSpacing" in twips
+  // strikethrough?: boolean; // docx "strike"
+  // caps?: boolean; // docx "allCaps"
+};
 
-export type TextOptions = Record<string, never>;
+export type ParagraphOptions = TextOptions & {
+  // align?: 'left' | 'right' | 'justified';
+};
+
+export type ContentContext = {
+  parentTagNames: ReadonlyArray<string>;
+  parentElementTypes: ReadonlyArray<ElementType>;
+  page: ReadonlyDeep<{
+    size: Size;
+    margin: Margin;
+  }>;
+  text: TextOptions;
+  paragraph: ParagraphOptions;
+};
+
+export const createContentContext = (
+  elementTypeRoot: ElementTypeRoot,
+  { page }: Pick<ContentContext, 'page'>,
+): ContentContext => {
+  return {
+    parentElementTypes: ['document', 'stack', elementTypeRoot],
+    parentTagNames: ['div', 'div', 'div'],
+    page: cloneDeep(page),
+    text: {},
+    paragraph: {},
+  };
+};
+
+type ExtendContextOptions = {
+  elementType: ElementType;
+  tagName: TagName;
+  text?: TextOptions;
+  paragraph?: ParagraphOptions;
+};
+
+export const extendContentContext = (
+  prevContext: ContentContext,
+  { elementType, tagName, text, paragraph }: ExtendContextOptions,
+): ContentContext => {
+  // TODO: Make sure page counters only appear in headers / footers.
+
+  const textOptions: TextOptions = { ...prevContext.text, ...text };
+
+  if (tagName === 'b') {
+    textOptions.fontWeight = 'bold';
+  }
+
+  if (tagName === 'em') {
+    textOptions.fontStyle = 'italic';
+  }
+
+  return {
+    page: prevContext.page,
+    parentElementTypes: [...prevContext.parentElementTypes, elementType],
+    parentTagNames: [...prevContext.parentTagNames, tagName],
+    text: textOptions,
+    paragraph: { ...prevContext.text, ...paragraph },
+  };
+};

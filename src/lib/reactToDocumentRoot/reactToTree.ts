@@ -8,7 +8,7 @@ import {
   type TreeChild,
   type TreeRoot,
 } from '../../entities/tree.js';
-import { htmlToTree } from './htmlToTree.js';
+import { htmlToTree } from '../../entities/tree.js';
 
 const throwIfInvoked = () => {
   throw new Error(
@@ -22,7 +22,15 @@ const throwIfInvoked = () => {
 const hostConfig = {
   supportsMutation: true,
   supportsPersistence: false,
-  createInstance: (tagName, { children, ...properties }): TreeElement => {
+  createInstance: (
+    tagName,
+    { children, ...properties },
+    rootContainer,
+    prevContext,
+  ): TreeElement => {
+    console.log('createInstance', tagName);
+    prevContext.tagName = tagName;
+    // TODO: Move to entities/elements
     return {
       type: 'element',
       tagName,
@@ -32,6 +40,7 @@ const hostConfig = {
     };
   },
   createTextInstance: (text): TreeText => {
+    // TODO: Move to entities/elements
     return {
       type: 'text',
       value: text,
@@ -66,8 +75,19 @@ const hostConfig = {
     return false;
   },
   prepareForCommit: () => null,
-  getRootHostContext: () => null,
-  getChildHostContext: () => null,
+  getRootHostContext: () => {
+    return {
+      tagName: 'root',
+      counter: 1,
+    };
+  },
+  getChildHostContext: (prevContext) => {
+    console.log('getChildHostContext', prevContext.tagName);
+    return {
+      tagName: prevContext.tagName,
+      counter: prevContext.counter + 1,
+    };
+  },
   resetAfterCommit: () => {},
   resetTextContent: () => {},
   prepareUpdate: () => true,
@@ -92,37 +112,37 @@ const hostConfig = {
   >
 >;
 
-const Renderer = ReactReconciler(hostConfig as any);
+export const createRenderer = () => {
+  const Renderer = ReactReconciler(hostConfig as any);
 
-export const reactToTree = async (
-  reactElement: ReactElement,
-): Promise<TreeRoot> => {
-  const root: TreeRoot = {
-    type: 'root',
-    children: [],
-    data: { elementType: 'root', options: {} },
+  return async (reactElement: ReactElement): Promise<TreeRoot> => {
+    const root: TreeRoot = {
+      type: 'root',
+      children: [],
+      data: { elementType: 'root', options: {} },
+    };
+
+    const node = Renderer.createContainer(
+      root,
+      0,
+      null,
+      true,
+      null,
+      '',
+      (err) => {
+        throw err;
+      },
+      null,
+    );
+
+    return new Promise((resolve, reject) => {
+      try {
+        Renderer.updateContainer(reactElement, node, null, () => {
+          resolve(root);
+        });
+      } catch (err) {
+        reject(err);
+      }
+    });
   };
-
-  const node = Renderer.createContainer(
-    root,
-    0,
-    null,
-    true,
-    null,
-    '',
-    (err) => {
-      throw err;
-    },
-    null,
-  );
-
-  return new Promise((resolve, reject) => {
-    try {
-      Renderer.updateContainer(reactElement, node, null, () => {
-        resolve(root);
-      });
-    } catch (err) {
-      reject(err);
-    }
-  });
 };

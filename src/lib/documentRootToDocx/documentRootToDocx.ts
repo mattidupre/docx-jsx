@@ -15,7 +15,7 @@ import {
   SectionType,
   type ISectionOptions,
 } from 'docx';
-import { treeToDocx } from './treeToDocx.js';
+import { treeContentToDocx } from './treeContentToDocx.js';
 import { merge } from 'lodash-es';
 
 type PageType = (typeof PAGE_TYPE_BY_LAYOUT_TYPE)[LayoutType];
@@ -57,7 +57,7 @@ export const documentRootToDocx = ({
       const stackStartPageNumber =
         stackIndex === 0 ? documentStartPageNumber : undefined;
 
-      const children = treeToDocx(content, { isContent: true });
+      const children = treeContentToDocx(content, { isContent: true });
       if (!children) {
         return [];
       }
@@ -69,12 +69,12 @@ export const documentRootToDocx = ({
         const { header, footer } = layoutsOption?.[layoutType] || {};
         if (header) {
           headers[PAGE_TYPE_BY_LAYOUT_TYPE[layoutType]] = new Header({
-            children: treeToDocx(header, { isContent: false }),
+            children: treeContentToDocx(header, { isContent: false }),
           });
         }
         if (footer) {
           footers[PAGE_TYPE_BY_LAYOUT_TYPE[layoutType]] = new Footer({
-            children: treeToDocx(footer, { isContent: false }),
+            children: treeContentToDocx(footer, { isContent: false }),
           });
         }
       }

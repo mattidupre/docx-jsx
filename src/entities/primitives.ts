@@ -1,8 +1,12 @@
 import { type UnitsNumber } from '../utils/units.js';
 
+export const PACKAGE_NAME: Lowercase<string> = 'matti-docs';
+
 export const ID_PREFIX: Lowercase<string> = 'matti-docs';
 
 export const APP_NAME = 'Matti Docs';
+
+export type TagName = keyof JSX.IntrinsicElements;
 
 export type CounterType = (typeof COUNTER_TYPES)[number];
 
@@ -18,9 +22,6 @@ export type Margin = {
   right: UnitsNumber;
   bottom: UnitsNumber;
   left: UnitsNumber;
-};
-
-export type PageMargin = Margin & {
   header: UnitsNumber;
   footer: UnitsNumber;
 };
