@@ -1,18 +1,23 @@
-import { type ReactNode } from 'react';
-import { dataToHtmlAttributes } from '../entities/tree.js';
+import { type ReactNode, createElement } from 'react';
+import {
+  encodeElementData,
+  type ContentOptions,
+} from '../entities/elements.js';
 
 // Emulate https://chakra-ui.com/docs/components/text
 
-export type TypographyProps = {
+export type TypographyProps = ContentOptions & {
   children: ReactNode;
   as?: 'span' | 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-  bold?: boolean;
 };
 
 export function Typography({ as = 'span', children }: TypographyProps) {
-  return (
-    <span {...dataToHtmlAttributes({ elementType: 'textrun', options: {} })}>
-      {children}
-    </span>
+  return createElement(
+    as,
+    encodeElementData({
+      elementType: 'htmltag',
+      elementOptions: {},
+    }),
+    children,
   );
 }

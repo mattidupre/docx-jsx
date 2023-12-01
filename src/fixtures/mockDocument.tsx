@@ -2,6 +2,8 @@
 
 import { Document, Stack, TextRun, Paragraph, Counter } from '../components.js';
 import { type FunctionComponent } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { kebabCase } from 'lodash-es';
 
 const createMockComponent = <TComponent extends FunctionComponent>(
   component: TComponent,
@@ -49,12 +51,13 @@ const ComponentA = createMockComponent(() => {
 
 const PageCounter = () => (
   <span>
-    Page <Counter type="page-number" /> of <Counter type="page-count" />
+    Page <Counter counterType="page-number" /> of{' '}
+    <Counter counterType="page-count" />
   </span>
 );
 
-const mockPageTypes = (prefix: string) =>
-  ({
+const mockPageTypes = (prefix: string) => {
+  return {
     first: {
       header: (
         <Paragraph>
@@ -97,7 +100,8 @@ const mockPageTypes = (prefix: string) =>
         </Paragraph>
       ),
     },
-  }) as const;
+  } as const;
+};
 
 export const mockDocument = (
   <Document
@@ -107,35 +111,37 @@ export const mockDocument = (
     <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
       <div dangerouslySetInnerHTML={{ __html: '<p>HTML from string</p>' }} />
-      <Paragraph>
+      {/* <Paragraph>
         <TextRun fontWeight="bold">Bold TextRun</TextRun>
       </Paragraph>
       <Paragraph fontWeight="bold">Bold Paragraph</Paragraph>
-      <ComponentA />
+      <ComponentA /> */}
+      {/* <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-    </Stack>
-
-    {/* <Stack layouts={mockPageTypes('FIRST SECTION')}>
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
+      <LoremIpsum /> */}
     </Stack>
 
     <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <LoremIpsum />
+      {/* <LoremIpsum /> */}
+      {/* <LoremIpsum /> */}
+      {/* <LoremIpsum /> */}
+      {/* <LoremIpsum /> */}
+    </Stack>
+
+    <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-    </Stack> */}
+      {/* <LoremIpsum /> */}
+      {/* <LoremIpsum /> */}
+      {/* <LoremIpsum /> */}
+      {/* <LoremIpsum /> */}
+    </Stack>
   </Document>
 );
+
+export const mockDocumentHtml = renderToStaticMarkup(mockDocument);
 
 function LoremIpsum() {
   return (

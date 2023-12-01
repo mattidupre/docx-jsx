@@ -1,18 +1,18 @@
-import { type CounterType } from '../entities/primitives.js';
-import { dataToHtmlAttributes } from '../entities/tree.js';
+import {
+  encodeElementData,
+  type CounterOptions,
+} from '../entities/elements.js';
 
-export type CounterProps = {
-  type: CounterType;
-};
+export type CounterProps = CounterOptions;
 
 // TODO: Throw if not in headers and footers.
 
-export function Counter({ type: counterType }: CounterProps) {
+export function Counter(props: CounterProps) {
   return (
-    <div
-      {...dataToHtmlAttributes({
+    <span
+      {...encodeElementData({
         elementType: 'counter',
-        options: { counterType },
+        elementOptions: props,
       })}
     />
   );

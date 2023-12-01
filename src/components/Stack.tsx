@@ -1,6 +1,5 @@
 import { type ReactNode, type ReactElement, Fragment } from 'react';
-import { dataToHtmlAttributes } from '../entities/tree.js';
-import { type StackOptions } from '../entities/elements.js';
+import { type StackOptions, encodeElementData } from '../entities/elements.js';
 import { LAYOUT_TYPES, type LayoutPartial } from '../entities/primitives.js';
 
 export type StackProps = StackOptions<false | ReactElement> & {
@@ -15,11 +14,8 @@ export function Stack({ children, layouts, margin }: StackProps) {
     header: [],
     footer: [],
   };
-  const content: Array<ReactElement> = [
-    <Fragment key="content">{children}</Fragment>,
-  ];
 
-  const stackOptions: StackOptions<boolean> = {
+  const stackOptions: StackOptions<never> = {
     margin,
   };
   if (layouts) {
@@ -41,9 +37,9 @@ export function Stack({ children, layouts, margin }: StackProps) {
           encodedElements[elementType].push(
             <div
               key={`${layoutType}_${elementType}`}
-              {...dataToHtmlAttributes({
+              {...encodeElementData({
                 elementType,
-                options: { layoutType },
+                elementOptions: { layoutType },
               })}
             >
               {element}
@@ -54,11 +50,26 @@ export function Stack({ children, layouts, margin }: StackProps) {
     }
   }
 
+  const contentElement: Array<ReactElement> = [
+    <div
+      key="content"
+      {...encodeElementData({
+        elementType: 'content',
+        elementOptions: {},
+      })}
+    >
+      {children}
+    </div>,
+  ];
+
   return (
     <div
-      {...dataToHtmlAttributes({ elementType: 'stack', options: stackOptions })}
+      {...encodeElementData({
+        elementType: 'stack',
+        elementOptions: stackOptions,
+      })}
     >
-      {[...encodedElements.header, ...content, ...encodedElements.footer]}
+      {[...encodedElements.header, contentElement, ...encodedElements.footer]}
     </div>
   );
 }

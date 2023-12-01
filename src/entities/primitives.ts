@@ -1,3 +1,4 @@
+import type { IfNever } from 'type-fest';
 import { type UnitsNumber } from '../utils/units.js';
 
 export const PACKAGE_NAME: Lowercase<string> = 'matti-docs';

@@ -2,7 +2,7 @@ import type * as Hast from 'hast';
 import { type Simplify } from 'type-fest';
 import { type JsonObject } from 'type-fest';
 import { ID_PREFIX } from './primitives.js';
-import { fromHtml } from 'hast-util-from-html';
+import { fromHtmlIsomorphic } from 'hast-util-from-html-isomorphic';
 import { cloneDeep, omit } from 'lodash-es';
 
 type Data = {
@@ -199,7 +199,7 @@ export const treeToRoot = (
 };
 
 export const htmlToTree = (html: string) => {
-  const hast = fromHtml(html, { fragment: true }) as TreeNode;
+  const hast = fromHtmlIsomorphic(html, { fragment: true }) as TreeNode;
   return flatMapNodes(hast, {}, ({ node, mapChildren }) => {
     const newNode = cloneDeep(omit(node, 'children')) as TreeNode;
     if (isTreeRoot(node) || isTreeElement(node)) {

@@ -76,6 +76,7 @@
     "docx": "^8.2.3",
     "es-dirname": "^0.1.0",
     "hast-util-from-html": "^2.0.1",
+    "hast-util-from-html-isomorphic": "^2.0.0",
     "hast-util-to-dom": "^4.0.0",
     "hast-util-to-html": "^9.0.0",
     "lodash-es": "^4.17.21",

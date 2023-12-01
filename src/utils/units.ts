@@ -2,7 +2,7 @@ const UNITS = ['cm', 'in'] as const;
 
 type Units = (typeof UNITS)[number];
 
-export type UnitsNumber = `${string}${Units}`;
+export type UnitsNumber = `${number}${Units}`;
 
 const unitsExp = new RegExp(`^([0-9]+(?:\.[0-9]+)?)(${UNITS.join('|')})$`);
 

@@ -1,14 +1,21 @@
 import { type ReactNode } from 'react';
-import { dataToHtmlAttributes } from '../entities/tree.js';
-import { type ParagraphOptions } from '../entities/elements.js';
+import {
+  encodeElementData,
+  type ParagraphOptions,
+} from '../entities/elements.js';
 
 export type ParagraphProps = ParagraphOptions & {
   children: ReactNode;
 };
 
-export function Paragraph({ children, ...options }: ParagraphProps) {
+export function Paragraph({ children, ...elementOptions }: ParagraphProps) {
   return (
-    <p {...dataToHtmlAttributes({ elementType: 'paragraph', options })}>
+    <p
+      {...encodeElementData({
+        elementType: 'paragraph',
+        elementOptions,
+      })}
+    >
       {children}
     </p>
   );

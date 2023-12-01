@@ -1,14 +1,18 @@
 import { type ReactNode } from 'react';
-import { dataToHtmlAttributes } from '../entities/tree.js';
-import { type TextOptions } from '../entities/elements';
+import { type ContentOptions, encodeElementData } from '../entities/elements';
 
-export type ParagraphProps = TextOptions & {
+export type TextRunProps = ContentOptions & {
   children: ReactNode;
 };
 
-export function TextRun({ children, ...options }: ParagraphProps) {
+export function TextRun({ children, ...elementOptions }: TextRunProps) {
   return (
-    <span {...dataToHtmlAttributes({ elementType: 'textrun', options })}>
+    <span
+      {...encodeElementData({
+        elementType: 'textrun',
+        elementOptions,
+      })}
+    >
       {children}
     </span>
   );
