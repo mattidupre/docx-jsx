@@ -9,31 +9,8 @@ import {
   assignLayouts,
   extendLayouts,
 } from './primitives.js';
-import {
-  omit,
-  intersection,
-  cloneDeep,
-  pick,
-  merge,
-  extend,
-  isElement,
-  mapKeys,
-  kebabCase,
-  pickBy,
-} from 'lodash-es';
-import type {
-  ReadonlyDeep,
-  JsonObject,
-  IfNever,
-  Jsonify,
-  UnionToIntersection,
-  Simplify,
-  OverrideProperties,
-  SetRequired,
-  CamelCase,
-  Stringified,
-  KebabCase,
-} from 'type-fest';
+import { intersection, kebabCase, pickBy } from 'lodash-es';
+import type { JsonObject, IfNever, Simplify, KebabCase } from 'type-fest';
 import {
   mapHtml,
   type MapElement,

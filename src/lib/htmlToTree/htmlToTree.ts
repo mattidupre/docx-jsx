@@ -1,3 +1,4 @@
+import { merge } from 'lodash-es';
 import {
   mapDocument,
   PARAGRAPH_TAG_NAMES,
@@ -116,15 +117,16 @@ export const htmlToTree = (html: string) =>
 
       if (context.contextType === 'stack') {
         if (context.elementType === 'stack') {
-          const { children, stackOptions } = context;
-
-          return { options: stackOptions, children };
+          const { children, stackOptions, elementOptions } = context;
+          return {
+            options: merge(elementOptions, stackOptions),
+            children,
+          };
         }
       }
 
       if (context.contextType === 'document') {
         const { children, documentOptions } = context;
-        console.log(children[0].options);
         return { options: documentOptions, stacks: children };
       }
     },

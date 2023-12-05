@@ -1,7 +1,7 @@
 import {
   documentRootToDom,
   type DocumentRootToDomOptions,
-} from './lib/documentRootToDom/index.js';
+} from './lib/treeToDom/index.js';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { htmlToTree } from './lib/htmlToTree/index.js';
 

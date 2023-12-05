@@ -10,7 +10,7 @@ import { merge } from 'lodash-es';
 import { Root } from 'hast';
 import { toDom } from 'hast-util-to-dom';
 
-const contentToDom = (
+const contentTreeToDom = (
   content: Root | ReadonlyArray<Root>,
 ): undefined | DocumentFragment => {
   if (!content) {
@@ -19,7 +19,7 @@ const contentToDom = (
 
   if (Array.isArray(content)) {
     const fragment = document.createDocumentFragment();
-    fragment.append(...content.flatMap((c) => (c ? contentToDom(c) : [])));
+    fragment.append(...content.flatMap((c) => (c ? contentTreeToDom(c) : [])));
     return fragment;
   }
 
@@ -31,7 +31,7 @@ export type DocumentRootToDomOptions = {
   pageClassName?: string;
 };
 
-export const documentRootToDom = async (
+export const treeToDom = async (
   { options: documentOptions, stacks: stacksOption }: DocumentRoot<Root>,
   {
     styleSheets: styleSheetsOption = [],
@@ -56,7 +56,7 @@ export const documentRootToDom = async (
   let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
 
   stacksOption.forEach(({ options: stackOptions = {}, children }) => {
-    const content = contentToDom(children);
+    const content = contentTreeToDom(children);
 
     allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
       const pageNumberStack = pageNumberDocument + allTemplates.length;
@@ -70,8 +70,8 @@ export const documentRootToDom = async (
         default: new PageTemplate({
           size,
           margin,
-          header: contentToDom(layouts.default?.header),
-          footer: contentToDom(layouts.default?.footer),
+          header: contentTreeToDom(layouts.default?.header),
+          footer: contentTreeToDom(layouts.default?.footer),
           styleSheets: styleSheetsOption,
           className: pageClassName,
         }),
@@ -81,10 +81,10 @@ export const documentRootToDom = async (
           ...(layouts.first === false
             ? {}
             : {
-                header: contentToDom(
+                header: contentTreeToDom(
                   layouts.first?.header ?? layouts.default.header,
                 ),
-                footer: contentToDom(
+                footer: contentTreeToDom(
                   layouts.first?.footer ?? layouts.default.footer,
                 ),
               }),

@@ -3,7 +3,7 @@ import { mockDocument } from './mockDocument.js';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { htmlToTree } from '../lib/htmlToTree/index.js';
 
-import { documentRootToDom } from '../lib/documentRootToDom/index.js';
+import { documentRootToDom } from '../lib/treeToDom/index.js';
 
 const rootEl = document.getElementById('root')!;
 
