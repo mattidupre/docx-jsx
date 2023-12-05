@@ -3,13 +3,10 @@ import puppeteer, {
   type Page,
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
-import { type Headless } from '../../headless.js';
+import { type Headless } from '../headless.js';
 import path from 'node:path';
-import {
-  type DocumentRoot,
-  DEFAULT_PAGE_SIZE,
-} from '../../entities/elements.js';
-import { type DocumentRootToDomOptions } from '../treeToDom/index.js';
+import { type DocumentRoot, DEFAULT_PAGE_SIZE } from '../entities';
+import { type DocumentRootToDomOptions } from './treeToDom.js';
 import { createRequire } from 'node:module';
 import { merge } from 'lodash-es';
 
@@ -69,7 +66,7 @@ export const treeToPdf = async (
       if (!headless) {
         throw new Error('Headless script not injected into browser.');
       }
-      document.body.appendChild(await headless.documentRootToDom(documentRoot));
+      document.body.appendChild(await headless.treeToDom(documentRoot));
     }, documentRoot);
 
     return await page.pdf({

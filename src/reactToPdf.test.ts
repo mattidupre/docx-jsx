@@ -1,8 +1,8 @@
 import { it } from 'vitest';
-import { reactToPdf } from './reactToPdf';
-import { mockDocument } from 'src/fixtures/mockDocument';
-import { writeTestFile } from 'src/fixtures/writeTestFile';
-import { PUPPETEER_OPTIONS } from 'src/fixtures/puppeteerOptions';
+import { reactToPdf } from './reactToPdf.js';
+import { mockDocument } from 'src/fixtures/mockDocument.js';
+import { writeTestFile } from 'src/fixtures/writeTestFile.js';
+import { PUPPETEER_OPTIONS } from 'src/fixtures/puppeteerOptions.js';
 
 it('runs without error', async () => {
   const buffer = await reactToPdf(mockDocument, PUPPETEER_OPTIONS);

@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { type ContentOptions, encodeElementData } from '../entities/elements';
+import { encodeElementData, type ContentOptions } from '../entities';
 
 export type TextRunProps = ContentOptions & {
   children: ReactNode;

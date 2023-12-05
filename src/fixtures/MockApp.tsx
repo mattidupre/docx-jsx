@@ -1,7 +1,7 @@
 import { StrictMode } from 'react';
 import { mockDocument } from './mockDocument.js';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { htmlToTree } from '../lib/htmlToTree/index.js';
+import { htmlToTree } from '../lib/index.js';
 
 import { documentRootToDom } from '../lib/treeToDom/index.js';
 

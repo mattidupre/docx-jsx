@@ -1,9 +1,6 @@
-import {
-  documentRootToDom,
-  type DocumentRootToDomOptions,
-} from './lib/treeToDom/index.js';
+import { treeToDom, type DocumentRootToDomOptions } from './lib/treeToDom.js';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { htmlToTree } from './lib/htmlToTree/index.js';
+import { htmlToTree } from './lib/htmlToTree.js';
 
 import { ReactElement } from 'react';
 
@@ -15,5 +12,5 @@ export const reactToDom = async (
 ) => {
   const html = renderToStaticMarkup(rootElement);
   const tree = htmlToTree(html);
-  return documentRootToDom(tree, options);
+  return treeToDom(tree, options);
 };

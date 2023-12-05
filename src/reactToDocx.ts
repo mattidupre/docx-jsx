@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ReactElement } from 'react';
 import { Packer } from 'docx';
-import { htmlToDocx } from './lib/htmlToDocx/htmlToDocx.js';
+import { htmlToDocx } from './lib/htmlToDocx.js';
 
 export type ReactToDocxOptions = {};
 

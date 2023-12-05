@@ -1,10 +1,11 @@
-import { type LayoutType, LAYOUT_TYPES } from '../../entities/primitives.js';
 import {
+  type LayoutType,
+  LAYOUT_TYPES,
   DEFAULT_DOCUMENT_OPTIONS,
   DEFAULT_STACK_OPTIONS,
   type DocumentRoot,
-} from '../../entities/elements.js';
-import { Pager } from '../../utils/pager.js';
+} from '../entities/options.js';
+import { Pager } from '../utils/pager.js';
 import { PageTemplate } from './pageTemplate.js';
 import { merge } from 'lodash-es';
 import { Root } from 'hast';

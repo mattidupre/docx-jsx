@@ -1,8 +1,5 @@
 import { type ReactNode, createElement } from 'react';
-import {
-  encodeElementData,
-  type ContentOptions,
-} from '../entities/elements.js';
+import { encodeElementData, type ContentOptions } from '../entities';
 
 // Emulate https://chakra-ui.com/docs/components/text
 

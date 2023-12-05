@@ -1,12 +1,12 @@
 import { merge } from 'lodash-es';
 import {
-  mapDocument,
   PARAGRAPH_TAG_NAMES,
   extendElementHtmlAttributes,
   ElementHtmlAttributes,
-  optionsToCssVarsString,
-} from '../../entities/elements.js';
-import { TagName } from 'src/entities/primitives.js';
+} from '../entities';
+import { mapDocument } from './mapDocumentHtml.js';
+import { type TagName } from '../entities';
+import { optionsToCssVarsString } from '../utils/cssVars.js';
 
 type TreeRoot = {
   type: 'root';

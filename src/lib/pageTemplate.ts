@@ -1,5 +1,5 @@
-import { type Size, type Margin } from '../../entities/primitives.js';
-import { mathUnits } from '../../utils/units.js';
+import { type Size, type Margin } from '../entities/options.js';
+import { mathUnits } from '../utils/units.js';
 
 type InnerNode = undefined | Node | NodeList;
 

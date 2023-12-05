@@ -1,6 +1,6 @@
 import { type ReactNode, type ReactElement, Fragment } from 'react';
-import { type StackOptions, encodeElementData } from '../entities/elements.js';
-import { LAYOUT_TYPES, type LayoutPartial } from '../entities/primitives.js';
+import { encodeElementData, type StackOptions } from '../entities';
+import { LAYOUT_TYPES, type LayoutPartial } from '../entities/options.js';
 
 export type StackProps = StackOptions<false | ReactElement> & {
   children: ReactNode;

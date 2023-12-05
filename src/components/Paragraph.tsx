@@ -1,8 +1,6 @@
 import { type ReactNode } from 'react';
-import {
-  encodeElementData,
-  type ParagraphOptions,
-} from '../entities/elements.js';
+import { encodeElementData } from '../entities';
+import { type ParagraphOptions } from 'src/entities/options.js';
 
 export type ParagraphProps = ParagraphOptions & {
   children: ReactNode;

@@ -1,10 +1,7 @@
-import {
-  type DocumentRootToPdfOptions,
-  documentRootToPdf,
-} from './lib/treeToPdf/index.js';
+import { type DocumentRootToPdfOptions, treeToPdf } from './lib/treeToPdf.js';
 import { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { htmlToTree } from './lib/htmlToTree/index.js';
+import { htmlToTree } from './lib/htmlToTree.js';
 
 export type ReactToPdfOptions = DocumentRootToPdfOptions;
 
@@ -14,5 +11,5 @@ export const reactToPdf = async (
 ) => {
   const html = renderToStaticMarkup(rootElement);
   const tree = htmlToTree(html);
-  return documentRootToPdf(tree, options);
+  return treeToPdf(tree, options);
 };

@@ -1,10 +1,8 @@
 import { type ReactNode } from 'react';
-import {
-  encodeElementData,
-  type DocumentOptions,
-} from '../entities/elements.js';
+import { encodeElementData } from '../entities';
+import { type DocumentOptions } from 'src/entities/options.js';
 
-export type DocumentProps = DocumentOptions<false> & { children: ReactNode };
+export type DocumentProps = DocumentOptions & { children: ReactNode };
 
 export function Document({ children, ...elementOptions }: DocumentProps) {
   return (

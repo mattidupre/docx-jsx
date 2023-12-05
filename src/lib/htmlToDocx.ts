@@ -8,14 +8,13 @@ import {
   type ISectionOptions,
   type IRunOptions,
 } from 'docx';
-
+import { mapDocument } from './mapDocumentHtml.js';
 import {
-  mapDocument,
   type ParagraphOptions,
   type TextOptions,
-} from '../../entities/elements.js';
+} from 'src/entities/options.js';
 import { mapValues } from 'lodash-es';
-import { LayoutType } from 'src/entities/primitives.js';
+import { LayoutType } from 'src/entities/options.js';
 
 // TODO
 const parseTextRunOptions = (textOptions: TextOptions) => ({});
@@ -23,8 +22,8 @@ const parseTextRunOptions = (textOptions: TextOptions) => ({});
 // TODO
 const parseParagraphOptions = (paragraphOptions: ParagraphOptions) => ({});
 
-export const htmlToDocx = (html: string) =>
-  mapDocument<any>(html, {
+export const htmlToDocx = (html: string) => {
+  const mappedDocument = mapDocument<any>(html, {
     onText: (context) => {
       return new TextRun({
         ...parseTextRunOptions(context.textOptions),
@@ -110,3 +109,6 @@ export const htmlToDocx = (html: string) =>
       }
     },
   });
+
+  return mappedDocument;
+};

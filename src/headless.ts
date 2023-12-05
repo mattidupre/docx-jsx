@@ -1,6 +1,6 @@
-import { documentRootToDom } from 'src/lib/treeToDom/index.js';
+import { treeToDom } from 'src/lib/treeToDom.js';
 
-const globalObj = { documentRootToDom };
+const globalObj = { treeToDom };
 
 export type Headless = typeof globalObj;
 

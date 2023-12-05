@@ -1,7 +1,5 @@
-import {
-  encodeElementData,
-  type CounterOptions,
-} from '../entities/elements.js';
+import { encodeElementData } from '../entities';
+import { type CounterOptions } from 'src/entities/options.js';
 
 export type CounterProps = CounterOptions;
 
