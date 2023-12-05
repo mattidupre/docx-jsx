@@ -9,7 +9,7 @@ export function TextRun({ children, ...elementOptions }: TextRunProps) {
   return (
     <span
       {...encodeElementData({
-        elementType: 'textrun',
+        elementType: 'htmltag',
         elementOptions,
       })}
     >

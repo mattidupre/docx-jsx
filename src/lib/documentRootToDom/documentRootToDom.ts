@@ -1,48 +1,38 @@
+import { type LayoutType, LAYOUT_TYPES } from '../../entities/primitives.js';
 import {
-  type DocumentRoot,
   DEFAULT_DOCUMENT_OPTIONS,
   DEFAULT_STACK_OPTIONS,
+  type DocumentRoot,
 } from '../../entities/elements.js';
 import { Pager } from '../../utils/pager.js';
-import { type TreeRoot } from '../../entities/tree.js';
-import { treeContentToDom } from './treeContentToDom.js';
-import { checkLayouts } from '../../entities/primitives.js';
 import { PageTemplate } from './pageTemplate.js';
 import { merge } from 'lodash-es';
+import { Root } from 'hast';
+import { toDom } from 'hast-util-to-dom';
+
+const contentToDom = (
+  content: Root | ReadonlyArray<Root>,
+): undefined | DocumentFragment => {
+  if (!content) {
+    return undefined;
+  }
+
+  if (Array.isArray(content)) {
+    const fragment = document.createDocumentFragment();
+    fragment.append(...content.flatMap((c) => (c ? contentToDom(c) : [])));
+    return fragment;
+  }
+
+  return toDom(content, { fragment: true });
+};
 
 export type DocumentRootToDomOptions = {
   styleSheets?: Array<CSSStyleSheet>;
   pageClassName?: string;
 };
 
-const TEMPLATE_TYPES = [
-  'first-left',
-  'first-right',
-  'default-left',
-  'default-right',
-] as const;
-
-type TemplateType = (typeof TEMPLATE_TYPES)[number];
-
-const getTemplateType = ({
-  pageNumberStack,
-  pageNumberPage,
-}: {
-  pageNumberStack: number;
-  pageNumberPage: number;
-}): TemplateType => {
-  const prefix = pageNumberPage === pageNumberStack ? 'first' : 'default';
-  if (pageNumberPage % 2 === 1) {
-    return `${prefix}-left`;
-  }
-  if (pageNumberPage % 2 === 0) {
-    return `${prefix}-right`;
-  }
-  throw new TypeError('Invalid page numbers.');
-};
-
 export const documentRootToDom = async (
-  { options: documentOptions, stacks: stacksOption }: DocumentRoot<TreeRoot>,
+  { options: documentOptions, stacks: stacksOption }: DocumentRoot<Root>,
   {
     styleSheets: styleSheetsOption = [],
     pageClassName,
@@ -65,7 +55,9 @@ export const documentRootToDom = async (
 
   let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
 
-  stacksOption.forEach(({ options: stackOptions = {}, content }) => {
+  stacksOption.forEach(({ options: stackOptions = {}, children }) => {
+    const content = contentToDom(children);
+
     allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
       const pageNumberStack = pageNumberDocument + allTemplates.length;
 
@@ -74,50 +66,43 @@ export const documentRootToDom = async (
         stackOptions,
       );
 
-      checkLayouts(layouts);
-
-      const templates = {} as Record<TemplateType, PageTemplate>;
-      for (const layoutType of ['left', 'right'] as const) {
-        const defaultTemplate = new PageTemplate({
+      const templates: Record<LayoutType, PageTemplate> = {
+        default: new PageTemplate({
           size,
           margin,
-          header: treeContentToDom(layouts[layoutType]?.header),
-          footer: treeContentToDom(layouts[layoutType]?.footer),
+          header: contentToDom(layouts.default?.header),
+          footer: contentToDom(layouts.default?.footer),
           styleSheets: styleSheetsOption,
           className: pageClassName,
-        });
-        renderEl.appendChild(defaultTemplate.element);
-        // Undefined first layout defaults to left / right.
-        // False first layout renders with no header or footer.
-        const firstTemplate =
-          layouts.first === undefined
-            ? defaultTemplate
-            : new PageTemplate({
-                size,
-                margin,
-                header: treeContentToDom(
-                  layouts.first ? layouts.first.header : undefined,
+        }),
+        first: new PageTemplate({
+          size,
+          margin,
+          ...(layouts.first === false
+            ? {}
+            : {
+                header: contentToDom(
+                  layouts.first?.header ?? layouts.default.header,
                 ),
-                footer: treeContentToDom(
-                  layouts.first ? layouts.first.header : undefined,
+                footer: contentToDom(
+                  layouts.first?.footer ?? layouts.default.footer,
                 ),
-                styleSheets: styleSheetsOption,
-                className: pageClassName,
-              });
-        renderEl.appendChild(firstTemplate.element);
-        templates[`default-${layoutType}`] = defaultTemplate;
-        templates[`first-${layoutType}`] = firstTemplate;
-      }
+              }),
+          styleSheets: styleSheetsOption,
+          className: pageClassName,
+        }),
+      };
 
       const pager = new Pager({ styleSheets: styleSheetsOption });
+
       await pager.toPages({
-        content: treeContentToDom(content),
+        content,
         onContentChunked: ({ index, setPageVars }) => {
-          const layoutType = getTemplateType({
-            pageNumberStack,
-            pageNumberPage: pageNumberStack + index,
-          });
-          const { width, height } = templates[layoutType].contentSize;
+          const pageNumber = pageNumberStack + index;
+          const layoutType: LayoutType = pageNumber === 0 ? 'first' : 'default';
+          const template = templates[layoutType];
+          renderEl.appendChild(template.element);
+          const { width, height } = template.contentSize;
 
           setPageVars({
             // PagerJS doesn't like 0 margins so use 0.5in margins temporarily.
@@ -130,10 +115,8 @@ export const documentRootToDom = async (
           });
         },
         onPageRendered: ({ index, contentElement }) => {
-          const layoutType = getTemplateType({
-            pageNumberStack,
-            pageNumberPage: pageNumberStack + index,
-          });
+          const pageNumber = pageNumberStack + index;
+          const layoutType: LayoutType = pageNumber === 0 ? 'first' : 'default';
 
           // Note that contentElement is NOT cloned. It will be detached from pager.
           allTemplates.push(
@@ -155,7 +138,7 @@ export const documentRootToDom = async (
   const pageCount = allTemplates.length;
   allTemplates.forEach((template, pageIndex) => {
     template.replaceCounters({
-      pageNumber: pageIndex + pageNumberDocument,
+      pageNumber: pageIndex + pageNumberDocument + 1,
       pageCount,
     });
     pagesEl.append(template.element);

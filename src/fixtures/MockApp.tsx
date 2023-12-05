@@ -1,15 +1,17 @@
 import { StrictMode } from 'react';
 import { mockDocument } from './mockDocument.js';
-import { reactToDocumentRoot } from '../lib/reactToDocumentRoot/index.js';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { htmlToTree } from '../lib/htmlToTree/index.js';
+
 import { documentRootToDom } from '../lib/documentRootToDom/index.js';
 
 const rootEl = document.getElementById('root')!;
 
-const documentRoot = await reactToDocumentRoot(
-  <StrictMode>{mockDocument}</StrictMode>,
+const documentTree = htmlToTree(
+  renderToStaticMarkup(<StrictMode>{mockDocument}</StrictMode>),
 );
 
-const previewEl = await documentRootToDom(documentRoot, {
+const previewEl = await documentRootToDom(documentTree, {
   pageClassName: 'mock_page',
 });
 rootEl.appendChild(previewEl);

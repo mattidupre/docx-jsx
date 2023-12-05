@@ -6,7 +6,7 @@ export type StackProps = StackOptions<false | ReactElement> & {
   children: ReactNode;
 };
 
-export function Stack({ children, layouts, margin }: StackProps) {
+export function Stack({ children, layouts, ...options }: StackProps) {
   const encodedElements: {
     header: Array<ReactNode>;
     footer: Array<ReactNode>;
@@ -16,7 +16,7 @@ export function Stack({ children, layouts, margin }: StackProps) {
   };
 
   const stackOptions: StackOptions<never> = {
-    margin,
+    ...options,
   };
   if (layouts) {
     stackOptions.layouts = {};

@@ -61,41 +61,27 @@ const mockPageTypes = (prefix: string) => {
     first: {
       header: (
         <Paragraph>
-          {prefix} FIRST <b>HEADER</b> <em>TEXT</em>&nbsp;
+          {prefix} / FIRST PAGE / <b>HEADER</b> <em>TEXT</em>&nbsp; /&nbsp;
           <PageCounter />
         </Paragraph>
       ),
       footer: (
         <Paragraph>
-          {prefix} FIRST FOOTER TEXT&nbsp;
+          {prefix} / FIRST PAGE / FOOTER TEXT&nbsp; /&nbsp;
           <PageCounter />
         </Paragraph>
       ),
     },
-    left: {
+    default: {
       header: (
         <Paragraph>
-          {prefix} LEFT HEADER TEXT&nbsp;
+          {prefix} / DEFAULT PAGE / HEADER TEXT&nbsp; /&nbsp;
           <PageCounter />
         </Paragraph>
       ),
       footer: (
         <Paragraph>
-          {prefix} LEFT FOOTER TEXT&nbsp;
-          <PageCounter />
-        </Paragraph>
-      ),
-    },
-    right: {
-      header: (
-        <Paragraph>
-          {prefix} RIGHT HEADER TEXT&nbsp;
-          <PageCounter />
-        </Paragraph>
-      ),
-      footer: (
-        <Paragraph>
-          {prefix} RIGHT FOOTER TEXT&nbsp;
+          {prefix} / DEFAULT PAGE / FOOTER TEXT&nbsp; /&nbsp;
           <PageCounter />
         </Paragraph>
       ),
@@ -108,14 +94,13 @@ export const mockDocument = (
     size={{ width: '8.5in', height: '11in' }}
     pages={{ enableCoverPage: true }}
   >
-    <Stack layouts={mockPageTypes('FIRST SECTION')}>
+    <Stack layouts={mockPageTypes('FIRST SECTION')} coverPage>
       <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
       <div dangerouslySetInnerHTML={{ __html: '<p>HTML from string</p>' }} />
-      {/* <Paragraph>
+      <Paragraph>
         <TextRun fontWeight="bold">Bold TextRun</TextRun>
       </Paragraph>
-      <Paragraph fontWeight="bold">Bold Paragraph</Paragraph>
-      <ComponentA /> */}
+      <ComponentA />
       {/* <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
@@ -123,7 +108,7 @@ export const mockDocument = (
       <LoremIpsum /> */}
     </Stack>
 
-    <Stack layouts={mockPageTypes('FIRST SECTION')}>
+    <Stack layouts={mockPageTypes('SECOND SECTION')}>
       <LoremIpsum />
       {/* <LoremIpsum /> */}
       {/* <LoremIpsum /> */}
@@ -131,7 +116,7 @@ export const mockDocument = (
       {/* <LoremIpsum /> */}
     </Stack>
 
-    <Stack layouts={mockPageTypes('FIRST SECTION')}>
+    <Stack layouts={mockPageTypes('THIRD SECTION')}>
       <LoremIpsum />
       {/* <LoremIpsum /> */}
       {/* <LoremIpsum /> */}

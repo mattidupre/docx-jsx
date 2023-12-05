@@ -215,20 +215,17 @@ export class PageTemplate {
 
   public replaceCounters({ pageNumber, pageCount }: ReplaceCountersOptions) {
     [this.headerEl, this.footerEl].forEach((headerFooterEl) => {
-      findElementsDom(headerFooterEl, 'counter').forEach(
-        ({
-          element,
-          data: {
-            options: { counterType },
-          },
-        }) => {
-          if (counterType === 'page-number') {
-            element.replaceWith(document.createTextNode(`${pageNumber}`));
-          } else if (counterType === 'page-count') {
-            element.replaceWith(document.createTextNode(`${pageCount}`));
-          }
-        },
-      );
+      headerFooterEl
+        .querySelectorAll('[data-counter-type="page-number"]')
+        .forEach((counterEl) => {
+          counterEl.replaceWith(document.createTextNode(`${pageNumber}`));
+        });
+
+      headerFooterEl
+        .querySelectorAll('[data-counter-type="page-count"]')
+        .forEach((counterEl) => {
+          counterEl.replaceWith(document.createTextNode(`${pageCount}`));
+        });
     });
   }
 

@@ -12,7 +12,7 @@ export function Paragraph({ children, ...elementOptions }: ParagraphProps) {
   return (
     <p
       {...encodeElementData({
-        elementType: 'paragraph',
+        elementType: 'htmltag',
         elementOptions,
       })}
     >
