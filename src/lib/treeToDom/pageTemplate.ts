@@ -1,5 +1,4 @@
 import { type Size, type Margin } from '../../entities/primitives.js';
-import { findElementsDom } from '../../entities/tree.js';
 import { mathUnits } from '../../utils/units.js';
 
 type InnerNode = undefined | Node | NodeList;

@@ -10,7 +10,6 @@ import {
   DEFAULT_PAGE_SIZE,
 } from '../../entities/elements.js';
 import { type DocumentRootToDomOptions } from '../treeToDom/index.js';
-import { type TreeRoot } from '../../entities/tree.js';
 import { createRequire } from 'node:module';
 import { merge } from 'lodash-es';
 
