@@ -1,80 +1,43 @@
-import { type TagName, ID_PREFIX } from './options.js';
-import { intersection, pickBy } from 'lodash-es';
+import { intersection } from 'lodash-es';
 import type { JsonObject } from 'type-fest';
-import { type MapElement } from '../utils/mapHtml/mapHtml.js';
 import {
   encodeDataAttributes,
   decodeDataAttributes,
 } from '../utils/dataAttributes.js';
 import {
-  DocumentOptions,
-  StackOptions,
-  TextOptions,
+  ID_PREFIX,
+  DocumentConfig,
+  LayoutType,
   ParagraphOptions,
-  OptionsByElementType,
+  TextOptions,
+  CounterOptions,
+  StackConfig,
+  LayoutConfig,
 } from './options.js';
 
-const isIntersection = (...arays: ReadonlyArray<ReadonlyArray<any>>) => {
-  return !!intersection(...arays).length;
+type ConfigByElementType = {
+  document: DocumentConfig;
+  stack: StackConfig;
+  header: { layoutType: LayoutType };
+  content: Record<string, unknown>;
+  footer: { layoutType: LayoutType };
+  htmltag: {
+    paragraph?: ParagraphOptions;
+    text?: TextOptions;
+  };
+  counter: CounterOptions;
 };
 
-// TODO: ELEMENT_TYPES_BY_CONTEXT
+export type ElementType = keyof ConfigByElementType;
 
-// TODO: Rename Root to ContentRoot, element to ContentElement.
+export type Document<TContent> = DocumentConfig & {
+  stacks: Array<Stack<TContent>>;
+};
 
-export type HtmlAttributes = Record<string, unknown>;
-
-const ELEMENT_ATTRIBUTE_KEYS = [
-  'class',
-  'style',
-] as const satisfies ReadonlyArray<keyof ElementHtmlAttributes>;
-
-export type ElementHtmlAttributes = {
-  class?: string;
-  style?: string;
-} & Record<`data-${string}`, string>;
-
-const filterElementHtmlAttributes = (attributes: HtmlAttributes) =>
-  pickBy(attributes, (value, key) => {
-    if (key.startsWith('data-')) {
-      return true;
-    }
-    if (ELEMENT_ATTRIBUTE_KEYS.includes(key as any)) {
-      return true;
-    }
-    return false;
-  });
-
-export const extendElementHtmlAttributes = (
-  attributesA: HtmlAttributes = {},
-  attributesB: HtmlAttributes = {},
-): ElementHtmlAttributes => ({
-  ...filterElementHtmlAttributes(attributesA),
-  ...filterElementHtmlAttributes(attributesB),
-  class:
-    [attributesA.class || [], attributesB.class || []].flat().join(' ') ||
-    undefined,
-  style:
-    [attributesA.style || [], attributesB.style || []].flat().join(' ') ||
-    undefined,
-});
-
-const ELEMENT_TYPES_LAYOUT = ['document', 'stack'] as const;
-
-type ElementTypeLayout = (typeof ELEMENT_TYPES_LAYOUT)[number];
-
-const ELEMENT_TYPES_ROOT = ['header', 'content', 'footer'] as const;
-
-type ElementTypeRoot = (typeof ELEMENT_TYPES_ROOT)[number];
-
-const ELEMENT_TYPES_CONTENT = ['htmltag', 'counter'] as const;
-
-type ElementTypeContent = (typeof ELEMENT_TYPES_CONTENT)[number];
-
-export type ElementType =
-  | ElementTypeLayout
-  | ElementTypeRoot
-  | ElementTypeContent;
+export type Stack<TContent> = StackConfig & {
+  layouts: LayoutConfig<TContent>;
+  content: TContent;
+};
 
 export const PARAGRAPH_TAG_NAMES = [
   'p',
@@ -86,37 +49,24 @@ export const PARAGRAPH_TAG_NAMES = [
   'h6',
 ] as const satisfies readonly TagName[];
 
-export type DocumentContext = {
-  documentOptions: DocumentOptions;
-};
-
-export type StackContext = {
-  stackOptions: StackOptions;
-};
-
-export type ContentContext = {
-  textOptions: TextOptions;
-  paragraphOptions: ParagraphOptions;
-};
-
 export type ElementData<
-  TElementType extends keyof OptionsByElementType = keyof OptionsByElementType,
+  TElementType extends keyof ConfigByElementType = keyof ConfigByElementType,
 > = TElementType extends unknown
   ? {
       elementType: TElementType;
-      elementOptions: OptionsByElementType[TElementType];
+      elementOptions: ConfigByElementType[TElementType];
     }
   : never;
 
 export const encodeElementData = ({
   elementType,
   elementOptions,
-}: ElementData): HtmlAttributes => {
-  return encodeDataAttributes({ elementType, elementOptions } as JsonObject, {
+}: ElementData<ElementType>) =>
+  encodeDataAttributes({ elementType, elementOptions } as JsonObject, {
     prefix: ID_PREFIX,
-  });
-};
+  }) as Record<string, unknown>;
 
+// TODO: Add TagName here.
 export const decodeElementData = ({
   properties,
 }: {
@@ -138,8 +88,12 @@ export const decodeElementData = ({
   } as ElementData;
 };
 
+const isIntersection = (...arrays: ReadonlyArray<ReadonlyArray<any>>) => {
+  return !!intersection(...arrays).length;
+};
+
 export const isElementOfType = <
-  TData extends ElementData,
+  TData extends ElementData<ElementType>,
   TElementType extends ElementType,
 >(
   data: TData,
@@ -164,3 +118,4 @@ export const isChildOfTagName = (
   tagName: TagName | readonly TagName[],
 ) =>
   isIntersection(parentTagNames, Array.isArray(tagName) ? tagName : [tagName]);
+export type TagName = keyof JSX.IntrinsicElements;

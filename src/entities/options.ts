@@ -1,24 +1,25 @@
-import { kebabCase } from 'lodash-es';
-import { KebabCase } from 'type-fest';
+import { merge } from 'lodash-es';
+import type { IfNever } from 'type-fest';
 import { type UnitsNumber } from '../utils/units.js';
+import { isObject } from 'lodash-es';
 
 export const PACKAGE_NAME: Lowercase<string> = 'matti-docs';
 
-export const ID_PREFIX: Lowercase<string> = 'matti-docs';
+export const ID_PREFIX: Lowercase<string> = PACKAGE_NAME;
 
 export const APP_NAME = 'Matti Docs';
-
-export type TagName = keyof JSX.IntrinsicElements;
 
 export type CounterType = (typeof COUNTER_TYPES)[number];
 
 export const COUNTER_TYPES = ['page-number', 'page-count'] as const;
 
+// TODO: Rename to PageSize
 export type Size = {
   width: UnitsNumber;
   height: UnitsNumber;
 };
 
+// TODO: Rename to PageMargins
 export type Margin = {
   top: UnitsNumber;
   right: UnitsNumber;
@@ -28,112 +29,104 @@ export type Margin = {
   footer: UnitsNumber;
 };
 
-export type Layout<TElement> = {
-  header: TElement;
-  footer: TElement;
+export type Layout<TContent> = {
+  header: undefined | TContent;
+  footer: undefined | TContent;
 };
-
-export type LayoutPartial<TElement> = Partial<Layout<TElement>>;
-
-export type LayoutType = (typeof LAYOUT_TYPES)[number];
 
 export const LAYOUT_TYPES = [
   'first',
-  'default',
-] as const satisfies ReadonlyArray<keyof Layouts<unknown>>;
+  'subsequent',
+] as const satisfies ReadonlyArray<keyof LayoutConfig<unknown>>;
 
-// TODO: Rename to LayoutOptions to match TextOptions, ParagraphOptions.
-export type Layouts<TElement> = {
-  first: false | Required<Layout<undefined | TElement>>;
-  default: Required<Layout<undefined | TElement>>;
+export type LayoutType = (typeof LAYOUT_TYPES)[number];
+
+export type LayoutOptions<TContent> = {
+  first: Partial<Layout<TContent>>;
+  subsequent: Partial<Layout<TContent>>;
 };
 
-export type LayoutsPartial<TElement> = {
-  first?: false | LayoutPartial<TElement>;
-  default?: LayoutPartial<TElement>;
+export type LayoutConfig<TContent> = {
+  first: Layout<TContent>;
+  subsequent: Layout<TContent>;
 };
 
-export const createDefaultLayouts = <TElement>(): Layouts<TElement> => ({
-  first: {
-    header: undefined,
-    footer: undefined,
-  },
-  default: {
-    header: undefined,
-    footer: undefined,
-  },
-});
-
-export const assignLayouts = <TElement>(
-  target: LayoutsPartial<TElement>,
-  ...args: ReadonlyArray<undefined | LayoutsPartial<TElement>>
+export const mapLayoutKeys = <TContentOutput>(
+  callback: (
+    layoutType: LayoutType,
+    elementType: keyof Layout<unknown>,
+  ) => TContentOutput,
 ) => {
-  const defaultLayouts = createDefaultLayouts<TElement>();
-  const keys = Object.keys(defaultLayouts) as ReadonlyArray<
-    keyof Layouts<unknown>
-  >;
-  return [defaultLayouts, ...args].reduce((targetLayouts, thisLayouts) => {
-    keys.forEach((key) => {
-      if (
-        key === 'first' &&
-        (thisLayouts?.first === false || targetLayouts?.first === false)
-      ) {
-        targetLayouts!.first = false;
-        return;
-      }
-      if (thisLayouts?.[key] === false) {
-        throw new TypeError('Only the "first" layout may be false.');
-      }
-      if (!thisLayouts?.[key]) {
-        return;
-      }
-      if (!targetLayouts![key]) {
-        targetLayouts![key] = {};
-      }
-      const thisLayout = thisLayouts![key] as Layout<unknown>;
-      const targetLayout = targetLayouts![key] as Layout<unknown>;
-      if (thisLayout.header) {
-        targetLayout.header = thisLayout.header;
-      }
-      if (thisLayout.footer) {
-        targetLayout.footer = thisLayout.footer;
-      }
-    });
-    return targetLayouts;
-  }, target) as Layouts<TElement>;
+  let elementsSet = new Set<unknown>();
+  return LAYOUT_TYPES.reduce(
+    (layouts, layoutType) => ({
+      ...layouts,
+      [layoutType]: (
+        ['header', 'footer'] as const satisfies ReadonlyArray<
+          keyof Layout<unknown>
+        >
+      ).reduce((layout, elementType) => {
+        const element = callback(layoutType, elementType);
+        if (isObject(element)) {
+          if (elementsSet.has(element)) {
+            throw new TypeError('All layout elements must be unique.');
+          }
+          elementsSet.add(element);
+        }
+        return Object.assign(layout, { [elementType]: element });
+      }, {}),
+    }),
+    {} as LayoutConfig<TContentOutput>,
+  );
 };
 
-export const extendLayouts = <TElement>(
-  ...layoutsArgs: ReadonlyArray<undefined | LayoutsPartial<TElement>>
-): Layouts<TElement> =>
-  assignLayouts<TElement>(createDefaultLayouts<TElement>(), ...layoutsArgs);
-export const DEFAULT_PAGE_SIZE = {
-  width: '8.5in',
-  height: '11in',
-} as const satisfies Size;
+export const createDefaultLayoutConfig = <TContent>() =>
+  mapLayoutKeys(() => undefined) as LayoutConfig<TContent>;
+
+export const assignLayoutOptions = <TContent>(
+  ...[args0, ...args]: ReadonlyArray<
+    undefined | Partial<LayoutOptions<TContent>>
+  >
+) =>
+  args.reduce(
+    (targetLayouts, thisLayouts) =>
+      Object.assign(
+        targetLayouts!,
+        mapLayoutKeys(
+          (layoutType, elementType) =>
+            thisLayouts?.[layoutType]?.[elementType] ??
+            targetLayouts?.[layoutType]?.[elementType],
+        ),
+      ),
+    args0 ?? createDefaultLayoutConfig(),
+  ) as LayoutConfig<TContent>;
 
 export type DocumentOptions = {
   size?: Size;
-  pages?: {
-    enableCoverPage?: boolean;
-  };
 };
 
-export const DEFAULT_DOCUMENT_OPTIONS = {
-  size: DEFAULT_PAGE_SIZE,
-  pages: {
-    enableCoverPage: false,
+export type DocumentConfig = Required<DocumentOptions>;
+
+export const DEFAULT_DOCUMENT_OPTIONS: DocumentConfig = {
+  size: {
+    width: '8.5in',
+    height: '11in',
   },
-} as const satisfies DocumentOptions;
+};
+
+export const assignDocumentOptions = (
+  ...args: ReadonlyArray<DocumentOptions>
+): DocumentConfig => merge(args[0] ?? {}, DEFAULT_DOCUMENT_OPTIONS, ...args);
 
 export type StackOptions = {
-  coverPage?: boolean;
-  layouts?: LayoutsPartial<unknown>;
   margin?: Partial<Margin>;
 };
 
-export const DEFAULT_STACK_OPTIONS = {
-  layouts: {},
+export type StackConfig = {
+  margin: Margin;
+};
+
+const DEFAULT_STACK_OPTIONS: StackConfig = {
   margin: {
     header: '0.25in',
     top: '0.25in',
@@ -142,17 +135,11 @@ export const DEFAULT_STACK_OPTIONS = {
     footer: '0.25in',
     left: '0.5in',
   },
-} as const satisfies StackOptions;
-
-export type DocumentRoot<TContent> = {
-  options: DocumentOptions;
-  stacks: Array<DocumentStack<TContent>>;
 };
 
-export type DocumentStack<TContent> = {
-  options: StackOptions;
-  content: TContent;
-};
+export const assignStackOptions = (
+  ...args: ReadonlyArray<StackOptions>
+): StackConfig => merge(args[0] ?? {}, DEFAULT_STACK_OPTIONS, ...args);
 
 export type ParagraphOptions = {};
 
@@ -161,18 +148,7 @@ export type TextOptions = {
   fontStyle?: 'italic'; // docx "italics"
 };
 
-export type ContentOptions = ParagraphOptions & TextOptions;
-
-export type CounterOptions = TextOptions & {
+export type CounterOptions = {
   counterType: CounterType;
-};
-
-export type OptionsByElementType = {
-  document: DocumentOptions;
-  stack: StackOptions;
-  header: { layoutType: LayoutType };
-  content: Record<string, never>;
-  htmltag: ContentOptions;
-  footer: { layoutType: LayoutType };
-  counter: CounterOptions;
+  text?: TextOptions;
 };

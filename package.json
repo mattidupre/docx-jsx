@@ -103,7 +103,7 @@
   "nodemonConfig": {
     "ext": "ts,js,json",
     "watch": [
-      "src/",
+      "src/**",
       "package.json",
       "esbuild.js"
     ],

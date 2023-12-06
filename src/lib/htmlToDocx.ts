@@ -8,7 +8,7 @@ import {
   type ISectionOptions,
   type IRunOptions,
 } from 'docx';
-import { mapDocument } from './mapDocumentHtml.js';
+import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 import {
   type ParagraphOptions,
   type TextOptions,
@@ -17,98 +17,95 @@ import { mapValues } from 'lodash-es';
 import { LayoutType } from 'src/entities/options.js';
 
 // TODO
-const parseTextRunOptions = (textOptions: TextOptions) => ({});
+const parseTextRunOptions = (textOptions?: TextOptions) => ({});
 
 // TODO
-const parseParagraphOptions = (paragraphOptions: ParagraphOptions) => ({});
+const parseParagraphOptions = (paragraphOptions?: ParagraphOptions) => ({});
 
 export const htmlToDocx = (html: string) => {
-  const mappedDocument = mapDocument<any>(html, {
-    onText: (context) => {
+  const mappedDocument = mapHtmlToDocument<any>(html, (node) => {
+    const { textOptions, paragraphOptions } = node.data.optionsContext;
+
+    if (node.type === 'text') {
       return new TextRun({
-        ...parseTextRunOptions(context.textOptions),
-        text: context.textValue,
+        ...parseTextRunOptions(textOptions),
+        text: node.value,
       });
-    },
-    onElement: (context) => {
-      if (context.contextType === 'content') {
-        if (context.elementType === 'counter') {
-          const { counterType, ...textOptions } = context.elementOptions;
-          const children: NonNullable<IRunOptions['children']>[number][] = [];
-          if (counterType === 'page-number') {
-            children.push(PageNumber.CURRENT);
-          } else if (counterType === 'page-count') {
-            children.push(PageNumber.TOTAL_PAGES);
-          } else {
-            throw new TypeError('Invalid counter type.');
-          }
-          return new TextRun({
-            ...parseTextRunOptions(textOptions),
-            children,
-          });
+    }
+
+    const {
+      data: { element },
+    } = node;
+
+    if (node.type === 'element') {
+      if (element.elementType === 'counter') {
+        const { counterType } = element.elementOptions;
+        const children: NonNullable<IRunOptions['children']>[number][] = [];
+        if (counterType === 'page-number') {
+          children.push(PageNumber.CURRENT);
+        } else if (counterType === 'page-count') {
+          children.push(PageNumber.TOTAL_PAGES);
+        } else {
+          throw new TypeError('Invalid counter type.');
         }
-
-        if (context.tagName === 'p') {
-          return new Paragraph({
-            ...parseParagraphOptions(context.paragraphOptions),
-            children: context.children,
-          });
-        }
-
-        if (context.elementType === 'header') {
-          return new Header({
-            children: context.children,
-          });
-        }
-
-        if (context.elementType === 'footer') {
-          return new Footer({
-            children: context.children,
-          });
-        }
-      }
-
-      if (context.contextType === 'stack') {
-        if (context.elementType === 'stack') {
-          const {
-            documentOptions: { size },
-            stackOptions: { layouts, margin },
-          } = context;
-
-          return {
-            properties: {
-              titlePage:
-                layouts?.first !== false &&
-                !(
-                  layouts?.first?.header === undefined &&
-                  layouts?.first?.footer === undefined
-                ),
-              page: {
-                margin: margin,
-                size: size,
-              },
-            },
-            headers: mapValues(
-              layouts,
-              (layout) => layout && layout.header,
-            ) as Record<LayoutType, Header>,
-            footers: mapValues(
-              layouts,
-              (layout) => layout && layout.footer,
-            ) as Record<LayoutType, Header>,
-            children: context.children,
-          } satisfies ISectionOptions;
-        }
-      }
-
-      if (context.contextType === 'document') {
-        return new Document({
-          evenAndOddHeaderAndFooters: false,
-          sections: context.children,
+        return new TextRun({
+          ...parseTextRunOptions(textOptions),
+          children,
         });
       }
-    },
+
+      if (node.tagName === 'p') {
+        return new Paragraph({
+          ...parseParagraphOptions(paragraphOptions),
+          children: node.children,
+        });
+      }
+    }
+
+    if (node.type === 'root') {
+      if (element.elementType === 'header') {
+        return new Header({
+          children: node.children,
+        });
+      }
+
+      if (element.elementType === 'content') {
+        return undefined;
+      }
+
+      if (element.elementType === 'footer') {
+        return new Footer({
+          children: node.children,
+        });
+      }
+    }
   });
 
-  return mappedDocument;
+  const { size } = mappedDocument;
+
+  const sections = mappedDocument.stacks.map(({ layouts, margin, content }) => {
+    return {
+      properties: {
+        titlePage: true,
+        page: {
+          margin: margin,
+          size: size,
+        },
+      },
+      headers: {
+        first: layouts.first.header,
+        default: layouts.subsequent.header,
+      },
+      footers: {
+        first: layouts.first.footer,
+        default: layouts.subsequent.footer,
+      },
+      children: content,
+    } satisfies ISectionOptions;
+  });
+
+  return new Document({
+    evenAndOddHeaderAndFooters: false,
+    sections,
+  });
 };

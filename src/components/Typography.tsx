@@ -1,9 +1,9 @@
 import { type ReactNode, createElement } from 'react';
-import { encodeElementData, type ContentOptions } from '../entities';
+import { encodeElementData } from '../entities';
 
 // Emulate https://chakra-ui.com/docs/components/text
 
-export type TypographyProps = ContentOptions & {
+export type TypographyProps = {
   children: ReactNode;
   as?: 'span' | 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 };

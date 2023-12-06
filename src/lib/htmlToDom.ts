@@ -1,30 +1,27 @@
 import {
   type LayoutType,
+  type Document,
+  mapLayoutKeys,
   LAYOUT_TYPES,
-  DEFAULT_DOCUMENT_OPTIONS,
-  DEFAULT_STACK_OPTIONS,
-  type DocumentRoot,
-} from '../entities/options.js';
+} from '../entities';
 import { Pager } from '../utils/pager.js';
 import { PageTemplate } from './pageTemplate.js';
-import { merge } from 'lodash-es';
-import { Root } from 'hast';
+import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 import { toDom } from 'hast-util-to-dom';
+import { type Root } from 'hast';
 
-const contentTreeToDom = (
-  content: Root | ReadonlyArray<Root>,
-): undefined | DocumentFragment => {
+const contentTreeToDom = (content: undefined | Root | ReadonlyArray<Root>) => {
   if (!content) {
     return undefined;
   }
 
   if (Array.isArray(content)) {
     const fragment = document.createDocumentFragment();
-    fragment.append(...content.flatMap((c) => (c ? contentTreeToDom(c) : [])));
+    fragment.append(...content.flatMap((c) => contentTreeToDom(c) ?? []));
     return fragment;
   }
 
-  return toDom(content, { fragment: true });
+  return toDom(content as Root, { fragment: true }) as DocumentFragment;
 };
 
 export type DocumentRootToDomOptions = {
@@ -32,18 +29,16 @@ export type DocumentRootToDomOptions = {
   pageClassName?: string;
 };
 
-export const treeToDom = async (
-  { options: documentOptions, stacks: stacksOption }: DocumentRoot<Root>,
+export const htmlToDom = async (
+  html: string,
   {
     styleSheets: styleSheetsOption = [],
     pageClassName,
   }: DocumentRootToDomOptions = {},
 ): Promise<HTMLDivElement> => {
+  const { size, stacks: stacksOption } = mapHtmlToDocument(html);
+
   // const perf = performance.now();
-
-  const { size, pages } = merge(DEFAULT_DOCUMENT_OPTIONS, documentOptions);
-
-  const pageNumberDocument = pages.enableCoverPage ? 0 : 1;
 
   // Create a temporary element in which to calculate / render pages.
   // Pager and PageTemplate operate in their own respective Shadow DOMs.
@@ -56,43 +51,27 @@ export const treeToDom = async (
 
   let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
 
-  stacksOption.forEach(({ options: stackOptions = {}, children }) => {
-    const content = contentTreeToDom(children);
+  // TODO: use Promise.all again.
+  stacksOption.forEach(({ layouts, margin, content: contentTree }) => {
+    const content = contentTreeToDom(contentTree);
 
     allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
-      const pageNumberStack = pageNumberDocument + allTemplates.length;
+      const pageNumberStack = allTemplates.length;
 
-      const { layouts = {}, margin } = merge(
-        DEFAULT_STACK_OPTIONS,
-        stackOptions,
+      const templates = LAYOUT_TYPES.reduce(
+        (target, layoutType) =>
+          Object.assign(target, {
+            [layoutType]: new PageTemplate({
+              size,
+              margin,
+              header: contentTreeToDom(layouts[layoutType]?.header),
+              footer: contentTreeToDom(layouts[layoutType]?.footer),
+              styleSheets: styleSheetsOption,
+              className: pageClassName,
+            }),
+          }),
+        {} as Record<LayoutType, PageTemplate>,
       );
-
-      const templates: Record<LayoutType, PageTemplate> = {
-        default: new PageTemplate({
-          size,
-          margin,
-          header: contentTreeToDom(layouts.default?.header),
-          footer: contentTreeToDom(layouts.default?.footer),
-          styleSheets: styleSheetsOption,
-          className: pageClassName,
-        }),
-        first: new PageTemplate({
-          size,
-          margin,
-          ...(layouts.first === false
-            ? {}
-            : {
-                header: contentTreeToDom(
-                  layouts.first?.header ?? layouts.default.header,
-                ),
-                footer: contentTreeToDom(
-                  layouts.first?.footer ?? layouts.default.footer,
-                ),
-              }),
-          styleSheets: styleSheetsOption,
-          className: pageClassName,
-        }),
-      };
 
       const pager = new Pager({ styleSheets: styleSheetsOption });
 
@@ -100,7 +79,8 @@ export const treeToDom = async (
         content,
         onContentChunked: ({ index, setPageVars }) => {
           const pageNumber = pageNumberStack + index;
-          const layoutType: LayoutType = pageNumber === 0 ? 'first' : 'default';
+          const layoutType: LayoutType =
+            pageNumber === 0 ? 'first' : 'subsequent';
           const template = templates[layoutType];
           renderEl.appendChild(template.element);
           const { width, height } = template.contentSize;
@@ -117,7 +97,8 @@ export const treeToDom = async (
         },
         onPageRendered: ({ index, contentElement }) => {
           const pageNumber = pageNumberStack + index;
-          const layoutType: LayoutType = pageNumber === 0 ? 'first' : 'default';
+          const layoutType: LayoutType =
+            pageNumber === 0 ? 'first' : 'subsequent';
 
           // Note that contentElement is NOT cloned. It will be detached from pager.
           allTemplates.push(
@@ -139,7 +120,7 @@ export const treeToDom = async (
   const pageCount = allTemplates.length;
   allTemplates.forEach((template, pageIndex) => {
     template.replaceCounters({
-      pageNumber: pageIndex + pageNumberDocument + 1,
+      pageNumber: pageIndex + 1,
       pageCount,
     });
     pagesEl.append(template.element);

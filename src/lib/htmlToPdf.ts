@@ -5,10 +5,8 @@ import puppeteer, {
 } from 'puppeteer-core';
 import { type Headless } from '../headless.js';
 import path from 'node:path';
-import { type DocumentRoot, DEFAULT_PAGE_SIZE } from '../entities';
-import { type DocumentRootToDomOptions } from './treeToDom.js';
+import { type DocumentRootToDomOptions } from './htmlToDom.js';
 import { createRequire } from 'node:module';
-import { merge } from 'lodash-es';
 
 let browserPromise: null | Promise<Browser>;
 
@@ -23,11 +21,12 @@ export const resetHtmlObjToPdf = async () => {
 export type DocumentRootToPdfOptions = DocumentRootToDomOptions &
   PuppeteerLaunchOptions;
 
-export const treeToPdf = async (
-  documentRoot: DocumentRoot<TreeRoot>,
+export const htmlToPdf = async (
+  html: string,
   options: DocumentRootToPdfOptions,
 ) => {
-  const size = merge(DEFAULT_PAGE_SIZE, documentRoot.options.size);
+  // TODO: Get from htmlToDom.
+  // const { size } = documentRoot;
 
   let FRONTEND_PATH = '';
   if (import.meta.url === undefined) {
@@ -61,17 +60,16 @@ export const treeToPdf = async (
     page = await browser.newPage();
     page.on('console', (msg) => console.log('Puppeteer:', msg.text()));
     await page.addScriptTag({ path: FRONTEND_PATH });
-    await page.evaluate(async (documentRoot) => {
+    await page.evaluate(async (browserHtml) => {
       const headless = (window as any).headless as Headless;
       if (!headless) {
         throw new Error('Headless script not injected into browser.');
       }
-      document.body.appendChild(await headless.treeToDom(documentRoot));
-    }, documentRoot);
+      document.body.appendChild(await headless.htmlToDom(browserHtml));
+    }, html);
 
     return await page.pdf({
-      ...size,
-      // format: 'letter', // TODO: use above
+      // ...size,
       printBackground: true,
       displayHeaderFooter: false,
     });

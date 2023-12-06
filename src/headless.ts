@@ -1,6 +1,6 @@
-import { treeToDom } from 'src/lib/treeToDom.js';
+import { htmlToDom } from 'src/lib/htmlToDom.js';
 
-const globalObj = { treeToDom };
+const globalObj = { htmlToDom };
 
 export type Headless = typeof globalObj;
 

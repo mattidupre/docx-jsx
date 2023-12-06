@@ -3,7 +3,6 @@
 import { Document, Stack, TextRun, Paragraph, Counter } from '../components.js';
 import { type FunctionComponent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { kebabCase } from 'lodash-es';
 
 const createMockComponent = <TComponent extends FunctionComponent>(
   component: TComponent,
@@ -72,7 +71,7 @@ const mockPageTypes = (prefix: string) => {
         </Paragraph>
       ),
     },
-    default: {
+    subsequent: {
       header: (
         <Paragraph>
           {prefix} / DEFAULT PAGE / HEADER TEXT&nbsp; /&nbsp;
@@ -90,15 +89,12 @@ const mockPageTypes = (prefix: string) => {
 };
 
 export const mockDocument = (
-  <Document
-    size={{ width: '8.5in', height: '11in' }}
-    pages={{ enableCoverPage: true }}
-  >
-    <Stack layouts={mockPageTypes('FIRST SECTION')} coverPage>
+  <Document size={{ width: '8.5in', height: '11in' }}>
+    <Stack layouts={mockPageTypes('FIRST SECTION')}>
       <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
       <div dangerouslySetInnerHTML={{ __html: '<p>HTML from string</p>' }} />
       <Paragraph>
-        <TextRun fontWeight="bold">Bold TextRun</TextRun>
+        <TextRun text={{ fontWeight: 'bold' }}>Bold TextRun</TextRun>
       </Paragraph>
       <ComponentA />
       {/* <LoremIpsum />

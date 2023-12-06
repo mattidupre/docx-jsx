@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { encodeElementData } from '../entities';
+import { encodeElementData, assignDocumentOptions } from '../entities';
 import { type DocumentOptions } from 'src/entities/options.js';
 
 export type DocumentProps = DocumentOptions & { children: ReactNode };
@@ -9,7 +9,7 @@ export function Document({ children, ...elementOptions }: DocumentProps) {
     <main
       {...encodeElementData({
         elementType: 'document',
-        elementOptions,
+        elementOptions: assignDocumentOptions(elementOptions),
       })}
     >
       {children}

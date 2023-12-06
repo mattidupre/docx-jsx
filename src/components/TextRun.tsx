@@ -1,7 +1,8 @@
 import { type ReactNode } from 'react';
-import { encodeElementData, type ContentOptions } from '../entities';
+import { encodeElementData, type TextOptions } from '../entities';
 
-export type TextRunProps = ContentOptions & {
+export type TextRunProps = {
+  text?: TextOptions;
   children: ReactNode;
 };
 
