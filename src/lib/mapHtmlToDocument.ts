@@ -10,22 +10,18 @@ import {
   TagName,
   TextOptions,
   ParagraphOptions,
-  DocumentOptions,
-  StackOptions,
-  LayoutOptions,
   assignLayoutOptions,
   assignStackOptions,
   assignDocumentOptions,
   assignHtmlAttributes,
   isChildOfElementType,
-  Document,
-  mapLayoutKeys,
-  LayoutConfig,
+  DocumentElement,
   createDefaultLayoutConfig,
   StackConfig,
   DocumentConfig,
+  StackElement,
 } from '../entities';
-import { MappedNode, mapHtml } from '../utils/mapHtml/mapHtml';
+import { mapHtml } from '../utils/mapHtml/mapHtml';
 import { merge } from 'lodash-es';
 
 const CONTENT_ELEMENT_TYPES = [
@@ -52,53 +48,48 @@ type MapData = {
   };
 };
 
-type NodeBase =
-  | Record<string, never>
-  | {
-      tagName: TagName;
-      properties: HtmlAttributes;
-      data: MapData;
-    };
+type NodeBase = {
+  tagName: TagName;
+  properties: HtmlAttributes;
+  data: MapData;
+};
 
-export type DocumentTextNode = {
+export type HtmlTextNode = {
   type: 'text';
   value: string;
   data: Omit<MapData, 'element'>;
 };
 
-export type DocumentElementNode<TChild extends MappedNode> = {
+export type HtmlElementNode = {
   type: 'element';
 } & NodeBase & {
-    children: ReadonlyArray<TChild>;
+    children: ReadonlyArray<unknown>;
   };
 
-export type DocumentRootNode<TChild extends MappedNode> = {
+export type HtmlRootNode = {
   type: 'root';
 } & NodeBase & {
-    children: ReadonlyArray<TChild>;
+    children: ReadonlyArray<unknown>;
   };
 
-export type DocumentNode<TChild extends MappedNode> =
-  | DocumentTextNode
-  | DocumentElementNode<TChild>
-  | DocumentRootNode<TChild>;
+export type HtmlNode = HtmlTextNode | HtmlElementNode | HtmlRootNode;
 
-export type MapDocumentCallback<TChild extends MappedNode> = (
-  node: DocumentNode<TChild>,
-) => false | undefined | TChild;
+export type ParseHtmlNode = (
+  node: HtmlNode,
+) => unknown | ReadonlyArray<unknown>;
 
 // TODO: Create enum for explicit fragment / omit.
-export const mapHtmlToDocument = <TChild extends MappedNode>(
+export const mapHtmlToDocument = (
   html: string,
-  parseElement: MapDocumentCallback<TChild> = (node) => node as TChild,
-): Document<TChild> => {
+  parseNode: ParseHtmlNode,
+): DocumentElement<unknown> => {
   // TODO: Always return context. If passing through, just don't change it.
 
   let layoutElements = createDefaultLayoutConfig();
 
   // TODO: Better type than "any"
-  const documents = mapHtml<NodeBase, any>(html, {
-    initialContext: {},
+  const documents = mapHtml<NodeBase, unknown>(html, {
+    initialContext: {} as NodeBase,
     onElementBeforeChildren: (node, { parentContext }) => {
       const { tagName } = node;
       const {
@@ -111,6 +102,8 @@ export const mapHtmlToDocument = <TChild extends MappedNode>(
 
       const optionsContext: NodeBase['data']['optionsContext'] =
         structuredClone(parentOptionsContext);
+
+      // const temp: Omit<NodeBase, 'data'> = { ...node };
 
       const childContext: NodeBase = {
         ...node,
@@ -151,7 +144,11 @@ export const mapHtmlToDocument = <TChild extends MappedNode>(
 
       if (
         isElementOfType(elementData, 'htmltag') &&
-        !isChildOfElementType(parentElementTypes, 'document')
+        !isChildOfElementType(parentElementTypes, [
+          'header',
+          'content',
+          'footer',
+        ])
       ) {
         return childContext;
       }
@@ -208,26 +205,19 @@ export const mapHtmlToDocument = <TChild extends MappedNode>(
       const { parentTagNames } = data;
       if (!isChildOfTagName(parentTagNames!, PARAGRAPH_TAG_NAMES)) {
         console.warn('Text not enclosed in a paragraph or heading is ignored.');
-        return false;
+        return [];
       }
-      return parseElement({
+
+      return parseNode({
         type: 'text',
         value,
         data,
       });
-      // return handleText({
-      //   type: 'text',
-      //   value,
-      //   textValue: value,
-      //   textOptions: parentContext.textOptions!,
-      //   data: { context: parentContext },
-      // }) as TChild;
     },
     onElementAfterChildren: (node, context) => {
-      // TODO: Better to explicitly return children and flatmap?
       const { childContext } = context;
 
-      const children = context.children as TChild[];
+      const children = context.children;
 
       const {
         data: { element: elementData },
@@ -236,18 +226,19 @@ export const mapHtmlToDocument = <TChild extends MappedNode>(
       if (isElementOfType(elementData, 'document')) {
         return {
           ...elementData.elementOptions,
-          stacks: children,
-        };
+          stacks: children as StackElement<unknown>[],
+        } satisfies DocumentElement<unknown>;
       }
 
       if (isElementOfType(elementData, 'stack')) {
         const layouts = layoutElements;
         layoutElements = createDefaultLayoutConfig();
+
         return {
           ...elementData.elementOptions,
           layouts,
-          content: children,
-        };
+          children,
+        } satisfies StackElement<unknown>;
       }
 
       if (isElementOfType(elementData, ['header', 'footer'])) {
@@ -255,28 +246,32 @@ export const mapHtmlToDocument = <TChild extends MappedNode>(
           elementType,
           elementOptions: { layoutType },
         } = elementData;
-        const renderedElement = parseElement({
+        const renderedElement = parseNode({
           ...childContext,
           type: 'root',
-          children: children,
+          children,
         });
         assignLayoutOptions(layoutElements, {
           [layoutType]: { [elementType]: renderedElement },
         });
-        return false;
+        return [];
       }
 
       if (isElementOfType(elementData, ['content'])) {
-        return undefined;
+        return parseNode({
+          ...childContext,
+          type: 'root',
+          children,
+        });
       }
 
       if (isElementOfType(elementData, CONTENT_ELEMENT_TYPES)) {
-        return parseElement({ ...childContext, type: 'element', children });
+        return parseNode({ ...childContext, type: 'element', children });
       }
 
       throw new TypeError('Invalid element.');
     },
-  });
+  }) as ReadonlyArray<DocumentElement<unknown>>;
 
   if (documents.length > 1) {
     throw new Error('Expected no more than one document.');

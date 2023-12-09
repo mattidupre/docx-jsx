@@ -1,9 +1,6 @@
 import { kebabCase } from 'lodash-es';
 
-export type HtmlAttributes = {
-  class?: string;
-  style?: string;
-} & Partial<Record<`data-${string}`, string>>;
+export type HtmlAttributes = Record<string, unknown>;
 
 export const assignHtmlAttributes = (
   arg0: HtmlAttributes,

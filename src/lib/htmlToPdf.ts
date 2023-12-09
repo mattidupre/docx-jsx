@@ -65,6 +65,7 @@ export const htmlToPdf = async (
       if (!headless) {
         throw new Error('Headless script not injected into browser.');
       }
+
       document.body.appendChild(await headless.htmlToDom(browserHtml));
     }, html);
 

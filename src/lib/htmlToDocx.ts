@@ -5,6 +5,8 @@ import {
   TextRun,
   Paragraph,
   PageNumber,
+  type IHeaderOptions,
+  type IParagraphOptions,
   type ISectionOptions,
   type IRunOptions,
 } from 'docx';
@@ -13,8 +15,6 @@ import {
   type ParagraphOptions,
   type TextOptions,
 } from 'src/entities/options.js';
-import { mapValues } from 'lodash-es';
-import { LayoutType } from 'src/entities/options.js';
 
 // TODO
 const parseTextRunOptions = (textOptions?: TextOptions) => ({});
@@ -23,7 +23,7 @@ const parseTextRunOptions = (textOptions?: TextOptions) => ({});
 const parseParagraphOptions = (paragraphOptions?: ParagraphOptions) => ({});
 
 export const htmlToDocx = (html: string) => {
-  const mappedDocument = mapHtmlToDocument<any>(html, (node) => {
+  const mappedDocument = mapHtmlToDocument(html, (node) => {
     const { textOptions, paragraphOptions } = node.data.optionsContext;
 
     if (node.type === 'text') {
@@ -57,7 +57,7 @@ export const htmlToDocx = (html: string) => {
       if (node.tagName === 'p') {
         return new Paragraph({
           ...parseParagraphOptions(paragraphOptions),
-          children: node.children,
+          children: node.children as IParagraphOptions['children'],
         });
       }
     }
@@ -65,44 +65,48 @@ export const htmlToDocx = (html: string) => {
     if (node.type === 'root') {
       if (element.elementType === 'header') {
         return new Header({
-          children: node.children,
+          children: node.children as IHeaderOptions['children'],
         });
       }
 
       if (element.elementType === 'content') {
-        return undefined;
+        return node.children;
       }
 
       if (element.elementType === 'footer') {
         return new Footer({
-          children: node.children,
+          children: node.children as IHeaderOptions['children'],
         });
       }
     }
+
+    return node.children;
   });
 
   const { size } = mappedDocument;
 
-  const sections = mappedDocument.stacks.map(({ layouts, margin, content }) => {
-    return {
-      properties: {
-        titlePage: true,
-        page: {
-          margin: margin,
-          size: size,
+  const sections = mappedDocument.stacks.map(
+    ({ layouts, margin, children }) => {
+      return {
+        properties: {
+          titlePage: true,
+          page: {
+            margin: margin,
+            size: size,
+          },
         },
-      },
-      headers: {
-        first: layouts.first.header,
-        default: layouts.subsequent.header,
-      },
-      footers: {
-        first: layouts.first.footer,
-        default: layouts.subsequent.footer,
-      },
-      children: content,
-    } satisfies ISectionOptions;
-  });
+        headers: {
+          first: layouts.first.header as Header,
+          default: layouts.subsequent.header as Header,
+        },
+        footers: {
+          first: layouts.first.footer as Footer,
+          default: layouts.subsequent.footer as Footer,
+        },
+        children: children as ISectionOptions['children'],
+      } satisfies ISectionOptions;
+    },
+  );
 
   return new Document({
     evenAndOddHeaderAndFooters: false,

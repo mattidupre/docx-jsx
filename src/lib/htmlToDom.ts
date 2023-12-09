@@ -1,27 +1,18 @@
-import {
-  type LayoutType,
-  type Document,
-  mapLayoutKeys,
-  LAYOUT_TYPES,
-} from '../entities';
+import { type LayoutType, LAYOUT_TYPES } from '../entities';
 import { Pager } from '../utils/pager.js';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 import { toDom } from 'hast-util-to-dom';
-import { type Root } from 'hast';
+import * as Hast from 'hast';
 
-const contentTreeToDom = (content: undefined | Root | ReadonlyArray<Root>) => {
-  if (!content) {
-    return undefined;
-  }
-
+const contentTreeToDom = (content: Hast.Root | ReadonlyArray<Hast.Root>) => {
   if (Array.isArray(content)) {
     const fragment = document.createDocumentFragment();
     fragment.append(...content.flatMap((c) => contentTreeToDom(c) ?? []));
     return fragment;
   }
 
-  return toDom(content as Root, { fragment: true }) as DocumentFragment;
+  return toDom(content as Hast.Root, { fragment: true }) as DocumentFragment;
 };
 
 export type DocumentRootToDomOptions = {
@@ -35,8 +26,11 @@ export const htmlToDom = async (
     styleSheets: styleSheetsOption = [],
     pageClassName,
   }: DocumentRootToDomOptions = {},
-): Promise<HTMLDivElement> => {
-  const { size, stacks: stacksOption } = mapHtmlToDocument(html);
+): Promise<HTMLElement> => {
+  const { size, stacks: stacksOption } = mapHtmlToDocument(
+    html,
+    (node) => node,
+  );
 
   // const perf = performance.now();
 
@@ -52,8 +46,12 @@ export const htmlToDom = async (
   let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
 
   // TODO: use Promise.all again.
-  stacksOption.forEach(({ layouts, margin, content: contentTree }) => {
-    const content = contentTreeToDom(contentTree);
+  stacksOption.forEach(({ layouts, margin, children: stackChildren }) => {
+    const content = contentTreeToDom(stackChildren as ReadonlyArray<Hast.Root>);
+
+    if (!content) {
+      return;
+    }
 
     allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
       const pageNumberStack = allTemplates.length;
@@ -64,8 +62,12 @@ export const htmlToDom = async (
             [layoutType]: new PageTemplate({
               size,
               margin,
-              header: contentTreeToDom(layouts[layoutType]?.header),
-              footer: contentTreeToDom(layouts[layoutType]?.footer),
+              header: contentTreeToDom(
+                layouts[layoutType]?.header as Hast.Root,
+              ),
+              footer: contentTreeToDom(
+                layouts[layoutType]?.footer as Hast.Root,
+              ),
               styleSheets: styleSheetsOption,
               className: pageClassName,
             }),

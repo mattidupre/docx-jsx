@@ -3,8 +3,6 @@ import { pick } from 'lodash-es';
 
 type Context = Record<string | number | symbol, unknown>;
 
-export type MappedNode = Record<string | number | symbol, unknown>;
-
 export type MapElement = {
   type: 'element';
   tagName: keyof JSX.IntrinsicElements;
@@ -32,37 +30,39 @@ export type MapTextBeforeChildren<TContext extends Context> = {
 
 export type MapHtmlElementAfterChildren<
   TContext extends Context,
-  TMappedNode extends MappedNode,
+  TMappedNode,
 > = {
   childContext: TContext;
   parentContext: TContext;
   children: Array<TMappedNode>;
 };
 
-type Options<TContext extends Context, TMappedNode extends MappedNode> = {
+type Options<TContext extends Context, TMappedNode> = {
   initialContext: TContext;
 
   onElementBeforeChildren: (
     node: MapElement,
     data: MapHtmlElementBeforeChildren<TContext>,
-  ) => undefined | false | TContext;
+  ) => TContext;
 
   onText: (
     node: MapText,
     data: MapTextBeforeChildren<TContext>,
-  ) => undefined | false | TMappedNode;
+  ) => TMappedNode | ReadonlyArray<TMappedNode>;
 
   onElementAfterChildren: (
     node: MapElement,
     data: MapHtmlElementAfterChildren<TContext, TMappedNode>,
-  ) => undefined | false | TMappedNode;
+  ) => TMappedNode | ReadonlyArray<TMappedNode>;
 };
 
-const mapHast = <TMappedNode extends MappedNode>(
+const mapHast = <TMappedNode>(
   nodes: unknown[],
   parentContext: unknown,
   options: Options<any, any>,
 ): TMappedNode[] => {
+  // TODO: Constructor root from return instead of just returning flattened array.
+
   return nodes.flatMap((node) => {
     if (isMapText(node)) {
       const mappedText = options.onText(pick(node, ['type', 'value']), {
@@ -82,13 +82,8 @@ const mapHast = <TMappedNode extends MappedNode>(
         parentContext,
       });
 
-      // Treat element as null, don't continue down tree.
-      if (childContext === false) {
-        return [];
-      }
-
       const children = node.children
-        ? mapHast(node.children, childContext, options)
+        ? mapHast(node.children, childContext, options).flat()
         : [];
 
       const mappedElement = options.onElementAfterChildren(element, {
@@ -97,23 +92,13 @@ const mapHast = <TMappedNode extends MappedNode>(
         children,
       });
 
-      // Treat element as a fragment.
-      if (mappedElement === undefined) {
-        return children;
-      }
-
-      // Treat element as a null, don't include children.
-      if (mappedElement === false) {
-        return [];
-      }
-
       return mappedElement;
     }
     return [];
   });
 };
 
-export const mapHtml = <TContext extends Context, TNode extends MappedNode>(
+export const mapHtml = <TContext extends Context, TNode>(
   html: string,
   options: Options<TContext, TNode>,
 ): TNode[] => {

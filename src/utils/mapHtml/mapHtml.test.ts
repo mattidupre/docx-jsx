@@ -5,8 +5,12 @@ import { mockDocument } from 'src/fixtures/mockDocument';
 
 const mockHtml = renderToStaticMarkup(mockDocument);
 
+type Context = {
+  prevTagNames: string[];
+};
+
 test('TEMP', () => {
-  const result = mapHtml(mockHtml, {
+  const result = mapHtml<Context, unknown>(mockHtml, {
     initialContext: {
       prevTagNames: [] as Array<string>,
     },
@@ -15,14 +19,12 @@ test('TEMP', () => {
       prevTagNames: [...parentContext.prevTagNames, tagName],
     }),
     onText: ({ value }) => {
-      // console.log(value);
-      return false;
+      return value;
     },
     onElementAfterChildren: (node, { parentContext, children }) => {
-      // console.log(node.tagName);
-      // console.log(parentContext.prevTagNames);
-      // console.log('--');
-      return false;
+      return { children };
     },
   });
+
+  console.log(JSON.stringify(result, undefined, 2));
 });

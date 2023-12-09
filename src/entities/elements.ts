@@ -30,13 +30,13 @@ type ConfigByElementType = {
 
 export type ElementType = keyof ConfigByElementType;
 
-export type Document<TContent> = DocumentConfig & {
-  stacks: Array<Stack<TContent>>;
+export type DocumentElement<TContent> = DocumentConfig & {
+  stacks: Array<StackElement<TContent>>;
 };
 
-export type Stack<TContent> = StackConfig & {
+export type StackElement<TContent> = StackConfig & {
   layouts: LayoutConfig<TContent>;
-  content: TContent;
+  children: ReadonlyArray<TContent>;
 };
 
 export const PARAGRAPH_TAG_NAMES = [
