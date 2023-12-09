@@ -36,7 +36,7 @@ export type DocumentElement<TContent> = DocumentConfig & {
 
 export type StackElement<TContent> = StackConfig & {
   layouts: LayoutConfig<TContent>;
-  children: ReadonlyArray<TContent>;
+  content: TContent;
 };
 
 export const PARAGRAPH_TAG_NAMES = [

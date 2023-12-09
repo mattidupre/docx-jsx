@@ -1,4 +1,4 @@
-import { test, beforeEach } from 'vitest';
+import { test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mapHtml } from './mapHtml.js';
 import { mockDocument } from 'src/fixtures/mockDocument';
@@ -9,22 +9,25 @@ type Context = {
   prevTagNames: string[];
 };
 
-test('TEMP', () => {
+test('runs without error', () => {
   const result = mapHtml<Context, unknown>(mockHtml, {
     initialContext: {
       prevTagNames: [] as Array<string>,
     },
-    onElementBeforeChildren: ({ type, tagName }, { parentContext }) => ({
+    onElementBeforeChildren: ({
+      htmlElement: { type, tagName },
+      parentContext,
+    }) => ({
       ...parentContext,
       prevTagNames: [...parentContext.prevTagNames, tagName],
     }),
-    onText: ({ value }) => {
-      return value;
+    onText: ({ text }) => {
+      return text;
     },
-    onElementAfterChildren: (node, { parentContext, children }) => {
+    onElementAfterChildren: ({ parentContext, children }) => {
       return { children };
     },
   });
 
-  console.log(JSON.stringify(result, undefined, 2));
+  // console.log(JSON.stringify(result, undefined, 2));
 });

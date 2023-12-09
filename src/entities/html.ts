@@ -1,6 +1,6 @@
 import { kebabCase } from 'lodash-es';
 
-export type HtmlAttributes = Record<string, unknown>;
+export type HtmlAttributes = Record<string, string>;
 
 export const assignHtmlAttributes = (
   arg0: HtmlAttributes,

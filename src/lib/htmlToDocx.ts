@@ -85,28 +85,26 @@ export const htmlToDocx = (html: string) => {
 
   const { size } = mappedDocument;
 
-  const sections = mappedDocument.stacks.map(
-    ({ layouts, margin, children }) => {
-      return {
-        properties: {
-          titlePage: true,
-          page: {
-            margin: margin,
-            size: size,
-          },
+  const sections = mappedDocument.stacks.map(({ layouts, margin, content }) => {
+    return {
+      properties: {
+        titlePage: true,
+        page: {
+          margin: margin,
+          size: size,
         },
-        headers: {
-          first: layouts.first.header as Header,
-          default: layouts.subsequent.header as Header,
-        },
-        footers: {
-          first: layouts.first.footer as Footer,
-          default: layouts.subsequent.footer as Footer,
-        },
-        children: children as ISectionOptions['children'],
-      } satisfies ISectionOptions;
-    },
-  );
+      },
+      headers: {
+        first: layouts.first.header as Header,
+        default: layouts.subsequent.header as Header,
+      },
+      footers: {
+        first: layouts.first.footer as Footer,
+        default: layouts.subsequent.footer as Footer,
+      },
+      children: [content] as ISectionOptions['children'],
+    } satisfies ISectionOptions;
+  });
 
   return new Document({
     evenAndOddHeaderAndFooters: false,

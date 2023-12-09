@@ -6,7 +6,7 @@ type Context = Record<string | number | symbol, unknown>;
 export type MapElement = {
   type: 'element';
   tagName: keyof JSX.IntrinsicElements;
-  properties: Record<string, unknown>;
+  properties: Record<string, string>;
   children?: Array<MapElement | MapText>;
 };
 
@@ -21,10 +21,12 @@ export type MapText = {
 const isMapText = (value: any): value is MapText => value?.type === 'text';
 
 export type MapHtmlElementBeforeChildren<TContext extends Context> = {
+  htmlElement: MapElement;
   parentContext: TContext;
 };
 
 export type MapTextBeforeChildren<TContext extends Context> = {
+  text: string;
   parentContext: TContext;
 };
 
@@ -41,17 +43,14 @@ type Options<TContext extends Context, TMappedNode> = {
   initialContext: TContext;
 
   onElementBeforeChildren: (
-    node: MapElement,
     data: MapHtmlElementBeforeChildren<TContext>,
   ) => TContext;
 
   onText: (
-    node: MapText,
     data: MapTextBeforeChildren<TContext>,
   ) => TMappedNode | ReadonlyArray<TMappedNode>;
 
   onElementAfterChildren: (
-    node: MapElement,
     data: MapHtmlElementAfterChildren<TContext, TMappedNode>,
   ) => TMappedNode | ReadonlyArray<TMappedNode>;
 };
@@ -65,7 +64,8 @@ const mapHast = <TMappedNode>(
 
   return nodes.flatMap((node) => {
     if (isMapText(node)) {
-      const mappedText = options.onText(pick(node, ['type', 'value']), {
+      const mappedText = options.onText({
+        text: node.value,
         parentContext,
       });
 
@@ -76,9 +76,8 @@ const mapHast = <TMappedNode>(
       return mappedText;
     }
     if (isMapElement(node)) {
-      const element = pick(node, ['type', 'properties', 'tagName']);
-
-      const childContext = options.onElementBeforeChildren(element, {
+      const childContext = options.onElementBeforeChildren({
+        htmlElement: pick(node, ['type', 'properties', 'tagName']),
         parentContext,
       });
 
@@ -86,7 +85,7 @@ const mapHast = <TMappedNode>(
         ? mapHast(node.children, childContext, options).flat()
         : [];
 
-      const mappedElement = options.onElementAfterChildren(element, {
+      const mappedElement = options.onElementAfterChildren({
         parentContext,
         childContext,
         children,
@@ -103,5 +102,5 @@ export const mapHtml = <TContext extends Context, TNode>(
   options: Options<TContext, TNode>,
 ): TNode[] => {
   const hast = fromHtmlIsomorphic(html, { fragment: true });
-  return mapHast(hast.children, options.initialContext, options);
+  return mapHast<TNode>(hast.children, options.initialContext, options);
 };

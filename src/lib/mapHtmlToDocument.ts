@@ -79,26 +79,27 @@ export type ParseHtmlNode = (
 ) => unknown | ReadonlyArray<unknown>;
 
 // TODO: Create enum for explicit fragment / omit.
-export const mapHtmlToDocument = (
+export const mapHtmlToDocument = <TContent>(
   html: string,
   parseNode: ParseHtmlNode,
-): DocumentElement<unknown> => {
+): DocumentElement<TContent> => {
   // TODO: Always return context. If passing through, just don't change it.
 
   let layoutElements = createDefaultLayoutConfig();
+  let contentElement: unknown = undefined;
 
   // TODO: Better type than "any"
   const documents = mapHtml<NodeBase, unknown>(html, {
     initialContext: {} as NodeBase,
-    onElementBeforeChildren: (node, { parentContext }) => {
-      const { tagName } = node;
+    onElementBeforeChildren: ({ htmlElement, parentContext }) => {
+      const { tagName } = htmlElement;
       const {
         parentElementTypes = [],
         parentTagNames = [],
         optionsContext: parentOptionsContext = {},
       } = parentContext?.data ?? {};
 
-      const elementData = decodeElementData(node);
+      const elementData = decodeElementData(htmlElement);
 
       const optionsContext: NodeBase['data']['optionsContext'] =
         structuredClone(parentOptionsContext);
@@ -106,10 +107,10 @@ export const mapHtmlToDocument = (
       // const temp: Omit<NodeBase, 'data'> = { ...node };
 
       const childContext: NodeBase = {
-        ...node,
+        ...htmlElement,
         data: {
           parentElementTypes: [...parentElementTypes, elementData.elementType],
-          parentTagNames: [...parentTagNames, node.tagName],
+          parentTagNames: [...parentTagNames, htmlElement.tagName],
           element: elementData,
           optionsContext,
         },
@@ -201,7 +202,7 @@ export const mapHtmlToDocument = (
 
       throw new TypeError('Invalid context.');
     },
-    onText: ({ value }, { parentContext: { data } }) => {
+    onText: ({ text, parentContext: { data } }) => {
       const { parentTagNames } = data;
       if (!isChildOfTagName(parentTagNames!, PARAGRAPH_TAG_NAMES)) {
         console.warn('Text not enclosed in a paragraph or heading is ignored.');
@@ -210,11 +211,11 @@ export const mapHtmlToDocument = (
 
       return parseNode({
         type: 'text',
-        value,
+        value: text,
         data,
       });
     },
-    onElementAfterChildren: (node, context) => {
+    onElementAfterChildren: (context) => {
       const { childContext } = context;
 
       const children = context.children;
@@ -233,11 +234,13 @@ export const mapHtmlToDocument = (
       if (isElementOfType(elementData, 'stack')) {
         const layouts = layoutElements;
         layoutElements = createDefaultLayoutConfig();
+        const content = contentElement;
+        contentElement = undefined;
 
         return {
           ...elementData.elementOptions,
           layouts,
-          children,
+          content,
         } satisfies StackElement<unknown>;
       }
 
@@ -258,11 +261,12 @@ export const mapHtmlToDocument = (
       }
 
       if (isElementOfType(elementData, ['content'])) {
-        return parseNode({
+        contentElement = parseNode({
           ...childContext,
           type: 'root',
           children,
         });
+        return [];
       }
 
       if (isElementOfType(elementData, CONTENT_ELEMENT_TYPES)) {
@@ -271,7 +275,7 @@ export const mapHtmlToDocument = (
 
       throw new TypeError('Invalid element.');
     },
-  }) as ReadonlyArray<DocumentElement<unknown>>;
+  }) as ReadonlyArray<DocumentElement<TContent>>;
 
   if (documents.length > 1) {
     throw new Error('Expected no more than one document.');
