@@ -1,7 +1,9 @@
-import { type LayoutType, LAYOUT_TYPES } from '../entities';
+import { type LayoutType, LAYOUT_TYPES, DocumentElement } from '../entities';
 import { Pager } from '../utils/pager.js';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
+
+export type DocumentDom = DocumentElement<HTMLElement>;
 
 const objToDom = (node: HtmlNode) => {
   if (node.type === 'text') {
@@ -30,8 +32,9 @@ const objToDom = (node: HtmlNode) => {
 };
 
 export type DocumentRootToDomOptions = {
-  styleSheets?: Array<string | CSSStyleSheet>;
   pageClassName?: string;
+  styleSheets?: Array<string | CSSStyleSheet>;
+  onDocument?: (document: DocumentDom) => void;
 };
 
 export const htmlToDom = async (
@@ -39,6 +42,7 @@ export const htmlToDom = async (
   {
     styleSheets: styleSheetsOption = [],
     pageClassName,
+    onDocument,
   }: DocumentRootToDomOptions = {},
 ): Promise<HTMLElement> => {
   const styleSheets = await Promise.all(
@@ -51,10 +55,14 @@ export const htmlToDom = async (
     }),
   );
 
-  const { size, stacks: stacksOption } = mapHtmlToDocument<HTMLElement>(
+  const documentObj = mapHtmlToDocument<HTMLElement>(
     html,
     objToDom,
-  );
+  ) satisfies DocumentDom;
+
+  onDocument?.(documentObj);
+
+  const { size, stacks: stacksOption } = documentObj;
 
   // const perf = performance.now();
 

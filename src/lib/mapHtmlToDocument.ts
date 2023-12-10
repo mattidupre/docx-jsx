@@ -92,7 +92,7 @@ export const mapHtmlToDocument = <TContent>(
   const documents = mapHtml<NodeBase, unknown>(html, {
     initialContext: {} as NodeBase,
     onElementBeforeChildren: ({ htmlElement, parentContext }) => {
-      const { tagName } = htmlElement;
+      const { tagName, properties } = htmlElement;
       const {
         parentElementTypes = [],
         parentTagNames = [],
@@ -163,10 +163,52 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Content root must be a child of content root.');
         }
 
-        if (tagName === 'b') {
+        // TODO: Create mergeTextOptions for type safety.
+
+        if (tagName === 'b' || tagName === 'strong') {
           merge(elementData.elementOptions, {
             text: {
               fontWeight: 'bold',
+            },
+          });
+        }
+
+        if (tagName === 'em') {
+          merge(elementData.elementOptions, {
+            text: {
+              fontStyle: 'italic',
+            },
+          });
+        }
+
+        if (tagName === 'u') {
+          merge(elementData.elementOptions, {
+            text: {
+              textDecoration: 'underline',
+            },
+          });
+        }
+
+        if (tagName === 's') {
+          merge(elementData.elementOptions, {
+            text: {
+              textDecoration: 'line-through',
+            },
+          });
+        }
+
+        if (tagName === 'sup') {
+          merge(elementData.elementOptions, {
+            text: {
+              superScript: true,
+            },
+          });
+        }
+
+        if (tagName === 'sub') {
+          merge(elementData.elementOptions, {
+            text: {
+              subScript: true,
             },
           });
         }

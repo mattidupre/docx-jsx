@@ -22,11 +22,18 @@ export const assignHtmlAttributes = (
           ]
             .flat()
             .join(' ');
+          continue;
+        }
+
+        if (attributeKey === 'href') {
+          targetAttributes[attributeKey] = thisAttributes[attributeKey];
+          continue;
         }
 
         const kebabKey = kebabCase(attributeKey) as `data-${string}`;
         if (kebabKey.startsWith('data-')) {
           targetAttributes[kebabKey] = thisAttributes[kebabKey];
+          continue;
         }
 
         // All other attributes are omitted.

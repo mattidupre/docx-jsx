@@ -4,50 +4,6 @@ import { Document, Stack, TextRun, Paragraph, Counter } from '../components.js';
 import { type FunctionComponent } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-const createMockComponent = <TComponent extends FunctionComponent>(
-  component: TComponent,
-) => component;
-
-const ComponentD = createMockComponent(() => {
-  return (
-    <>
-      <TextRun>Component D 1</TextRun>
-      <TextRun>Component D 2</TextRun>
-    </>
-  );
-});
-
-const ComponentB = createMockComponent(() => {
-  return (
-    <>
-      <Paragraph>
-        <TextRun>COMPONENT 1</TextRun>
-        <TextRun>{0}</TextRun>
-      </Paragraph>
-      <Paragraph>EXTRA</Paragraph>
-    </>
-  );
-});
-
-const ComponentA = createMockComponent(() => {
-  return (
-    <div>
-      <div>
-        <div>
-          <div>
-            <Paragraph>NO TEXTRUN</Paragraph>
-            <ComponentB />
-            <Paragraph>
-              <TextRun>THREE</TextRun>
-              <ComponentD />
-            </Paragraph>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-});
-
 const PageCounter = () => (
   <span>
     Page <Counter counterType="page-number" /> of{' '}
@@ -62,16 +18,6 @@ const mockPageTypes = (prefix: string) => {
         <Paragraph>
           {prefix} / FIRST PAGE / <b>HEADER</b> <em>TEXT</em>&nbsp; /&nbsp;
           <PageCounter />
-          <span>
-            No, when I go to sea, I go as a simple sailor, right before the
-            mast, plumb down into the forecastle, aloft there to the royal
-            mast-head. True, they rather order me about some, and make me jump
-            from spar to spar, like a grasshopper in a May meadow. No, when I go
-            to sea, I go as a simple sailor, right before the mast, plumb down
-            into the forecastle, aloft there to the royal mast-head. True, they
-            rather order me about some, and make me jump from spar to spar, like
-            a grasshopper in a May meadow.
-          </span>
         </Paragraph>
       ),
       footer: (
@@ -105,22 +51,85 @@ export const mockDocument = (
       margin={{
         top: '2in',
         header: '1in',
+        bottom: '1in',
       }}
     >
-      <Paragraph>
-        <TextRun text={{ fontWeight: 'bold' }}>Bold TextRun</TextRun>
-      </Paragraph>
       <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
-      <div dangerouslySetInnerHTML={{ __html: '<p>HTML from string</p>' }} />
-      <Paragraph>
-        <TextRun text={{ fontWeight: 'bold' }}>Bold TextRun</TextRun>
+      <h1>Heading 1</h1>
+      <h2>Heading 2</h2>
+      <h3>Heading 3</h3>
+      <h4>Heading 4</h4>
+      <h5>Heading 5</h5>
+      <h6>Heading 6</h6>
+
+      <p>
+        <a href="https://www.google.com">Link Text</a>
+      </p>
+
+      <Paragraph paragraph={{ textAlign: 'left' }}>Left Paragraph</Paragraph>
+      <Paragraph paragraph={{ textAlign: 'center' }}>
+        Centered Paragraph
       </Paragraph>
-      <ComponentA />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
-      <LoremIpsum />
+      <Paragraph paragraph={{ textAlign: 'right' }}>Right Paragraph</Paragraph>
+      <Paragraph paragraph={{ textAlign: 'justify' }}>
+        Justified Paragraph: Circumambulate the city of a dreamy Sabbath
+        afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
+        Whitehall, northward.
+      </Paragraph>
+      <p>
+        <TextRun text={{ fontWeight: 'bold' }}>Bold Text</TextRun>
+      </p>
+      <p>
+        <b>{'<b>'} Text</b>
+      </p>
+      <p>
+        <strong>{'<strong>'} Text</strong>
+      </p>
+      <p>
+        <TextRun text={{ fontStyle: 'italic' }}>Italic Text</TextRun>
+      </p>
+      <p>
+        <em>{'<em>'} Text</em>
+      </p>
+      <p>
+        <TextRun text={{ textDecoration: 'underline' }}>
+          Underlined Text
+        </TextRun>
+      </p>
+      <p>
+        <u>{'<u>'} Text</u>
+      </p>
+      <p>
+        <TextRun text={{ textDecoration: 'line-through' }}>
+          Strikethrough Text
+        </TextRun>
+      </p>
+      <p>
+        <s>{'<s>'} Text</s>
+      </p>
+      <p>
+        <TextRun text={{ fontSize: '2rem' }}>Size 2rem Text</TextRun>
+      </p>
+      <p>
+        <TextRun text={{ color: '#ff0000' }}>Red Text</TextRun>
+      </p>
+      <p>
+        <TextRun text={{ highlightColor: '#00ff00' }}>Highlighted Text</TextRun>
+      </p>
+      <p>
+        Text with <sup>superscript</sup>
+      </p>
+      <p>
+        Text with <sub>subscript</sub>
+      </p>
+      <p>
+        <TextRun text={{ textTransform: 'uppercase' }}>Uppercase Text</TextRun>
+      </p>
+      <div
+        dangerouslySetInnerHTML={{
+          __html: '<p>dangerouslySetInnerHTML Content</p>',
+        }}
+      />
     </Stack>
 
     <Stack
@@ -130,26 +139,14 @@ export const mockDocument = (
         header: '0.25in',
       }}
     >
-      <LoremIpsum />
-      {/* <LoremIpsum /> */}
-      {/* <LoremIpsum /> */}
-      {/* <LoremIpsum /> */}
-      {/* <LoremIpsum /> */}
-    </Stack>
-
-    <Stack layouts={mockPageTypes('THIRD SECTION')}>
-      <LoremIpsum />
-      {/* <LoremIpsum /> */}
-      {/* <LoremIpsum /> */}
-      {/* <LoremIpsum /> */}
-      {/* <LoremIpsum /> */}
+      <LongText />
     </Stack>
   </Document>
 );
 
 export const mockDocumentHtml = renderToStaticMarkup(mockDocument);
 
-function LoremIpsum() {
+function LongText() {
   return (
     <div>
       {`CHAPTER 1. Loomings.
@@ -353,9 +350,7 @@ my inmost soul, endless processions of the whale, and, mid most of them
 all, one grand hooded phantom, like a snow hill in the air.`
         .split('\n\n')
         .map((text, index) => (
-          <Paragraph key={`static_${index}`}>
-            <TextRun>{text}</TextRun>
-          </Paragraph>
+          <p key={`static_${index}`}>{text}</p>
         ))}
     </div>
   );

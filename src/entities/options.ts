@@ -8,18 +8,14 @@ export const ID_PREFIX: Lowercase<string> = PACKAGE_NAME;
 
 export const APP_NAME = 'Matti Docs';
 
-export type CounterType = (typeof COUNTER_TYPES)[number];
+export type Color = Lowercase<`#${string}`>;
 
-export const COUNTER_TYPES = ['page-number', 'page-count'] as const;
-
-// TODO: Rename to PageSize
-export type Size = {
+export type PageSize = {
   width: UnitsNumber;
   height: UnitsNumber;
 };
 
-// TODO: Rename to PageMargins
-export type Margin = {
+export type PageMargin = {
   top: UnitsNumber;
   right: UnitsNumber;
   bottom: UnitsNumber;
@@ -101,7 +97,7 @@ export const assignLayoutOptions = <TContent>(
   ) as LayoutConfig<TContent>;
 
 export type DocumentOptions = {
-  size?: Size;
+  size?: PageSize;
 };
 
 export type DocumentConfig = Required<DocumentOptions>;
@@ -118,19 +114,19 @@ export const assignDocumentOptions = (
 ): DocumentConfig => mergeWithDefault(DEFAULT_DOCUMENT_OPTIONS, ...args);
 
 export type StackOptions = {
-  margin?: Partial<Margin>;
+  margin?: Partial<PageMargin>;
 };
 
 export type StackConfig = {
-  margin: Margin;
+  margin: PageMargin;
 };
 
 const DEFAULT_STACK_OPTIONS: StackConfig = {
   margin: {
     header: '0.25in',
-    top: '0.25in',
+    top: '0.5in',
     right: '0.5in',
-    bottom: '0.25in',
+    bottom: '0.5in',
     footer: '0.25in',
     left: '0.5in',
   },
@@ -140,12 +136,25 @@ export const assignStackOptions = (
   ...args: ReadonlyArray<StackOptions>
 ): StackConfig => mergeWithDefault(DEFAULT_STACK_OPTIONS, ...args);
 
-export type ParagraphOptions = {};
+export type ParagraphOptions = {
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
+};
 
 export type TextOptions = {
   fontWeight?: 'bold';
-  fontStyle?: 'italic'; // docx "italics"
+  fontStyle?: 'italic';
+  fontSize?: `${number}rem`;
+  color?: Color;
+  highlightColor?: Color;
+  textTransform?: 'uppercase';
+  textDecoration?: 'underline' | 'line-through';
+  superScript?: boolean;
+  subScript?: boolean;
 };
+
+export type CounterType = (typeof COUNTER_TYPES)[number];
+
+export const COUNTER_TYPES = ['page-number', 'page-count'] as const;
 
 export type CounterOptions = {
   counterType: CounterType;

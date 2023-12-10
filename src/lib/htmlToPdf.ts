@@ -5,7 +5,7 @@ import puppeteer, {
 } from 'puppeteer-core';
 import { type Headless } from '../headless.js';
 import path from 'node:path';
-import { type DocumentRootToDomOptions } from './htmlToDom.js';
+import { DocumentDom, type DocumentRootToDomOptions } from './htmlToDom.js';
 import { createRequire } from 'node:module';
 
 let browserPromise: null | Promise<Browser>;
@@ -18,16 +18,14 @@ export const resetHtmlObjToPdf = async () => {
   }
 };
 
-export type DocumentRootToPdfOptions = DocumentRootToDomOptions &
-  PuppeteerLaunchOptions;
+export type DocumentRootToPdfOptions = DocumentRootToDomOptions & {
+  puppeteer?: PuppeteerLaunchOptions;
+};
 
 export const htmlToPdf = async (
   html: string,
-  options: DocumentRootToPdfOptions,
+  { puppeteer: puppeteerOptions, ...options }: DocumentRootToPdfOptions,
 ) => {
-  // TODO: Get from htmlToDom.
-  // const { size } = documentRoot;
-
   let FRONTEND_PATH = '';
   if (import.meta.url === undefined) {
     // Netlify transpiles back to CJS.
@@ -45,8 +43,6 @@ export const htmlToPdf = async (
     );
   }
 
-  const puppeteerOptions = { ...options };
-
   let page: undefined | Page = undefined;
   try {
     if (!browserPromise) {
@@ -60,17 +56,32 @@ export const htmlToPdf = async (
     page = await browser.newPage();
     page.on('console', (msg) => console.log('Puppeteer:', msg.text()));
     await page.addScriptTag({ path: FRONTEND_PATH });
-    await page.evaluate(async (browserHtml) => {
-      const headless = (window as any).headless as Headless;
-      if (!headless) {
-        throw new Error('Headless script not injected into browser.');
-      }
+    const pageSize = await page.evaluate(
+      async (browserHtml, browserOptions) => {
+        const headless = (window as any).headless as Headless;
+        if (!headless) {
+          throw new Error('Headless script not injected into browser.');
+        }
 
-      document.body.appendChild(await headless.htmlToDom(browserHtml));
-    }, html);
+        let documentObj = {} as DocumentDom;
+
+        document.body.appendChild(
+          await headless.htmlToDom(browserHtml, {
+            ...browserOptions,
+            onDocument: (doc) => {
+              documentObj = doc;
+            },
+          }),
+        );
+
+        return documentObj.size;
+      },
+      html,
+      options,
+    );
 
     return await page.pdf({
-      // ...size,
+      ...pageSize,
       printBackground: true,
       displayHeaderFooter: false,
     });

@@ -1,8 +1,42 @@
+a {
+  color: inherit;
+}
+
+a,
 b,
-em {
+em,
+strong {
   font-weight: normal;
   text-decoration: none;
   font-style: normal;
+}
+
+p {
+  text-align: var(--paragraph-text-align);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+em,
+u,
+p,
+span {
+  line-height: 1; /* TODO */
+  margin-block-start: 0; /* TODO */
+  margin-block-end: 0; /* TODO */
+  font-weight: var(--text-font-weight);
+  font-style: var(--text-font-style);
+  font-size: var(--text-font-size, 1rem);
+  color: var(--text-color);
+  text-transform: var(--text-text-transform);
+  text-decoration: var(--text-text-decoration);
+  /* Superscript and subscript handled by tags. */
 }
 
 @media screen {
@@ -12,13 +46,5 @@ em {
     margin-left: auto;
     margin-right: auto;
     background-color: white;
-  }
-
-  b,
-  em,
-  p,
-  span {
-    font-weight: var(--text-font-weight);
-    text-decoration: var(--text-text-decoration);
   }
 }

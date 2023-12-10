@@ -1,11 +1,11 @@
-import { type Size, type Margin } from '../entities/options.js';
+import { type PageSize, type PageMargin } from '../entities/options.js';
 import { mathUnits } from '../utils/units.js';
 
 type InnerNode = undefined | Node | NodeList;
 
 export type PageTemplateOptions = {
-  size: Size;
-  margin: Margin;
+  size: PageSize;
+  margin: PageMargin;
   header?: InnerNode;
   content?: InnerNode;
   footer?: InnerNode;
@@ -92,7 +92,7 @@ export class PageTemplate {
 
   private readonly styleSheets: ReadonlyArray<CSSStyleSheet>;
 
-  private readonly pageSize: Size;
+  private readonly pageSize: PageSize;
 
   public readonly pageEl: Element;
   public static readonly pageClassName = 'page';
@@ -106,7 +106,7 @@ export class PageTemplate {
   public readonly footerEl: Element;
   public static readonly footerClassName = `${PageTemplate.pageClassName}__footer`;
 
-  private cachedContentSize: undefined | Size;
+  private cachedContentSize: undefined | PageSize;
   public get contentSize() {
     return this.cachedContentSize
       ? { ...this.cachedContentSize }
@@ -174,7 +174,7 @@ export class PageTemplate {
     });
   }
 
-  public getContentSize(): Size {
+  public getContentSize(): PageSize {
     if (!this.contentEl.isConnected) {
       throw new Error(
         'Cannot determine page content size if it is not attached to DOM.',
@@ -237,7 +237,7 @@ export class PageTemplate {
     innerEl: Element;
     styleSheets: ReadonlyArray<CSSStyleSheet>;
     className?: string;
-    size: Size;
+    size: PageSize;
   }) {
     const rootEl = document.createElement('div');
     setClassName(rootEl, className);

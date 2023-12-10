@@ -1,6 +1,8 @@
 import { kebabCase, isObject } from 'lodash-es';
 import type { KebabCase } from 'type-fest';
 
+type VarValue = string | boolean;
+
 const createKebabPrefix = <T extends string>(prefix?: T) =>
   (prefix ? `${kebabCase(prefix)}-` : '') as T extends undefined
     ? ''
@@ -9,7 +11,7 @@ const createKebabPrefix = <T extends string>(prefix?: T) =>
 export const optionsToCssVars = <
   TOptions extends Record<
     string,
-    undefined | string | Record<string, undefined | string>
+    undefined | VarValue | Record<string, undefined | VarValue>
   >,
   TPrefix extends string,
 >(
@@ -40,5 +42,5 @@ export const optionsToCssVarsString = (
   ...args: Parameters<typeof optionsToCssVars>
 ): string =>
   Object.entries(optionsToCssVars(...args))
-    .map(([key, value]) => `${key}: ${value};`)
+    .map(([key, value]) => `${key}: ${String(value)};`)
     .join(' ');

@@ -5,28 +5,73 @@ import {
   TextRun,
   Paragraph,
   PageNumber,
+  AlignmentType,
+  HeadingLevel,
+  type ParagraphChild,
   type IHeaderOptions,
   type IParagraphOptions,
   type ISectionOptions,
   type IRunOptions,
+  ExternalHyperlink,
 } from 'docx';
 import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 import {
   type ParagraphOptions,
   type TextOptions,
-} from 'src/entities/options.js';
+  type Color,
+} from 'src/entities';
+
+const parseColor = (color?: Color) => color && color.replace('#', '');
+
+const parseTextSize = (fontSize: TextOptions['fontSize']) =>
+  fontSize !== undefined ? parseFloat(fontSize) * 22 : undefined;
 
 const parseTextRunOptions = ({
+  fontSize,
+  color,
+  highlightColor,
   fontWeight,
   fontStyle,
+  textTransform,
+  textDecoration,
+  superScript,
+  subScript,
 }: TextOptions = {}): IRunOptions => ({
+  size: parseTextSize(fontSize),
+  color: color && color.replace('#', ''),
+  shading: highlightColor && {
+    fill: parseColor(highlightColor),
+  },
   bold: fontWeight === 'bold',
   italics: fontStyle === 'italic',
+  allCaps: textTransform === 'uppercase',
+  underline: textDecoration === 'underline' ? {} : undefined,
+  strike: textDecoration === 'line-through' ? true : undefined,
+  superScript,
+  subScript,
 });
 
-const parseParagraphOptions = (
-  paragraphOptions: ParagraphOptions = {},
-): IParagraphOptions => ({});
+const DOCX_HEADING = {
+  h1: HeadingLevel.HEADING_1,
+  h2: HeadingLevel.HEADING_2,
+  h3: HeadingLevel.HEADING_3,
+  h4: HeadingLevel.HEADING_4,
+  h5: HeadingLevel.HEADING_5,
+  h6: HeadingLevel.HEADING_6,
+} as const;
+
+const DOCX_TEXT_ALIGN = {
+  left: AlignmentType.LEFT,
+  center: AlignmentType.CENTER,
+  right: AlignmentType.RIGHT,
+  justify: AlignmentType.JUSTIFIED,
+} as const;
+
+const parseParagraphOptions = ({
+  textAlign,
+}: ParagraphOptions = {}): IParagraphOptions => ({
+  alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
+});
 
 export const htmlToDocx = (html: string) => {
   const mappedDocument = mapHtmlToDocument(html, (node) => {
@@ -63,7 +108,23 @@ export const htmlToDocx = (html: string) => {
       if (node.tagName === 'p') {
         return new Paragraph({
           ...parseParagraphOptions(paragraphOptions),
-          children: node.children as IParagraphOptions['children'],
+          children: node.children as ParagraphChild[],
+        });
+      }
+
+      if (node.tagName in DOCX_HEADING) {
+        return new Paragraph({
+          ...parseParagraphOptions(paragraphOptions),
+          heading: DOCX_HEADING[node.tagName as keyof typeof DOCX_HEADING],
+          children: node.children as ParagraphChild[],
+        });
+      }
+
+      if (node.tagName === 'a') {
+        return new ExternalHyperlink({
+          ...parseTextRunOptions(textOptions),
+          children: node.children as ParagraphChild[],
+          link: node.properties.href,
         });
       }
     }
@@ -115,5 +176,24 @@ export const htmlToDocx = (html: string) => {
   return new Document({
     evenAndOddHeaderAndFooters: false,
     sections,
+
+    styles: {
+      default: {
+        document: { run: {}, paragraph: {} },
+        title: { run: {}, paragraph: {} },
+        heading1: { run: {}, paragraph: {} },
+        heading2: { run: {}, paragraph: {} },
+        heading3: { run: {}, paragraph: {} },
+        heading4: { run: {}, paragraph: {} },
+        heading5: { run: {}, paragraph: {} },
+        heading6: { run: {}, paragraph: {} },
+        strong: { run: {}, paragraph: {} },
+        listParagraph: { run: {}, paragraph: {} },
+        hyperlink: { run: {} },
+        footnoteReference: { run: {} },
+        footnoteText: { run: {} },
+        footnoteTextChar: { run: {} },
+      },
+    },
   });
 };
