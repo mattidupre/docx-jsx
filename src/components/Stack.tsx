@@ -22,9 +22,10 @@ export function Stack({ children, layouts, ...options }: StackProps) {
     footer: [],
   };
 
-  const stackOptions = omit(assignStackOptions(options), [
+  const stackOptions = omit(assignStackOptions({}, options), [
     'layouts',
   ]) as StackConfig;
+
   mapLayoutKeys((layoutType, elementType) => {
     const element = layouts?.[layoutType]?.[elementType];
     if (element) {

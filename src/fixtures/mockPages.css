@@ -1,13 +1,24 @@
-@media screen {
-  body {
-    background-color: azure;
-  }
+b,
+em {
+  font-weight: normal;
+  text-decoration: none;
+  font-style: normal;
+}
 
-  .mock_page {
+@media screen {
+  .page {
     margin: 0.5in;
     box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.25);
     margin-left: auto;
     margin-right: auto;
     background-color: white;
+  }
+
+  b,
+  em,
+  p,
+  span {
+    font-weight: var(--text-font-weight);
+    text-decoration: var(--text-text-decoration);
   }
 }

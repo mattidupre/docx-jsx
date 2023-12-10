@@ -104,8 +104,6 @@ export const mapHtmlToDocument = <TContent>(
       const optionsContext: NodeBase['data']['optionsContext'] =
         structuredClone(parentOptionsContext);
 
-      // const temp: Omit<NodeBase, 'data'> = { ...node };
-
       const childContext: NodeBase = {
         ...htmlElement,
         data: {
@@ -133,7 +131,6 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Stack must be a child of document.');
         }
 
-        // TODO: Change extendStackOptions to assignStackOptions
         elementData.elementOptions = assignStackOptions(
           elementData.elementOptions,
         );

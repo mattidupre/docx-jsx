@@ -62,6 +62,16 @@ const mockPageTypes = (prefix: string) => {
         <Paragraph>
           {prefix} / FIRST PAGE / <b>HEADER</b> <em>TEXT</em>&nbsp; /&nbsp;
           <PageCounter />
+          <span>
+            No, when I go to sea, I go as a simple sailor, right before the
+            mast, plumb down into the forecastle, aloft there to the royal
+            mast-head. True, they rather order me about some, and make me jump
+            from spar to spar, like a grasshopper in a May meadow. No, when I go
+            to sea, I go as a simple sailor, right before the mast, plumb down
+            into the forecastle, aloft there to the royal mast-head. True, they
+            rather order me about some, and make me jump from spar to spar, like
+            a grasshopper in a May meadow.
+          </span>
         </Paragraph>
       ),
       footer: (
@@ -90,21 +100,36 @@ const mockPageTypes = (prefix: string) => {
 
 export const mockDocument = (
   <Document size={{ width: '8.5in', height: '11in' }}>
-    <Stack layouts={mockPageTypes('FIRST SECTION')}>
+    <Stack
+      layouts={mockPageTypes('FIRST SECTION')}
+      margin={{
+        top: '2in',
+        header: '1in',
+      }}
+    >
+      <Paragraph>
+        <TextRun text={{ fontWeight: 'bold' }}>Bold TextRun</TextRun>
+      </Paragraph>
       <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
       <div dangerouslySetInnerHTML={{ __html: '<p>HTML from string</p>' }} />
       <Paragraph>
         <TextRun text={{ fontWeight: 'bold' }}>Bold TextRun</TextRun>
       </Paragraph>
       <ComponentA />
-      {/* <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
       <LoremIpsum />
-      <LoremIpsum /> */}
+      <LoremIpsum />
+      <LoremIpsum />
     </Stack>
 
-    <Stack layouts={mockPageTypes('SECOND SECTION')}>
+    <Stack
+      layouts={mockPageTypes('SECOND SECTION')}
+      margin={{
+        top: '1in',
+        header: '0.25in',
+      }}
+    >
       <LoremIpsum />
       {/* <LoremIpsum /> */}
       {/* <LoremIpsum /> */}

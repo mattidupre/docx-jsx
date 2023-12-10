@@ -30,7 +30,7 @@ const objToDom = (node: HtmlNode) => {
 };
 
 export type DocumentRootToDomOptions = {
-  styleSheets?: Array<CSSStyleSheet>;
+  styleSheets?: Array<string | CSSStyleSheet>;
   pageClassName?: string;
 };
 
@@ -41,6 +41,16 @@ export const htmlToDom = async (
     pageClassName,
   }: DocumentRootToDomOptions = {},
 ): Promise<HTMLElement> => {
+  const styleSheets = await Promise.all(
+    styleSheetsOption.map((style) => {
+      if (typeof style === 'string') {
+        const styleSheet = new CSSStyleSheet();
+        return styleSheet.replace(style);
+      }
+      return style;
+    }),
+  );
+
   const { size, stacks: stacksOption } = mapHtmlToDocument<HTMLElement>(
     html,
     objToDom,
@@ -59,7 +69,6 @@ export const htmlToDom = async (
 
   let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
 
-  // TODO: use Promise.all again.
   stacksOption.forEach(({ layouts, margin, content }) => {
     if (!content) {
       return;
@@ -76,14 +85,14 @@ export const htmlToDom = async (
               margin,
               header: layouts[layoutType]?.header,
               footer: layouts[layoutType]?.footer,
-              styleSheets: styleSheetsOption,
+              styleSheets,
               className: pageClassName,
             }),
           }),
         {} as Record<LayoutType, PageTemplate>,
       );
 
-      const pager = new Pager({ styleSheets: styleSheetsOption });
+      const pager = new Pager({ styleSheets });
 
       await pager.toPages({
         content: content,

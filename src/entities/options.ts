@@ -1,5 +1,4 @@
-import { merge } from 'lodash-es';
-import type { IfNever } from 'type-fest';
+import { mergeWithDefault } from '../utils/mergeWithDefault.js';
 import { type UnitsNumber } from '../utils/units.js';
 import { isObject } from 'lodash-es';
 
@@ -116,7 +115,7 @@ export const DEFAULT_DOCUMENT_OPTIONS: DocumentConfig = {
 
 export const assignDocumentOptions = (
   ...args: ReadonlyArray<DocumentOptions>
-): DocumentConfig => merge(args[0] ?? {}, DEFAULT_DOCUMENT_OPTIONS, ...args);
+): DocumentConfig => mergeWithDefault(DEFAULT_DOCUMENT_OPTIONS, ...args);
 
 export type StackOptions = {
   margin?: Partial<Margin>;
@@ -139,7 +138,7 @@ const DEFAULT_STACK_OPTIONS: StackConfig = {
 
 export const assignStackOptions = (
   ...args: ReadonlyArray<StackOptions>
-): StackConfig => merge(args[0] ?? {}, DEFAULT_STACK_OPTIONS, ...args);
+): StackConfig => mergeWithDefault(DEFAULT_STACK_OPTIONS, ...args);
 
 export type ParagraphOptions = {};
 

@@ -285,12 +285,8 @@ export class PageTemplate {
     }
 
     .${PageTemplate.headerClassName} {
-      flex-shrink: 0;
-    }
-
-    :where(.${PageTemplate.headerClassName} > :first-child) {
-      display: flow-root;
-      margin-top: var(--page-margin-header);
+      position: absolute;
+      top: var(--page-margin-header);
     }
 
     .${PageTemplate.contentClassName} {
@@ -306,12 +302,8 @@ export class PageTemplate {
     }
 
     .${PageTemplate.footerClassName} {
-      flex-shrink: 0;
-    }
-
-    :where(.${PageTemplate.footerClassName} > :last-child) {
-      display: flow-root;
-      margin-bottom: var(--page-margin-header);
+      position: absolute;
+      bottom: var(--page-margin-footer);
     }
 
     /* From PagedJS */

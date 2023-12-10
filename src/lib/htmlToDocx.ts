@@ -16,11 +16,17 @@ import {
   type TextOptions,
 } from 'src/entities/options.js';
 
-// TODO
-const parseTextRunOptions = (textOptions?: TextOptions) => ({});
+const parseTextRunOptions = ({
+  fontWeight,
+  fontStyle,
+}: TextOptions = {}): IRunOptions => ({
+  bold: fontWeight === 'bold',
+  italics: fontStyle === 'italic',
+});
 
-// TODO
-const parseParagraphOptions = (paragraphOptions?: ParagraphOptions) => ({});
+const parseParagraphOptions = (
+  paragraphOptions: ParagraphOptions = {},
+): IParagraphOptions => ({});
 
 export const htmlToDocx = (html: string) => {
   const mappedDocument = mapHtmlToDocument(html, (node) => {
@@ -90,7 +96,7 @@ export const htmlToDocx = (html: string) => {
       properties: {
         titlePage: true,
         page: {
-          margin: margin,
+          margin,
           size: size,
         },
       },
@@ -102,7 +108,7 @@ export const htmlToDocx = (html: string) => {
         first: layouts.first.footer as Footer,
         default: layouts.subsequent.footer as Footer,
       },
-      children: [content] as ISectionOptions['children'],
+      children: content as ISectionOptions['children'],
     } satisfies ISectionOptions;
   });
 
