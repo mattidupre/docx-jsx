@@ -9,11 +9,17 @@ import {
 import { omit } from 'lodash-es';
 
 export type StackProps = StackOptions & {
+  className?: string;
   layouts: LayoutOptions<ReactNode>;
   children: ReactNode;
 };
 
-export function Stack({ children, layouts, ...options }: StackProps) {
+export function Stack({
+  children,
+  className,
+  layouts,
+  ...options
+}: StackProps) {
   const encodedElements: {
     header: Array<ReactNode>;
     footer: Array<ReactNode>;
@@ -47,6 +53,7 @@ export function Stack({ children, layouts, ...options }: StackProps) {
   const contentElement: Array<ReactElement> = [
     <div
       key="content"
+      className={className}
       {...encodeElementData({
         elementType: 'content',
         elementOptions: {},

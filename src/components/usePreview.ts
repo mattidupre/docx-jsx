@@ -15,7 +15,7 @@ type PreviewHandle = {
 
 export const usePreview = (
   previewReactEl: ReactElement,
-  { pageClassName, styleSheets = [] }: ReactToDomOptions,
+  { styleSheets = [], ...options }: ReactToDomOptions,
 ): PreviewHandle => {
   const previewElRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,16 +40,17 @@ export const usePreview = (
 
       // reactToPreview is a React-less async operation resolving to a detached
       // element.
-      reactToDom(previewReactEl, { pageClassName, styleSheets }).then(
-        (resumeEl) => {
-          if (isInterrupted) {
-            return;
-          }
-          setIsLoading(false);
-          thisResumeEl = resumeEl;
-          previewElRef.current!.append(resumeEl);
-        },
-      );
+      reactToDom(previewReactEl, {
+        ...options,
+        styleSheets,
+      }).then((resumeEl) => {
+        if (isInterrupted) {
+          return;
+        }
+        setIsLoading(false);
+        thisResumeEl = resumeEl;
+        previewElRef.current!.append(resumeEl);
+      });
 
       return () => {
         isInterrupted = true;
@@ -59,7 +60,7 @@ export const usePreview = (
       };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [previewReactEl, pageClassName, ...styleSheets],
+    [previewReactEl, ...styleSheets],
   );
 
   return useMemo(

@@ -101,7 +101,7 @@
     "storybook": "storybook dev"
   },
   "nodemonConfig": {
-    "ext": "ts,js,json",
+    "ext": "ts,js,json,css",
     "watch": [
       "src/**",
       "package.json",

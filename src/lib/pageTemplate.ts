@@ -10,7 +10,8 @@ export type PageTemplateOptions = {
   content?: InnerNode;
   footer?: InnerNode;
   className?: string;
-  styleSheets?: Array<CSSStyleSheet>;
+  pageClassName?: string;
+  styles?: Array<HTMLStyleElement | CSSStyleSheet>;
 };
 
 export type CloneOptions = {
@@ -92,6 +93,8 @@ export class PageTemplate {
 
   private readonly styleSheets: ReadonlyArray<CSSStyleSheet>;
 
+  private readonly styleElements: ReadonlyArray<HTMLStyleElement>;
+
   private readonly pageSize: PageSize;
 
   public readonly pageEl: Element;
@@ -136,12 +139,28 @@ export class PageTemplate {
 
     this.styleSheets = [
       PageTemplate.baseStyleSheet,
-      ...(options.styleSheets ?? []),
+      ...(options.styles ?? []).flatMap((style) => {
+        if (style instanceof CSSStyleSheet) {
+          return style;
+        }
+        return [];
+      }),
     ];
+    this.styleElements = (options.styles ?? []).flatMap((style) => {
+      if (style instanceof HTMLStyleElement) {
+        const clonedStyle = style.cloneNode(true) as HTMLStyleElement;
+        clonedStyle.removeAttribute('disabled');
+        return clonedStyle;
+      }
+      return [];
+    });
     this.pageSize = { ...options.size };
 
     this.pageEl = document.createElement('div');
-    setClassName(this.pageEl, PageTemplate.pageClassName);
+    setClassName(
+      this.pageEl,
+      [options.pageClassName ?? [], PageTemplate.pageClassName].flat(),
+    );
     this.pageEl.setAttribute('style', PageTemplate.createCssVars(options));
 
     this.headerEl = document.createElement('div');
@@ -165,6 +184,8 @@ export class PageTemplate {
       className: options.className,
       size: options.size,
     });
+
+    this.element.append(...this.styleElements);
   }
 
   public extend({ content }: CloneOptions) {

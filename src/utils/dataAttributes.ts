@@ -17,7 +17,6 @@ const createDataPrefix = (options?: Options) => {
 };
 
 export const encodeDataAttributes = (data: Data, options?: Options) => {
-  const dataPrefix = createDataPrefix(options);
   let attributes: Attributes = {};
   for (const key in data) {
     if (!/^[a-z][a-zA-Z0-9]*$/.test(key)) {

@@ -1,11 +1,12 @@
 import { fromHtmlIsomorphic } from 'hast-util-from-html-isomorphic';
 import { pick } from 'lodash-es';
+import { type TagName } from '../../entities';
 
 type Context = Record<string | number | symbol, unknown>;
 
 export type MapElement = {
   type: 'element';
-  tagName: keyof JSX.IntrinsicElements;
+  tagName: TagName;
   properties: Record<string, string>;
   children?: Array<MapElement | MapText>;
 };

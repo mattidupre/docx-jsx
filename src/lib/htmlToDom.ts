@@ -2,6 +2,7 @@ import { type LayoutType, LAYOUT_TYPES, DocumentElement } from '../entities';
 import { Pager } from '../utils/pager.js';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
+import { documentStyleCss } from '../style.js';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
@@ -32,28 +33,39 @@ const objToDom = (node: HtmlNode) => {
 };
 
 export type DocumentRootToDomOptions = {
-  pageClassName?: string;
-  styleSheets?: Array<string | CSSStyleSheet>;
+  styleSheets?: ReadonlyArray<string | CSSStyleSheet | HTMLStyleElement>;
   onDocument?: (document: DocumentDom) => void;
 };
+
+let styleSheetPromise: Promise<CSSStyleSheet>;
 
 export const htmlToDom = async (
   html: string,
   {
     styleSheets: styleSheetsOption = [],
-    pageClassName,
     onDocument,
   }: DocumentRootToDomOptions = {},
 ): Promise<HTMLElement> => {
-  const styleSheets = await Promise.all(
-    styleSheetsOption.map((style) => {
+  if (!styleSheetPromise) {
+    const styleSheet = new CSSStyleSheet();
+    styleSheetPromise = styleSheet.replace(documentStyleCss);
+  }
+
+  const styleSheets = await Promise.all([
+    styleSheetPromise,
+    ...styleSheetsOption.map((style) => {
       if (typeof style === 'string') {
         const styleSheet = new CSSStyleSheet();
         return styleSheet.replace(style);
       }
+      if (style instanceof HTMLStyleElement) {
+        const styleElement = style.cloneNode() as HTMLStyleElement;
+        styleElement.removeAttribute('disabled');
+        return styleElement;
+      }
       return style;
     }),
-  );
+  ]);
 
   const documentObj = mapHtmlToDocument<HTMLElement>(
     html,
@@ -77,7 +89,7 @@ export const htmlToDom = async (
 
   let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
 
-  stacksOption.forEach(({ layouts, margin, content }) => {
+  stacksOption.forEach(({ layouts, margin, content, pageClassName }) => {
     if (!content) {
       return;
     }
@@ -93,14 +105,15 @@ export const htmlToDom = async (
               margin,
               header: layouts[layoutType]?.header,
               footer: layouts[layoutType]?.footer,
-              styleSheets,
+              styles: styleSheets,
               className: pageClassName,
+              pageClassName,
             }),
           }),
         {} as Record<LayoutType, PageTemplate>,
       );
 
-      const pager = new Pager({ styleSheets });
+      const pager = new Pager({ styles: styleSheets });
 
       await pager.toPages({
         content: content,
@@ -130,7 +143,7 @@ export const htmlToDom = async (
           // Note that contentElement is NOT cloned. It will be detached from pager.
           allTemplates.push(
             templates[layoutType].extend({
-              content: contentElement,
+              content: contentElement.firstChild!.childNodes,
             }),
           );
         },

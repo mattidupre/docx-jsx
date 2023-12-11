@@ -114,10 +114,12 @@ export const assignDocumentOptions = (
 ): DocumentConfig => mergeWithDefault(DEFAULT_DOCUMENT_OPTIONS, ...args);
 
 export type StackOptions = {
+  pageClassName?: string;
   margin?: Partial<PageMargin>;
 };
 
 export type StackConfig = {
+  pageClassName?: string;
   margin: PageMargin;
 };
 
@@ -138,6 +140,7 @@ export const assignStackOptions = (
 
 export type ParagraphOptions = {
   textAlign?: 'left' | 'center' | 'right' | 'justify';
+  lineHeight?: `${number}`;
 };
 
 export type TextOptions = {

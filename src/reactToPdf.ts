@@ -7,4 +7,6 @@ export type ReactToPdfOptions = DocumentRootToPdfOptions;
 export const reactToPdf = async (
   rootElement: ReactElement,
   options: ReactToPdfOptions,
-) => htmlToPdf(renderToStaticMarkup(rootElement), options);
+) => {
+  return htmlToPdf(renderToStaticMarkup(rootElement), options);
+};

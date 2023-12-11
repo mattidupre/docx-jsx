@@ -21,7 +21,7 @@ export type OnPageRendered = (context: {
 export type OnPagesRendered = (context: { pagesElement: HTMLElement }) => void;
 
 export type PagerOptions = {
-  styleSheets?: Array<CSSStyleSheet>;
+  styles?: Array<HTMLStyleElement | CSSStyleSheet>;
   vars?: PageVars;
 };
 
@@ -51,16 +51,32 @@ export class Pager {
     return baseStyleSheets;
   }
 
-  readonly allStyleSheets: ReadonlyArray<CSSStyleSheet>;
+  readonly allStyleSheets: Array<CSSStyleSheet>;
 
-  constructor({ styleSheets = [], vars }: PagerOptions = {}) {
+  readonly allStyleElements: Array<HTMLStyleElement>;
+
+  constructor({ styles = [], vars }: PagerOptions = {}) {
     const instanceStyleSheets = [Pager.varsToStyleSheet(vars) ?? []].flat();
 
-    this.allStyleSheets = [
+    const styleSheets: Array<CSSStyleSheet> = [
       ...Pager.baseStyleSheets,
       ...instanceStyleSheets,
-      ...(styleSheets ?? []),
     ];
+
+    const styleElements: Array<HTMLStyleElement> = [];
+
+    for (const style of styles) {
+      if (style instanceof CSSStyleSheet) {
+        styleSheets.push(style);
+      }
+      if (style instanceof HTMLStyleElement) {
+        styleElements.push(style);
+      }
+    }
+
+    this.allStyleSheets = styleSheets;
+
+    this.allStyleElements = styleElements;
   }
 
   async toPages({
@@ -78,6 +94,7 @@ export class Pager {
     document.body.appendChild(hostElement);
     const shadowElement = hostElement.attachShadow({ mode: 'closed' });
     shadowElement.adoptedStyleSheets.push(...this.allStyleSheets);
+    shadowElement.append(...this.allStyleElements);
     const chunkerElement = document.createElement('div');
     Pager.applyVarsToElement(vars, chunkerElement);
     shadowElement.appendChild(chunkerElement);
@@ -102,11 +119,14 @@ export class Pager {
     chunkerElement
       .querySelectorAll('.pagedjs_page')
       .forEach((pageElement, index) => {
+        const pagedContentElement = pageElement.querySelector(
+          '.pagedjs_page_content',
+        ) as HTMLElement;
+        const contentElement = document.createElement('div');
+        contentElement.append(...pagedContentElement.children);
         onPageRendered?.({
           pageElement: pageElement as HTMLElement,
-          contentElement: pageElement.querySelector(
-            '.pagedjs_page_content',
-          ) as HTMLElement,
+          contentElement,
           index,
         });
       });

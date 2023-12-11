@@ -1,7 +1,7 @@
 import { test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { mapHtml } from './mapHtml.js';
-import { mockDocument } from 'src/fixtures/mockDocument';
+import { mockDocument } from '../../fixtures/mockDocument';
 
 const mockHtml = renderToStaticMarkup(mockDocument);
 

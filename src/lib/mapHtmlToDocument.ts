@@ -1,4 +1,4 @@
-import { optionsToCssVarsString } from 'src/utils/cssVars';
+import { optionsToCssVarsString } from '../utils/cssVars';
 import {
   ElementType,
   ElementData,

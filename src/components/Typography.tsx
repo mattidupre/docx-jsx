@@ -1,6 +1,7 @@
 import { type ReactNode, createElement } from 'react';
 import {
   encodeElementData,
+  type TagName,
   type TextOptions,
   type ParagraphOptions,
 } from '../entities';
@@ -9,30 +10,39 @@ import {
 
 export type TypographyProps = (
   | {
-      as: 'span';
-      text?: never;
-      paragraph: ParagraphOptions;
+      as?: 'span';
+      text?: TextOptions;
+      paragraph?: never;
     }
   | {
-      as: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+      as: Exclude<TagName, 'span'>;
       text?: TextOptions;
       paragraph?: ParagraphOptions;
     }
 ) & {
+  className?: string;
   children: ReactNode;
 };
 
+// TODO: If not within a <Document> or if target is web:
+// do not encode data
+// set CSS variables on element
+
 export function Typography({
   as = 'span',
+  className,
   children,
   ...options
 }: TypographyProps) {
   return createElement(
     as,
-    encodeElementData({
-      elementType: 'htmltag',
-      elementOptions: options,
-    }),
+    {
+      ...encodeElementData({
+        elementType: 'htmltag',
+        elementOptions: options,
+      }),
+      className,
+    },
     children,
   );
 }

@@ -1,5 +1,28 @@
 import { kebabCase } from 'lodash-es';
 
+// TODO: Add more semantic HTML TagNames.
+// IMPORTANT: Keep these in sync with typography stylesheet.
+export type TagName = keyof Pick<
+  JSX.IntrinsicElements,
+  | 'div'
+  | 'p'
+  | 'h1'
+  | 'h2'
+  | 'h3'
+  | 'h4'
+  | 'h5'
+  | 'h6'
+  | 'a'
+  | 'b'
+  | 'strong'
+  | 'em'
+  | 's'
+  | 'u'
+  | 'sub'
+  | 'sup'
+  | 'span'
+>;
+
 export type HtmlAttributes = Record<string, string>;
 
 export const assignHtmlAttributes = (

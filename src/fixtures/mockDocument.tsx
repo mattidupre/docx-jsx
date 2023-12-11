@@ -1,7 +1,6 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 
-import { Document, Stack, TextRun, Paragraph, Counter } from '../components.js';
-import { type FunctionComponent } from 'react';
+import { Document, Stack, Typography, Counter } from '../components.js';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 const PageCounter = () => (
@@ -15,30 +14,30 @@ const mockPageTypes = (prefix: string) => {
   return {
     first: {
       header: (
-        <Paragraph>
+        <Typography as="p">
           {prefix} / FIRST PAGE / <b>HEADER</b> <em>TEXT</em>&nbsp; /&nbsp;
           <PageCounter />
-        </Paragraph>
+        </Typography>
       ),
       footer: (
-        <Paragraph>
+        <Typography as="p">
           {prefix} / FIRST PAGE / FOOTER TEXT&nbsp; /&nbsp;
           <PageCounter />
-        </Paragraph>
+        </Typography>
       ),
     },
     subsequent: {
       header: (
-        <Paragraph>
+        <Typography as="p">
           {prefix} / DEFAULT PAGE / HEADER TEXT&nbsp; /&nbsp;
           <PageCounter />
-        </Paragraph>
+        </Typography>
       ),
       footer: (
-        <Paragraph>
+        <Typography as="p">
           {prefix} / DEFAULT PAGE / FOOTER TEXT&nbsp; /&nbsp;
           <PageCounter />
-        </Paragraph>
+        </Typography>
       ),
     },
   } as const;
@@ -47,6 +46,7 @@ const mockPageTypes = (prefix: string) => {
 export const mockDocument = (
   <Document size={{ width: '8.5in', height: '11in' }}>
     <Stack
+      pageClassName="preview__page"
       layouts={mockPageTypes('FIRST SECTION')}
       margin={{
         top: '2in',
@@ -62,22 +62,32 @@ export const mockDocument = (
       <h5>Heading 5</h5>
       <h6>Heading 6</h6>
 
-      <p>
-        <a href="https://www.google.com">Link Text</a>
-      </p>
+      <Typography as="p" paragraph={{ lineHeight: '2' }}>
+        Double Line Height: Circumambulate the city of a dreamy Sabbath
+        afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
+        Whitehall, northward.
+      </Typography>
 
-      <Paragraph paragraph={{ textAlign: 'left' }}>Left Paragraph</Paragraph>
-      <Paragraph paragraph={{ textAlign: 'center' }}>
+      <Typography as="p" paragraph={{ textAlign: 'left' }}>
+        Left Paragraph
+      </Typography>
+      <Typography as="p" paragraph={{ textAlign: 'center' }}>
         Centered Paragraph
-      </Paragraph>
-      <Paragraph paragraph={{ textAlign: 'right' }}>Right Paragraph</Paragraph>
-      <Paragraph paragraph={{ textAlign: 'justify' }}>
+      </Typography>
+      <Typography as="p" paragraph={{ textAlign: 'right' }}>
+        Right Paragraph
+      </Typography>
+      <Typography as="p" paragraph={{ textAlign: 'justify' }}>
         Justified Paragraph: Circumambulate the city of a dreamy Sabbath
         afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
         Whitehall, northward.
-      </Paragraph>
+      </Typography>
+
       <p>
-        <TextRun text={{ fontWeight: 'bold' }}>Bold Text</TextRun>
+        <a href="https://www.google.com">Link Text</a>
+      </p>
+      <p>
+        <Typography text={{ fontWeight: 'bold' }}>Bold Text</Typography>
       </p>
       <p>
         <b>{'<b>'} Text</b>
@@ -86,35 +96,37 @@ export const mockDocument = (
         <strong>{'<strong>'} Text</strong>
       </p>
       <p>
-        <TextRun text={{ fontStyle: 'italic' }}>Italic Text</TextRun>
+        <Typography text={{ fontStyle: 'italic' }}>Italic Text</Typography>
       </p>
       <p>
         <em>{'<em>'} Text</em>
       </p>
       <p>
-        <TextRun text={{ textDecoration: 'underline' }}>
+        <Typography text={{ textDecoration: 'underline' }}>
           Underlined Text
-        </TextRun>
+        </Typography>
       </p>
       <p>
         <u>{'<u>'} Text</u>
       </p>
       <p>
-        <TextRun text={{ textDecoration: 'line-through' }}>
+        <Typography text={{ textDecoration: 'line-through' }}>
           Strikethrough Text
-        </TextRun>
+        </Typography>
       </p>
       <p>
         <s>{'<s>'} Text</s>
       </p>
       <p>
-        <TextRun text={{ fontSize: '2rem' }}>Size 2rem Text</TextRun>
+        <Typography text={{ fontSize: '2rem' }}>Size 2rem Text</Typography>
       </p>
       <p>
-        <TextRun text={{ color: '#ff0000' }}>Red Text</TextRun>
+        <Typography text={{ color: '#ff0000' }}>Red Text</Typography>
       </p>
       <p>
-        <TextRun text={{ highlightColor: '#00ff00' }}>Highlighted Text</TextRun>
+        <Typography text={{ highlightColor: '#00ff00' }}>
+          Highlighted Text
+        </Typography>
       </p>
       <p>
         Text with <sup>superscript</sup>
@@ -123,7 +135,9 @@ export const mockDocument = (
         Text with <sub>subscript</sub>
       </p>
       <p>
-        <TextRun text={{ textTransform: 'uppercase' }}>Uppercase Text</TextRun>
+        <Typography text={{ textTransform: 'uppercase' }}>
+          Uppercase Text
+        </Typography>
       </p>
       <div
         dangerouslySetInnerHTML={{
@@ -133,6 +147,7 @@ export const mockDocument = (
     </Stack>
 
     <Stack
+      pageClassName="preview__page"
       layouts={mockPageTypes('SECOND SECTION')}
       margin={{
         top: '1in',

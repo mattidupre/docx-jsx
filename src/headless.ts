@@ -1,4 +1,4 @@
-import { htmlToDom } from 'src/lib/htmlToDom.js';
+import { htmlToDom } from './lib/htmlToDom.js';
 
 const globalObj = { htmlToDom };
 

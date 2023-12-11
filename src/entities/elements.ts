@@ -14,6 +14,7 @@ import {
   StackConfig,
   LayoutConfig,
 } from './options.js';
+import { type TagName } from './html.js';
 
 type ConfigByElementType = {
   document: DocumentConfig;
@@ -118,4 +119,3 @@ export const isChildOfTagName = (
   tagName: TagName | readonly TagName[],
 ) =>
   isIntersection(parentTagNames, Array.isArray(tagName) ? tagName : [tagName]);
-export type TagName = keyof JSX.IntrinsicElements;

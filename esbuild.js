@@ -1,5 +1,15 @@
-import fs from 'node:fs/promises';
 import * as esbuild from 'esbuild';
+import fs from 'node:fs/promises';
+
+const omToCssPlugin = {
+  name: 'omToCss',
+  setup(build) {
+    build.onEnd(async () => {
+      const { documentStyleCss } = await import('./dist/style.mjs');
+      await fs.writeFile('./dist/style.css', documentStyleCss);
+    });
+  },
+};
 
 const BUILD_OPTIONS = {
   // color: true,
@@ -10,6 +20,7 @@ const SHARED_OPTIONS = {
   logLevel: 'info',
   outdir: './dist',
   sourcemap: true,
+  plugins: [omToCssPlugin],
 };
 
 const SRC_OPTIONS = [
@@ -24,7 +35,11 @@ const SRC_OPTIONS = [
   },
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/components.ts', './src/reactToDom.ts'],
+    entryPoints: [
+      './src/components.ts',
+      './src/reactToDom.ts',
+      './src/style.ts',
+    ],
     bundle: true,
     treeShaking: true,
     platform: 'browser',

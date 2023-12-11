@@ -19,12 +19,38 @@ import {
   type ParagraphOptions,
   type TextOptions,
   type Color,
-} from 'src/entities';
+} from '../entities';
 
 const parseColor = (color?: Color) => color && color.replace('#', '');
 
 const parseTextSize = (fontSize: TextOptions['fontSize']) =>
   fontSize !== undefined ? parseFloat(fontSize) * 22 : undefined;
+
+const DOCX_HEADING = {
+  h1: HeadingLevel.HEADING_1,
+  h2: HeadingLevel.HEADING_2,
+  h3: HeadingLevel.HEADING_3,
+  h4: HeadingLevel.HEADING_4,
+  h5: HeadingLevel.HEADING_5,
+  h6: HeadingLevel.HEADING_6,
+} as const;
+
+const DOCX_TEXT_ALIGN = {
+  left: AlignmentType.LEFT,
+  center: AlignmentType.CENTER,
+  right: AlignmentType.RIGHT,
+  justify: AlignmentType.JUSTIFIED,
+} as const;
+
+const parseParagraphOptions = ({
+  textAlign,
+  lineHeight,
+}: ParagraphOptions = {}): IParagraphOptions => ({
+  spacing: {
+    line: lineHeight && parseFloat(lineHeight) * 240,
+  },
+  alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
+});
 
 const parseTextRunOptions = ({
   fontSize,
@@ -49,28 +75,6 @@ const parseTextRunOptions = ({
   strike: textDecoration === 'line-through' ? true : undefined,
   superScript,
   subScript,
-});
-
-const DOCX_HEADING = {
-  h1: HeadingLevel.HEADING_1,
-  h2: HeadingLevel.HEADING_2,
-  h3: HeadingLevel.HEADING_3,
-  h4: HeadingLevel.HEADING_4,
-  h5: HeadingLevel.HEADING_5,
-  h6: HeadingLevel.HEADING_6,
-} as const;
-
-const DOCX_TEXT_ALIGN = {
-  left: AlignmentType.LEFT,
-  center: AlignmentType.CENTER,
-  right: AlignmentType.RIGHT,
-  justify: AlignmentType.JUSTIFIED,
-} as const;
-
-const parseParagraphOptions = ({
-  textAlign,
-}: ParagraphOptions = {}): IParagraphOptions => ({
-  alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
 });
 
 export const htmlToDocx = (html: string) => {

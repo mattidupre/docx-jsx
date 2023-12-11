@@ -18,7 +18,10 @@ export const resetHtmlObjToPdf = async () => {
   }
 };
 
-export type DocumentRootToPdfOptions = DocumentRootToDomOptions & {
+export type DocumentRootToPdfOptions = Omit<
+  DocumentRootToDomOptions,
+  'styleSheets'
+> & { styleSheets?: ReadonlyArray<string> } & {
   puppeteer?: PuppeteerLaunchOptions;
 };
 
