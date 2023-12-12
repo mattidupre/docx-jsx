@@ -20,9 +20,12 @@ import {
   StackConfig,
   DocumentConfig,
   StackElement,
+  ElementsContext,
+  assignElementsContext,
+  getIntrinsicTextOptions,
 } from '../entities';
 import { mapHtml } from '../utils/mapHtml/mapHtml';
-import { merge } from 'lodash-es';
+import { extend, merge } from 'lodash-es';
 
 const CONTENT_ELEMENT_TYPES = [
   'htmltag',
@@ -39,13 +42,8 @@ type MapData = {
   parentElementTypes: ReadonlyArray<ElementType>;
   parentTagNames: ReadonlyArray<TagName>;
   element: ElementData<ElementType>;
-  // TODO: Rename to configsContext
-  optionsContext: {
-    documentOptions?: DocumentConfig;
-    stackOptions?: StackConfig;
-    paragraphOptions?: ParagraphOptions;
-    textOptions?: TextOptions;
-  };
+  // TODO: Rename to elementsContext
+  elementsContext: ElementsContext;
 };
 
 type NodeBase = {
@@ -83,26 +81,22 @@ export const mapHtmlToDocument = <TContent>(
   html: string,
   parseNode: ParseHtmlNode,
 ): DocumentElement<TContent> => {
-  // TODO: Always return context. If passing through, just don't change it.
-
   let layoutElements = createDefaultLayoutConfig();
   let contentElement: unknown = undefined;
 
-  // TODO: Better type than "any"
   const documents = mapHtml<NodeBase, unknown>(html, {
     initialContext: {} as NodeBase,
     onElementBeforeChildren: ({ htmlElement, parentContext }) => {
-      const { tagName, properties } = htmlElement;
+      const { tagName } = htmlElement;
       const {
         parentElementTypes = [],
         parentTagNames = [],
-        optionsContext: parentOptionsContext = {},
+        elementsContext: parentOptionsContext = {},
       } = parentContext?.data ?? {};
 
       const elementData = decodeElementData(htmlElement);
 
-      const optionsContext: NodeBase['data']['optionsContext'] =
-        structuredClone(parentOptionsContext);
+      const optionsContext = assignElementsContext({}, parentOptionsContext);
 
       const childContext: NodeBase = {
         ...htmlElement,
@@ -110,7 +104,7 @@ export const mapHtmlToDocument = <TContent>(
           parentElementTypes: [...parentElementTypes, elementData.elementType],
           parentTagNames: [...parentTagNames, htmlElement.tagName],
           element: elementData,
-          optionsContext,
+          elementsContext: optionsContext,
         },
       };
 
@@ -121,8 +115,13 @@ export const mapHtmlToDocument = <TContent>(
             'Document cannot be a child of any other elements.',
           );
         }
-        assignDocumentOptions(elementData.elementOptions);
-        optionsContext.documentOptions = elementData.elementOptions;
+
+        assignElementsContext(optionsContext, {
+          document: elementData.elementOptions,
+        });
+
+        // assignDocumentOptions(elementData.elementOptions);
+        // optionsContext.document = elementData.elementOptions;
         return childContext;
       }
 
@@ -131,11 +130,9 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Stack must be a child of document.');
         }
 
-        elementData.elementOptions = assignStackOptions(
-          elementData.elementOptions,
-        );
-
-        optionsContext.stackOptions = elementData.elementOptions;
+        assignElementsContext(optionsContext, {
+          stack: elementData.elementOptions,
+        });
 
         return childContext;
       }
@@ -163,78 +160,15 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Content root must be a child of content root.');
         }
 
-        // TODO: Create mergeTextOptions for type safety.
-
-        if (tagName === 'b' || tagName === 'strong') {
-          merge(elementData.elementOptions, {
-            text: {
-              fontWeight: 'bold',
-            },
-          });
-        }
-
-        if (tagName === 'em') {
-          merge(elementData.elementOptions, {
-            text: {
-              fontStyle: 'italic',
-            },
-          });
-        }
-
-        if (tagName === 'u') {
-          merge(elementData.elementOptions, {
-            text: {
-              textDecoration: 'underline',
-            },
-          });
-        }
-
-        if (tagName === 's') {
-          merge(elementData.elementOptions, {
-            text: {
-              textDecoration: 'line-through',
-            },
-          });
-        }
-
-        if (tagName === 'sup') {
-          merge(elementData.elementOptions, {
-            text: {
-              superScript: true,
-            },
-          });
-        }
-
-        if (tagName === 'sub') {
-          merge(elementData.elementOptions, {
-            text: {
-              subScript: true,
-            },
-          });
-        }
-
-        optionsContext.textOptions ??= {};
-        if ('text' in elementData.elementOptions) {
-          merge(optionsContext.textOptions, elementData.elementOptions.text);
-        }
-
-        optionsContext.paragraphOptions ??= {};
-        if ('paragraph' in elementData.elementOptions) {
-          merge(
-            optionsContext.paragraphOptions,
-            elementData.elementOptions.paragraph,
-          );
-        }
+        assignElementsContext(optionsContext, elementData.elementOptions, {
+          text: getIntrinsicTextOptions(tagName),
+        });
 
         if (elementData.elementType === 'counter') {
           merge(childContext.properties, {
             ['data-counter-type']: elementData.elementOptions.counterType,
           });
         }
-
-        assignHtmlAttributes(childContext.properties, {
-          style: optionsToCssVarsString(elementData.elementOptions),
-        });
 
         return childContext;
       }
@@ -265,7 +199,7 @@ export const mapHtmlToDocument = <TContent>(
 
       if (isElementOfType(elementData, 'document')) {
         return {
-          ...elementData.elementOptions,
+          ...childContext.data.elementsContext.document!,
           stacks: children as StackElement<unknown>[],
         } satisfies DocumentElement<unknown>;
       }
@@ -277,7 +211,7 @@ export const mapHtmlToDocument = <TContent>(
         contentElement = undefined;
 
         return {
-          ...elementData.elementOptions,
+          ...childContext.data.elementsContext.stack!,
           layouts,
           content,
         } satisfies StackElement<unknown>;

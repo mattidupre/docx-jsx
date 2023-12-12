@@ -1,6 +1,8 @@
 import { mergeWithDefault } from '../utils/mergeWithDefault.js';
 import { type UnitsNumber } from '../utils/units.js';
-import { isObject } from 'lodash-es';
+import { isObject, mapValues } from 'lodash-es';
+import { TagName } from './html.js';
+import { optionsToCssVars } from '../utils/cssVars.js';
 
 export const PACKAGE_NAME: Lowercase<string> = 'matti-docs';
 
@@ -110,7 +112,7 @@ export const DEFAULT_DOCUMENT_OPTIONS: DocumentConfig = {
 };
 
 export const assignDocumentOptions = (
-  ...args: ReadonlyArray<DocumentOptions>
+  ...args: ReadonlyArray<undefined | DocumentOptions>
 ): DocumentConfig => mergeWithDefault(DEFAULT_DOCUMENT_OPTIONS, ...args);
 
 export type StackOptions = {
@@ -135,14 +137,22 @@ const DEFAULT_STACK_OPTIONS: StackConfig = {
 };
 
 export const assignStackOptions = (
-  ...args: ReadonlyArray<StackOptions>
+  ...args: ReadonlyArray<undefined | StackOptions>
 ): StackConfig => mergeWithDefault(DEFAULT_STACK_OPTIONS, ...args);
 
+// TODO: add false since undefined will not overwrite parent.
 export type ParagraphOptions = {
   textAlign?: 'left' | 'center' | 'right' | 'justify';
   lineHeight?: `${number}`;
 };
 
+export type ParagraphConfig = ParagraphOptions;
+
+export const assignParagraphOptions = (
+  ...args: ReadonlyArray<undefined | ParagraphOptions>
+): ParagraphConfig => mergeWithDefault({}, ...args);
+
+// TODO: add false since undefined will not overwrite parent.
 export type TextOptions = {
   fontWeight?: 'bold';
   fontStyle?: 'italic';
@@ -154,6 +164,34 @@ export type TextOptions = {
   superScript?: boolean;
   subScript?: boolean;
 };
+
+export type TextConfig = TextOptions;
+
+export const assignTextOptions = (
+  ...args: ReadonlyArray<undefined | TextOptions>
+): TextConfig => mergeWithDefault({}, ...args);
+
+const INTRINSIC_TEXT_OPTIONS = {
+  b: { fontWeight: 'bold' },
+  strong: { fontWeight: 'bold' },
+  em: { fontStyle: 'italic' },
+  u: { textDecoration: 'underline' },
+  s: { textDecoration: 'line-through' },
+  sup: { superScript: true },
+  sub: { subScript: true },
+} as const satisfies Partial<Record<TagName, TextOptions>>;
+
+export const INTRINSIC_CSS_VARS = mapValues(INTRINSIC_TEXT_OPTIONS, (value) =>
+  optionsToCssVars({ text: value }),
+);
+
+export const getIntrinsicTextOptions = (tagName: TagName): TextOptions => {
+  const options =
+    INTRINSIC_TEXT_OPTIONS[tagName as keyof typeof INTRINSIC_TEXT_OPTIONS];
+  return options ? structuredClone(options) : {};
+};
+
+// TODO: Separate 'page-number' and 'page-count' elements with no bespoke options?
 
 export type CounterType = (typeof COUNTER_TYPES)[number];
 

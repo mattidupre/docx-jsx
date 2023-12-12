@@ -14,9 +14,8 @@ export const parseSimpleCss = (object: SimpleCss) => {
     const rulesArray: Array<string> = [];
     const rules = object[selector];
     for (const prop in rules) {
-      rulesArray.push(
-        `  ${kebabCase(prop)}: ${rules[prop as keyof typeof rules]};`,
-      );
+      const parsedProp = prop.startsWith('--') ? prop : kebabCase(prop);
+      rulesArray.push(`  ${parsedProp}: ${rules[prop as keyof typeof rules]};`);
     }
     cssArr.push(`${selector} {\n${rulesArray.join('\n')}\n}`);
   }

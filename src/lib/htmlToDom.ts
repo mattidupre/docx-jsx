@@ -1,8 +1,18 @@
-import { type LayoutType, LAYOUT_TYPES, DocumentElement } from '../entities';
+import {
+  type LayoutType,
+  LAYOUT_TYPES,
+  DocumentElement,
+  assignTextOptions,
+  getIntrinsicTextOptions,
+  assignHtmlAttributes,
+  assignElementsContext,
+} from '../entities';
 import { Pager } from '../utils/pager.js';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
 import { documentStyleCss } from '../style.js';
+import { optionsToCssVarsString } from '../utils/cssVars';
+import { pick } from 'lodash-es';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
@@ -14,10 +24,27 @@ const objToDom = (node: HtmlNode) => {
   const children = node.children as ReadonlyArray<Node>;
 
   if (node.type === 'element') {
-    const element = document.createElement(node.tagName);
-    for (const propertyName in node.properties) {
-      const propertyValue = node.properties[propertyName];
-      element.setAttribute(propertyName, propertyValue);
+    const {
+      properties,
+      tagName,
+      data: {
+        element: { elementOptions },
+      },
+    } = node;
+
+    const elementContext = assignElementsContext({}, elementOptions);
+
+    const attributes = assignHtmlAttributes({}, properties, {
+      style: optionsToCssVarsString(
+        pick(elementContext, ['text', 'paragraph'] as const),
+      ),
+    });
+
+    const element = document.createElement(tagName);
+    for (const attributeName in attributes) {
+      if (attributes[attributeName]) {
+        element.setAttribute(attributeName, attributes[attributeName]);
+      }
     }
     element.append(...children);
     return element;

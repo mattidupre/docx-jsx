@@ -1,6 +1,19 @@
-import { type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { encodeElementData, assignDocumentOptions } from '../entities';
-import { type DocumentOptions } from '../entities/options.js';
+import {
+  type StackConfig,
+  type DocumentConfig,
+  type DocumentOptions,
+  type StackOptions,
+} from '../entities/options.js';
+import { createContext } from 'react';
+
+type InternalContextValue = {
+  document?: DocumentConfig;
+  stack?: StackConfig;
+};
+
+const InternalContext = createContext<InternalContextValue>({});
 
 export type DocumentProps = DocumentOptions & {
   className?: string;
@@ -10,17 +23,25 @@ export type DocumentProps = DocumentOptions & {
 export function Document({
   children,
   className,
-  ...elementOptions
+  ...documentOptions
 }: DocumentProps) {
+  const contextValue = useMemo(
+    () => ({
+      document: assignDocumentOptions(documentOptions),
+    }),
+    [documentOptions],
+  );
   return (
-    <main
-      className={className}
-      {...encodeElementData({
-        elementType: 'document',
-        elementOptions: assignDocumentOptions(elementOptions),
-      })}
-    >
-      {children}
-    </main>
+    <InternalContext.Provider value={contextValue}>
+      <main
+        className={className}
+        {...encodeElementData({
+          elementType: 'document',
+          elementOptions: contextValue.document,
+        })}
+      >
+        {children}
+      </main>
+    </InternalContext.Provider>
   );
 }

@@ -1,6 +1,8 @@
 import { type SimpleCss, parseSimpleCss } from './utils/css';
+import { INTRINSIC_CSS_VARS } from './entities';
 
 export const documentStyleObject = {
+  ...INTRINSIC_CSS_VARS,
   a: {
     color: 'inherit',
   },

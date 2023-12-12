@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
 let browserPromise: null | Promise<Browser>;
 
 // Close off Puppeteer to prevent lingering processes during dev.
-export const resetHtmlObjToPdf = async () => {
+export const resetHtmlToPdf = async () => {
   if (browserPromise) {
     const browser = await browserPromise;
     await browser.close();

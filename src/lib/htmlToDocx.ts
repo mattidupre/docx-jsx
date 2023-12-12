@@ -79,11 +79,11 @@ const parseTextRunOptions = ({
 
 export const htmlToDocx = (html: string) => {
   const mappedDocument = mapHtmlToDocument(html, (node) => {
-    const { textOptions, paragraphOptions } = node.data.optionsContext;
+    const { text, paragraph } = node.data.elementsContext;
 
     if (node.type === 'text') {
       return new TextRun({
-        ...parseTextRunOptions(textOptions),
+        ...parseTextRunOptions(text),
         text: node.value,
       });
     }
@@ -104,21 +104,21 @@ export const htmlToDocx = (html: string) => {
           throw new TypeError('Invalid counter type.');
         }
         return new TextRun({
-          ...parseTextRunOptions(textOptions),
+          ...parseTextRunOptions(text),
           children,
         });
       }
 
       if (node.tagName === 'p') {
         return new Paragraph({
-          ...parseParagraphOptions(paragraphOptions),
+          ...parseParagraphOptions(paragraph),
           children: node.children as ParagraphChild[],
         });
       }
 
       if (node.tagName in DOCX_HEADING) {
         return new Paragraph({
-          ...parseParagraphOptions(paragraphOptions),
+          ...parseParagraphOptions(paragraph),
           heading: DOCX_HEADING[node.tagName as keyof typeof DOCX_HEADING],
           children: node.children as ParagraphChild[],
         });
@@ -126,7 +126,7 @@ export const htmlToDocx = (html: string) => {
 
       if (node.tagName === 'a') {
         return new ExternalHyperlink({
-          ...parseTextRunOptions(textOptions),
+          ...parseTextRunOptions(text),
           children: node.children as ParagraphChild[],
           link: node.properties.href,
         });
