@@ -1,12 +1,12 @@
-import { type ReactNode, type ReactElement } from 'react';
+import type { ReactNode, ReactElement } from 'react';
+import { omit } from 'lodash-es';
 import { encodeElementData, type StackOptions } from '../entities';
 import {
-  LayoutOptions,
-  StackConfig,
+  type LayoutOptions,
+  type StackConfig,
   assignStackOptions,
   mapLayoutKeys,
 } from '../entities/options.js';
-import { omit } from 'lodash-es';
 
 export type StackProps = StackOptions & {
   className?: string;

@@ -1,5 +1,5 @@
-import { it } from 'vitest';
 import fs from 'node:fs/promises';
+import { it } from 'vitest';
 import { reactToPdf } from './reactToPdf.js';
 import { mockDocument } from './fixtures/mockDocument.js';
 import { writeTestFile } from './fixtures/writeTestFile.js';

@@ -1,7 +1,5 @@
-/* eslint-disable react/jsx-no-useless-fragment */
-
-import { Document, Stack, Typography, Counter } from '../components.js';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { Document, Stack, Typography, Counter } from '../components.js';
 
 const PageCounter = () => (
   <span>

@@ -1,5 +1,5 @@
-import { type ReactElement } from 'react';
-import { type ReactToDomOptions } from '../reactToDom.js';
+import type { ReactElement } from 'react';
+import type { ReactToDomOptions } from '../reactToDom.js';
 import { usePreview } from './usePreview.js';
 
 type PreviewProps = ReactToDomOptions & {

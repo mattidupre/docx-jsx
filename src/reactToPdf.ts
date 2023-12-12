@@ -1,6 +1,6 @@
-import { type DocumentRootToPdfOptions, htmlToPdf } from './lib/htmlToPdf.js';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ReactElement } from 'react';
+import type { ReactElement } from 'react';
+import { type DocumentRootToPdfOptions, htmlToPdf } from './lib/htmlToPdf.js';
 
 export type ReactToPdfOptions = DocumentRootToPdfOptions;
 

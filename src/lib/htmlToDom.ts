@@ -1,18 +1,16 @@
+import { pick } from 'lodash-es';
 import {
   type LayoutType,
   LAYOUT_TYPES,
-  DocumentElement,
-  assignTextOptions,
-  getIntrinsicTextOptions,
+  type DocumentElement,
   assignHtmlAttributes,
   assignElementsContext,
 } from '../entities';
 import { Pager } from '../utils/pager.js';
-import { PageTemplate } from './pageTemplate.js';
-import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
 import { documentStyleCss } from '../style.js';
 import { optionsToCssVarsString } from '../utils/cssVars';
-import { pick } from 'lodash-es';
+import { PageTemplate } from './pageTemplate.js';
+import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
@@ -105,8 +103,8 @@ export const htmlToDom = async (
 
   // const perf = performance.now();
 
-  // Create a temporary element in which to calculate / render pages.
-  // Pager and PageTemplate operate in their own respective Shadow DOMs.
+  // Create a temporary element in which to calculate / render pages. Pager and
+  // PageTemplate operate in their own respective Shadow DOMs.
   const renderEl = document.createElement('div');
   renderEl.style.visibility = 'hidden';
   renderEl.style.position = 'absolute';
@@ -167,7 +165,8 @@ export const htmlToDom = async (
           const layoutType: LayoutType =
             pageNumber === 0 ? 'first' : 'subsequent';
 
-          // Note that contentElement is NOT cloned. It will be detached from pager.
+          // Note that contentElement is NOT cloned. It will be detached from
+          // pager.
           allTemplates.push(
             templates[layoutType].extend({
               content: contentElement.firstChild!.childNodes,

@@ -1,12 +1,11 @@
 import { useMemo, type ReactNode } from 'react';
-import { encodeElementData, assignDocumentOptions } from '../entities';
-import {
-  type StackConfig,
-  type DocumentConfig,
-  type DocumentOptions,
-  type StackOptions,
-} from '../entities/options.js';
 import { createContext } from 'react';
+import { encodeElementData, assignDocumentOptions } from '../entities';
+import type {
+  StackConfig,
+  DocumentConfig,
+  DocumentOptions,
+} from '../entities/options.js';
 
 type InternalContextValue = {
   document?: DocumentConfig;

@@ -1,6 +1,6 @@
 import { fromHtmlIsomorphic } from 'hast-util-from-html-isomorphic';
 import { pick } from 'lodash-es';
-import { type TagName } from '../../entities';
+import type { TagName } from '../../entities';
 
 type Context = Record<string | number | symbol, unknown>;
 

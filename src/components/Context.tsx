@@ -21,14 +21,14 @@ const ReactContext = createContext<ContextValue>({
   stack: {},
 });
 
-export const useReactContext = useContext(ReactContext);
+export const useReactContext = () => useContext(ReactContext);
 
 type ContextProps = ContextValue & {
   elementType: ElementType;
   children: ReactNode;
 };
 
-export function Context({ children, elementType, ...options }: ContextProps) {
+export function Context({ children, ...options }: ContextProps) {
   return (
     <ReactContext.Provider value={options}>{children}</ReactContext.Provider>
   );

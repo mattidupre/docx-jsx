@@ -1,7 +1,7 @@
 import { test } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { mapHtml } from './mapHtml.js';
 import { mockDocument } from '../../fixtures/mockDocument';
+import { mapHtml } from './mapHtml.js';
 
 const mockHtml = renderToStaticMarkup(mockDocument);
 
@@ -10,21 +10,19 @@ type Context = {
 };
 
 test('runs without error', () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const result = mapHtml<Context, unknown>(mockHtml, {
     initialContext: {
       prevTagNames: [] as Array<string>,
     },
-    onElementBeforeChildren: ({
-      htmlElement: { type, tagName },
-      parentContext,
-    }) => ({
+    onElementBeforeChildren: ({ htmlElement: { tagName }, parentContext }) => ({
       ...parentContext,
       prevTagNames: [...parentContext.prevTagNames, tagName],
     }),
     onText: ({ text }) => {
       return text;
     },
-    onElementAfterChildren: ({ parentContext, children }) => {
+    onElementAfterChildren: ({ children }) => {
       return { children };
     },
   });

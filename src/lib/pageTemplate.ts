@@ -1,4 +1,4 @@
-import { type PageSize, type PageMargin } from '../entities/options.js';
+import type { PageSize, PageMargin } from '../entities/options.js';
 import { mathUnits } from '../utils/units.js';
 
 type InnerNode = undefined | Node | NodeList;

@@ -1,8 +1,8 @@
-import { mergeWithDefault } from '../utils/mergeWithDefault.js';
-import { type UnitsNumber } from '../utils/units.js';
 import { isObject, mapValues } from 'lodash-es';
-import { TagName } from './html.js';
+import { mergeWithDefault } from '../utils/mergeWithDefault.js';
+import type { UnitsNumber } from '../utils/units.js';
 import { optionsToCssVars } from '../utils/cssVars.js';
+import type { TagName } from './html.js';
 
 export const PACKAGE_NAME: Lowercase<string> = 'matti-docs';
 

@@ -1,6 +1,6 @@
-import { htmlToDom, type DocumentRootToDomOptions } from './lib/htmlToDom.js';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ReactElement } from 'react';
+import type { ReactElement } from 'react';
+import { htmlToDom, type DocumentRootToDomOptions } from './lib/htmlToDom.js';
 
 export type ReactToDomOptions = DocumentRootToDomOptions;
 

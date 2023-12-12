@@ -1,31 +1,23 @@
-import { optionsToCssVarsString } from '../utils/cssVars';
+import { merge } from 'lodash-es';
 import {
-  ElementType,
-  ElementData,
-  HtmlAttributes,
+  type ElementType,
+  type ElementData,
+  type HtmlAttributes,
   decodeElementData,
   isElementOfType,
   isChildOfTagName,
   PARAGRAPH_TAG_NAMES,
-  TagName,
-  TextOptions,
-  ParagraphOptions,
+  type TagName,
   assignLayoutOptions,
-  assignStackOptions,
-  assignDocumentOptions,
-  assignHtmlAttributes,
   isChildOfElementType,
-  DocumentElement,
+  type DocumentElement,
   createDefaultLayoutConfig,
-  StackConfig,
-  DocumentConfig,
-  StackElement,
-  ElementsContext,
+  type StackElement,
+  type ElementsContext,
   assignElementsContext,
   getIntrinsicTextOptions,
 } from '../entities';
 import { mapHtml } from '../utils/mapHtml/mapHtml';
-import { extend, merge } from 'lodash-es';
 
 const CONTENT_ELEMENT_TYPES = [
   'htmltag',

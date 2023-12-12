@@ -1,16 +1,11 @@
-import { type IfNever, type IfUnknown } from 'type-fest';
+import type { IfNever, IfUnknown } from 'type-fest';
 
 // /**
 //  * If value is ArrayLike<never>, convert to never.
-//  * If value is object, remove all properties of value never.
-//  */
-// type ExpandNever<TSource> = TSource extends ArrayLike<infer T>
-//   ? IfNever<T, never, TSource>
-//   : TSource extends {}
-//   ? {
-//       [K in keyof TSource as IfNever<TSource[K], never, K>]: TSource[K];
-//     }
-//   : TSource;
+//  * If value is object, remove all properties of value never. */ type
+//  ExpandNever<TSource> = TSource extends ArrayLike<infer T> ? IfNever<T,
+// never, TSource> : TSource extends {} ? { [K in keyof TSource as
+//   IfNever<TSource[K], never, K>]: TSource[K]; } : TSource;
 
 export type ReplaceUnknownDeep<TSource, TReplacement> = IfUnknown<
   TReplacement,
@@ -31,7 +26,7 @@ export type ReplaceUnknownDeep<TSource, TReplacement> = IfUnknown<
             [K in keyof TSource]: ReplaceUnknownDeep<T, TReplacement>;
           }
         >
-      : TSource extends {} // object
+      : TSource extends object // object
       ? {
           [K in keyof TSource as IfNever<
             ReplaceUnknownDeep<TSource[K], TReplacement>,

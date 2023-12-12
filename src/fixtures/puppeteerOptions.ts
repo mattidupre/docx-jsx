@@ -1,4 +1,4 @@
-import { type PuppeteerLaunchOptions } from 'puppeteer-core';
+import type { PuppeteerLaunchOptions } from 'puppeteer-core';
 
 export const PUPPETEER_OPTIONS: PuppeteerLaunchOptions = {
   executablePath:

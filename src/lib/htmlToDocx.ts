@@ -14,12 +14,8 @@ import {
   type IRunOptions,
   ExternalHyperlink,
 } from 'docx';
+import type { ParagraphOptions, TextOptions, Color } from '../entities';
 import { mapHtmlToDocument } from './mapHtmlToDocument.js';
-import {
-  type ParagraphOptions,
-  type TextOptions,
-  type Color,
-} from '../entities';
 
 const parseColor = (color?: Color) => color && color.replace('#', '');
 

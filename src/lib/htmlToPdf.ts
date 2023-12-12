@@ -1,12 +1,12 @@
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import puppeteer, {
   type Browser,
   type Page,
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
-import { type Headless } from '../headless.js';
-import path from 'node:path';
-import { DocumentDom, type DocumentRootToDomOptions } from './htmlToDom.js';
-import { createRequire } from 'node:module';
+import type { Headless } from '../headless.js';
+import type { DocumentDom, DocumentRootToDomOptions } from './htmlToDom.js';
 
 let browserPromise: null | Promise<Browser>;
 

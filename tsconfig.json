@@ -10,9 +10,7 @@
     "allowJs": false,
     "sourceMap": true,
     "strict": true,
-
     "jsx": "react-jsx",
-
     "baseUrl": ".",
     "outDir": "./dist"
   },

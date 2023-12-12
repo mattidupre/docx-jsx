@@ -6,21 +6,21 @@ import {
 } from '../utils/dataAttributes.js';
 import {
   ID_PREFIX,
-  DocumentConfig,
-  LayoutType,
-  ParagraphOptions,
-  TextOptions,
-  CounterOptions,
-  StackConfig,
-  LayoutConfig,
-  DocumentOptions,
-  StackOptions,
+  type DocumentConfig,
+  type LayoutType,
+  type ParagraphOptions,
+  type TextOptions,
+  type CounterOptions,
+  type StackConfig,
+  type LayoutConfig,
+  type DocumentOptions,
+  type StackOptions,
   assignDocumentOptions,
   assignStackOptions,
   assignParagraphOptions,
   assignTextOptions,
 } from './options.js';
-import { type TagName } from './html.js';
+import type { TagName } from './html.js';
 
 type ConfigByElementType = {
   document: DocumentConfig;

@@ -19,8 +19,8 @@ export const asArray = <T = unknown>(value: unknown) =>
 
 // export type AsMutableArray<T> = Array<Flat<T>>;
 
-// export const asMutableArray = <T>(value: unknown) =>
-//   (Array.isArray(value) ? value : [value]) as AsMutableArray<T>;
+// export const asMutableArray = <T>(value: unknown) => (Array.isArray(value) ?
+//   value : [value]) as AsMutableArray<T>;
 
 export type ParseOverArray<TArray, TReturn = unknown> = (
   value: Flat<TArray>,
@@ -52,12 +52,13 @@ export const omitFromObject = <
   obj: TObj,
   key: TKey,
 ): Omit<TObj, TKey> => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { [key]: omitted, ...rest } = obj;
   return rest;
 };
 
 export type GetRequiredKeys<T> = {
-  [K in keyof T]-?: {} extends { [P in K]: T[K] } ? never : K;
+  [K in keyof T]-?: object extends { [P in K]: T[K] } ? never : K;
 }[keyof T];
 
 type ObjectCallbackParameters<TObj extends GenericObject> = {
@@ -95,7 +96,6 @@ export const mapObjectEntries = <TObj extends GenericObject>(
   Object.entries(obj).reduce((thisObj, [key, value]) => {
     const entry = callback(key, value as any, obj);
     if (entry) {
-      // eslint-disable-next-line prefer-destructuring, no-param-reassign
       thisObj[entry[0]] = entry[1];
     }
     return thisObj;
