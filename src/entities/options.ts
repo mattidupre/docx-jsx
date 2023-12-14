@@ -116,12 +116,14 @@ export const assignDocumentOptions = (
 ): DocumentConfig => mergeWithDefault(DEFAULT_DOCUMENT_OPTIONS, ...args);
 
 export type StackOptions = {
-  pageClassName?: string;
+  innerPageClassName?: string;
+  outerPageClassName?: string;
   margin?: Partial<PageMargin>;
 };
 
 export type StackConfig = {
-  pageClassName?: string;
+  innerPageClassName?: string;
+  outerPageClassName?: string;
   margin: PageMargin;
 };
 
@@ -191,7 +193,8 @@ export const getIntrinsicTextOptions = (tagName: TagName): TextOptions => {
   return options ? structuredClone(options) : {};
 };
 
-// TODO: Separate 'page-number' and 'page-count' elements with no bespoke options?
+// TODO: Separate 'page-number' and 'page-count' elements with no bespoke
+// options?
 
 export type CounterType = (typeof COUNTER_TYPES)[number];
 

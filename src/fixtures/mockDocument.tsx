@@ -44,7 +44,7 @@ const mockPageTypes = (prefix: string) => {
 export const mockDocument = (
   <Document size={{ width: '8.5in', height: '11in' }}>
     <Stack
-      pageClassName="preview__page"
+      innerPageClassName="preview__page"
       layouts={mockPageTypes('FIRST SECTION')}
       margin={{
         top: '2in',
@@ -145,7 +145,7 @@ export const mockDocument = (
     </Stack>
 
     <Stack
-      pageClassName="preview__page"
+      innerPageClassName="preview__page"
       layouts={mockPageTypes('SECOND SECTION')}
       margin={{
         top: '1in',

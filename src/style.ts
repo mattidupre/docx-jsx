@@ -12,10 +12,10 @@ export const documentStyleObject = {
     fontStyle: 'normal',
   },
   'h1, h2, h3, h4, h5, h6, p': {
-    lineHeight: 'var(--paragraph-line-height)',
+    lineHeight: 'var(--paragraph-line-height, 1)',
     marginBlockStart: '0',
     marginBlockEnd: '0',
-    textAlign: 'var(--paragraph-text-align, 1)',
+    textAlign: 'var(--paragraph-text-align)',
   },
   'h1, h2, h3, h4, h5, h6, p, a, b, em, strong, s, u, span': {
     fontWeight: 'var(--text-font-weight)',

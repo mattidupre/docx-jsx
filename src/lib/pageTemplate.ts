@@ -9,8 +9,8 @@ export type PageTemplateOptions = {
   header?: InnerNode;
   content?: InnerNode;
   footer?: InnerNode;
-  className?: string;
-  pageClassName?: string;
+  outerClassName?: string;
+  innerClassName?: string;
   styles?: Array<HTMLStyleElement | CSSStyleSheet>;
 };
 
@@ -159,7 +159,7 @@ export class PageTemplate {
     this.pageEl = document.createElement('div');
     setClassName(
       this.pageEl,
-      [options.pageClassName ?? [], PageTemplate.pageClassName].flat(),
+      [options.innerClassName ?? [], PageTemplate.pageClassName].flat(),
     );
     this.pageEl.setAttribute('style', PageTemplate.createCssVars(options));
 
@@ -181,7 +181,7 @@ export class PageTemplate {
     this.element = PageTemplate.createRoot({
       innerEl: this.pageEl,
       styleSheets: this.styleSheets,
-      className: options.className,
+      className: options.outerClassName,
       size: options.size,
     });
 
@@ -266,7 +266,6 @@ export class PageTemplate {
     rootEl.style.setProperty('break-after', 'page');
     rootEl.style.setProperty('width', size.width);
     rootEl.style.setProperty('height', size.height);
-
     const shadowEl = rootEl.attachShadow({ mode: 'closed' });
     shadowEl.adoptedStyleSheets.push(...styleSheets);
     shadowEl.appendChild(innerEl);

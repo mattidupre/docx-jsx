@@ -114,70 +114,73 @@ export const htmlToDom = async (
 
   let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
 
-  stacksOption.forEach(({ layouts, margin, content, pageClassName }) => {
-    if (!content) {
-      return;
-    }
+  stacksOption.forEach(
+    ({ layouts, margin, content, innerPageClassName, outerPageClassName }) => {
+      if (!content) {
+        return;
+      }
 
-    allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
-      const pageNumberStack = allTemplates.length;
+      allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
+        const pageNumberStack = allTemplates.length;
 
-      const templates = LAYOUT_TYPES.reduce(
-        (target, layoutType) =>
-          Object.assign(target, {
-            [layoutType]: new PageTemplate({
-              size,
-              margin,
-              header: layouts[layoutType]?.header,
-              footer: layouts[layoutType]?.footer,
-              styles: styleSheets,
-              className: pageClassName,
-              pageClassName,
+        const templates = LAYOUT_TYPES.reduce(
+          (target, layoutType) =>
+            Object.assign(target, {
+              [layoutType]: new PageTemplate({
+                size,
+                margin,
+                header: layouts[layoutType]?.header,
+                footer: layouts[layoutType]?.footer,
+                styles: styleSheets,
+                outerClassName: outerPageClassName,
+                innerClassName: innerPageClassName,
+              }),
             }),
-          }),
-        {} as Record<LayoutType, PageTemplate>,
-      );
+          {} as Record<LayoutType, PageTemplate>,
+        );
 
-      const pager = new Pager({ styles: styleSheets });
+        const pager = new Pager({ styles: styleSheets });
 
-      await pager.toPages({
-        content: content,
-        onContentChunked: ({ index, setPageVars }) => {
-          const pageNumber = pageNumberStack + index;
-          const layoutType: LayoutType =
-            pageNumber === 0 ? 'first' : 'subsequent';
-          const template = templates[layoutType];
-          renderEl.appendChild(template.element);
-          const { width, height } = template.contentSize;
+        await pager.toPages({
+          content: content,
+          onContentChunked: ({ index, setPageVars }) => {
+            const pageNumber = pageNumberStack + index;
+            const layoutType: LayoutType =
+              pageNumber === 0 ? 'first' : 'subsequent';
+            const template = templates[layoutType];
+            renderEl.appendChild(template.element);
+            const { width, height } = template.contentSize;
 
-          setPageVars({
-            // PagerJS doesn't like 0 margins so use 0.5in margins temporarily.
-            width: `calc(${width} + 1in)`,
-            height: `calc(${height} + 1in)`,
-            marginTop: '0.5in',
-            marginRight: '0.5in',
-            marginBottom: '0.5in',
-            marginLeft: '0.5in',
-          });
-        },
-        onPageRendered: ({ index, contentElement }) => {
-          const pageNumber = pageNumberStack + index;
-          const layoutType: LayoutType =
-            pageNumber === 0 ? 'first' : 'subsequent';
+            setPageVars({
+              // PagerJS doesn't like 0 margins so use 0.5in margins
+              // temporarily.
+              width: `calc(${width} + 1in)`,
+              height: `calc(${height} + 1in)`,
+              marginTop: '0.5in',
+              marginRight: '0.5in',
+              marginBottom: '0.5in',
+              marginLeft: '0.5in',
+            });
+          },
+          onPageRendered: ({ index, contentElement }) => {
+            const pageNumber = pageNumberStack + index;
+            const layoutType: LayoutType =
+              pageNumber === 0 ? 'first' : 'subsequent';
 
-          // Note that contentElement is NOT cloned. It will be detached from
-          // pager.
-          allTemplates.push(
-            templates[layoutType].extend({
-              content: contentElement.firstChild!.childNodes,
-            }),
-          );
-        },
+            // Note that contentElement is NOT cloned. It will be detached from
+            // pager.
+            allTemplates.push(
+              templates[layoutType].extend({
+                content: contentElement.firstChild!.childNodes,
+              }),
+            );
+          },
+        });
+
+        return allTemplates;
       });
-
-      return allTemplates;
-    });
-  });
+    },
+  );
 
   const pagesEl = document.createElement('div');
 
