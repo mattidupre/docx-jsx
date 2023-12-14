@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Document, Stack, Typography, Counter } from '../components.js';
+import { Document, Stack, Typography, Counter } from '../react.js';
 
 const PageCounter = () => (
   <span>

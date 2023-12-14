@@ -6,27 +6,29 @@ import {
   type ParagraphOptions,
 } from '../entities';
 
-// Emulate https://chakra-ui.com/docs/components/text
+export type TypographyOptions = {
+  text?: TextOptions;
+  paragraph?: ParagraphOptions;
+};
 
 export type TypographyProps = (
   | {
       as?: 'span';
-      text?: TextOptions;
+      text?: TypographyOptions['text'];
       paragraph?: never;
     }
   | {
       as: Exclude<TagName, 'span'>;
-      text?: TextOptions;
-      paragraph?: ParagraphOptions;
+      text?: TypographyOptions['text'];
+      paragraph?: TypographyOptions['paragraph'];
     }
 ) & {
   className?: string;
   children: ReactNode;
 };
 
-// TODO: If not within a <Document> or if target is web:
-// do not encode data
-// set CSS variables on element
+// TODO: If not within a <Document> or if target is web: do not encode data set
+// CSS variables on element
 
 export function Typography({
   as = 'span',

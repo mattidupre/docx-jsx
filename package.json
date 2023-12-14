@@ -10,12 +10,14 @@
   ],
   "exports": {
     ".": {
-      "module": "./dist/components.mjs",
-      "types": "./dist/components.d.ts"
+      "module": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
     },
     "./package.json": {
-      "require": "./package.json",
-      "module": "./package.json"
+      "default": "./package.json"
+    },
+    "./*.css": {
+      "default": "./dist/*.css"
     },
     "./*": {
       "module": "./dist/*.mjs",

@@ -60,7 +60,7 @@ export const usePreview = (
       };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [previewReactEl, ...styleSheets],
+    [previewReactEl, styleSheets],
   );
 
   return useMemo(

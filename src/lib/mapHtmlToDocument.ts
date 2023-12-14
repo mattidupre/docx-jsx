@@ -170,7 +170,11 @@ export const mapHtmlToDocument = <TContent>(
     onText: ({ text, parentContext: { data } }) => {
       const { parentTagNames } = data;
       if (!isChildOfTagName(parentTagNames!, PARAGRAPH_TAG_NAMES)) {
-        console.warn('Text not enclosed in a paragraph or heading is ignored.');
+        if (text.trim()) {
+          console.warn(
+            'Text not enclosed in a paragraph or heading is ignored.',
+          );
+        }
         return [];
       }
 

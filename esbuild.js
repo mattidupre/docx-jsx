@@ -1,6 +1,10 @@
 import * as esbuild from 'esbuild';
 import fs from 'node:fs/promises';
 
+// TODO: index and reactToDocx should target both browser and server.
+
+// TODO: Tree shaking is not omitting paged-js Previewer. Disable bundling?
+
 const omToCssPlugin = {
   name: 'omToCss',
   setup(build) {
@@ -24,6 +28,7 @@ const SHARED_OPTIONS = {
 };
 
 const SRC_OPTIONS = [
+  // Fully bundled single-file exports.
   {
     ...SHARED_OPTIONS,
     entryPoints: ['./src/headless.ts'],
@@ -33,10 +38,12 @@ const SRC_OPTIONS = [
     format: 'iife',
     platform: 'browser',
   },
+  // Exports targeting the browser.
   {
     ...SHARED_OPTIONS,
     entryPoints: [
-      './src/components.ts',
+      './src/index.ts',
+      './src/react.ts',
       './src/reactToDom.ts',
       './src/style.ts',
     ],
@@ -48,6 +55,7 @@ const SRC_OPTIONS = [
     format: 'esm',
     outExtension: { '.js': '.mjs' },
   },
+  // Exports targeting the server.
   {
     ...SHARED_OPTIONS,
     entryPoints: ['./src/reactToDocx.ts', './src/reactToPdf.ts'],

@@ -1,7 +1,7 @@
 import { kebabCase } from 'lodash-es';
 
-// TODO: Add more semantic HTML TagNames.
-// IMPORTANT: Keep these in sync with typography stylesheet.
+// TODO: Add more semantic HTML TagNames. IMPORTANT: Keep these in sync with
+// typography stylesheet.
 export type TagName = keyof Pick<
   JSX.IntrinsicElements,
   | 'div'
@@ -15,6 +15,7 @@ export type TagName = keyof Pick<
   | 'a'
   | 'b'
   | 'strong'
+  | 'i'
   | 'em'
   | 's'
   | 'u'
