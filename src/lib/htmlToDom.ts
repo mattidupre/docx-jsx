@@ -26,7 +26,7 @@ const objToDom = (node: HtmlNode) => {
       properties,
       tagName,
       data: {
-        element: { elementType, elementOptions },
+        element: { elementOptions },
       },
     } = node;
 

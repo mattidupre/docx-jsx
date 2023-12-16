@@ -1,5 +1,4 @@
 import { kebabCase } from 'lodash-es';
-import { encodeDataAttributeKey } from '../utils/dataAttributes.js';
 
 // TODO: Add more semantic HTML TagNames. IMPORTANT: Keep these in sync with
 // typography stylesheet.

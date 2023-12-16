@@ -1,35 +1,44 @@
 import { useMemo, type ReactNode } from 'react';
-import { encodeElementData, assignDocumentOptions } from '../entities';
+import { assignDocumentOptions } from '../entities';
 import type { DocumentOptions } from '../entities';
 import { ReactDocumentContext } from './entities';
-
-// TODO: If target is web, use a fragment.
+import { useTarget } from './useTarget';
+import { InternalElement } from './InternalElement';
 
 export type DocumentProps = DocumentOptions & {
-  className?: string;
   children: ReactNode;
 };
 
 export function Document({
-  children,
-  className,
+  children: childrenProp,
   ...documentOptions
 }: DocumentProps) {
-  const contextValue = useMemo(
+  const target = useTarget();
+
+  const documentConfig = useMemo(
     () => assignDocumentOptions(documentOptions),
     [documentOptions],
   );
+
+  const children = useMemo(
+    (): ReactNode =>
+      target === 'web' ? (
+        childrenProp
+      ) : (
+        <InternalElement
+          tagName="div"
+          elementType="document"
+          elementOptions={documentConfig}
+        >
+          {childrenProp}
+        </InternalElement>
+      ),
+    [childrenProp, documentConfig, target],
+  );
+
   return (
-    <ReactDocumentContext.Provider value={contextValue}>
-      <main
-        className={className}
-        {...encodeElementData({
-          elementType: 'document',
-          elementOptions: contextValue,
-        })}
-      >
-        {children}
-      </main>
+    <ReactDocumentContext.Provider value={documentConfig}>
+      {children}
     </ReactDocumentContext.Provider>
   );
 }

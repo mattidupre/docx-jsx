@@ -1,4 +1,3 @@
-import { merge } from 'lodash-es';
 import {
   type ElementType,
   type ElementData,
