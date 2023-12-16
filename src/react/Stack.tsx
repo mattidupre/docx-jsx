@@ -1,4 +1,4 @@
-import type { ReactNode, ReactElement } from 'react';
+import { type ReactNode, type ReactElement, useMemo } from 'react';
 import { omit } from 'lodash-es';
 import { encodeElementData, type StackOptions } from '../entities';
 import {
@@ -7,12 +7,15 @@ import {
   assignStackOptions,
   mapLayoutKeys,
 } from '../entities/options.js';
+import { ReactStackContext } from './entities';
 
 export type StackProps = StackOptions & {
   className?: string;
   layouts: LayoutOptions<ReactNode>;
   children: ReactNode;
 };
+
+// TODO: If target is web, use a fragment.
 
 export function Stack({
   children,
@@ -28,9 +31,10 @@ export function Stack({
     footer: [],
   };
 
-  const stackOptions = omit(assignStackOptions({}, options), [
-    'layouts',
-  ]) as StackConfig;
+  const stackConfig = useMemo(
+    () => omit(assignStackOptions({}, options), ['layouts']) as StackConfig,
+    [options],
+  );
 
   mapLayoutKeys((layoutType, elementType) => {
     const element = layouts?.[layoutType]?.[elementType];
@@ -64,13 +68,15 @@ export function Stack({
   ];
 
   return (
-    <div
-      {...encodeElementData({
-        elementType: 'stack',
-        elementOptions: stackOptions,
-      })}
-    >
-      {[...encodedElements.header, contentElement, ...encodedElements.footer]}
-    </div>
+    <ReactStackContext.Provider value={stackConfig}>
+      <div
+        {...encodeElementData({
+          elementType: 'stack',
+          elementOptions: stackConfig,
+        })}
+      >
+        {[...encodedElements.header, contentElement, ...encodedElements.footer]}
+      </div>
+    </ReactStackContext.Provider>
   );
 }

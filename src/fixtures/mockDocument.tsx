@@ -1,8 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Document, Stack, Typography, Counter, useTarget } from '../react.js';
+import {
+  Document,
+  Stack,
+  Typography,
+  Counter,
+  useTarget,
+  usePageMargins,
+} from '../react.js';
 
 const PageCounter = () => {
-  console.log(useTarget());
   return (
     <span>
       Page <Counter counterType="page-number" /> of{' '}
