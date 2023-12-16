@@ -1,12 +1,15 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Document, Stack, Typography, Counter } from '../react.js';
+import { Document, Stack, Typography, Counter, useTarget } from '../react.js';
 
-const PageCounter = () => (
-  <span>
-    Page <Counter counterType="page-number" /> of{' '}
-    <Counter counterType="page-count" />
-  </span>
-);
+const PageCounter = () => {
+  console.log(useTarget());
+  return (
+    <span>
+      Page <Counter counterType="page-number" /> of{' '}
+      <Counter counterType="page-count" />
+    </span>
+  );
+};
 
 const mockPageTypes = (prefix: string) => {
   return {

@@ -15,7 +15,7 @@ type InternalContextValue = {
 const InternalContext = createContext<InternalContextValue>({});
 
 export type DocumentProps = DocumentOptions & {
-  className?: string;
+  className?: string; // TODO: Get rid of className and just use a fragment and react context.
   children: ReactNode;
 };
 

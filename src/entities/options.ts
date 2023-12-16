@@ -10,6 +10,10 @@ export const ID_PREFIX: Lowercase<string> = PACKAGE_NAME;
 
 export const APP_NAME = 'Matti Docs';
 
+export type Target = 'web' | 'docx' | 'pdf';
+
+export const DEFAULT_TARGET = 'web' satisfies Target;
+
 export type Color = Lowercase<`#${string}`>;
 
 export type PageSize = {

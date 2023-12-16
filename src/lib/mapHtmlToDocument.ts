@@ -101,7 +101,7 @@ export const mapHtmlToDocument = <TContent>(
       };
 
       if (isElementOfType(elementData, 'document')) {
-        // TODO: allow htmltag elementType.
+        // TODO: This will throw if there are HTML elements above the document?
         if (parentElementTypes.length) {
           throw new TypeError(
             'Document cannot be a child of any other elements.',
@@ -149,7 +149,7 @@ export const mapHtmlToDocument = <TContent>(
 
       if (isElementOfType(elementData, CONTENT_ELEMENT_TYPES)) {
         if (!isChildOfElementType(parentElementTypes, CONTENT_ROOT_TYPES)) {
-          throw new TypeError('Content root must be a child of content root.');
+          throw new TypeError('Content must be a child of content root.');
         }
 
         assignElementsContext(optionsContext, elementData.elementOptions, {
