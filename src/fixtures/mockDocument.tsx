@@ -1,12 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import {
-  Document,
-  Stack,
-  Typography,
-  Counter,
-  useTarget,
-  usePageMargins,
-} from '../react.js';
+import { Document, Stack, Typography, Counter } from '../react.js';
 
 const PageCounter = () => {
   return (
@@ -50,121 +43,125 @@ const mockPageTypes = (prefix: string) => {
   } as const;
 };
 
-export const mockDocument = (
-  <Document size={{ width: '8.5in', height: '11in' }}>
-    <Stack
-      innerPageClassName="preview__page"
-      layouts={mockPageTypes('FIRST SECTION')}
-      margin={{
-        top: '2in',
-        header: '1in',
-        bottom: '1in',
-      }}
-    >
-      <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
-      <h1>Heading 1</h1>
-      <h2>Heading 2</h2>
-      <h3>Heading 3</h3>
-      <h4>Heading 4</h4>
-      <h5>Heading 5</h5>
-      <h6>Heading 6</h6>
-
-      <Typography as="p" paragraph={{ lineHeight: '2' }}>
-        Double Line Height: Circumambulate the city of a dreamy Sabbath
-        afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
-        Whitehall, northward.
-      </Typography>
-
-      <Typography as="p" paragraph={{ textAlign: 'left' }}>
-        Left Paragraph
-      </Typography>
-      <Typography as="p" paragraph={{ textAlign: 'center' }}>
-        Centered Paragraph
-      </Typography>
-      <Typography as="p" paragraph={{ textAlign: 'right' }}>
-        Right Paragraph
-      </Typography>
-      <Typography as="p" paragraph={{ textAlign: 'justify' }}>
-        Justified Paragraph: Circumambulate the city of a dreamy Sabbath
-        afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
-        Whitehall, northward.
-      </Typography>
-
-      <p>
-        <a href="https://www.google.com">Link Text</a>
-      </p>
-      <p>
-        <Typography text={{ fontWeight: 'bold' }}>Bold Text</Typography>
-      </p>
-      <p>
-        <b>{'<b>'} Text</b>
-      </p>
-      <p>
-        <strong>{'<strong>'} Text</strong>
-      </p>
-      <p>
-        <Typography text={{ fontStyle: 'italic' }}>Italic Text</Typography>
-      </p>
-      <p>
-        <em>{'<em>'} Text</em>
-      </p>
-      <p>
-        <Typography text={{ textDecoration: 'underline' }}>
-          Underlined Text
-        </Typography>
-      </p>
-      <p>
-        <u>{'<u>'} Text</u>
-      </p>
-      <p>
-        <Typography text={{ textDecoration: 'line-through' }}>
-          Strikethrough Text
-        </Typography>
-      </p>
-      <p>
-        <s>{'<s>'} Text</s>
-      </p>
-      <p>
-        <Typography text={{ fontSize: '2rem' }}>Size 2rem Text</Typography>
-      </p>
-      <p>
-        <Typography text={{ color: '#ff0000' }}>Red Text</Typography>
-      </p>
-      <p>
-        <Typography text={{ highlightColor: '#00ff00' }}>
-          Highlighted Text
-        </Typography>
-      </p>
-      <p>
-        Text with <sup>superscript</sup>
-      </p>
-      <p>
-        Text with <sub>subscript</sub>
-      </p>
-      <p>
-        <Typography text={{ textTransform: 'uppercase' }}>
-          Uppercase Text
-        </Typography>
-      </p>
-      <div
-        dangerouslySetInnerHTML={{
-          __html: '<p>dangerouslySetInnerHTML Content</p>',
+export function MockDocument() {
+  return (
+    <Document size={{ width: '8.5in', height: '11in' }}>
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={mockPageTypes('FIRST SECTION')}
+        margin={{
+          top: '2in',
+          header: '1in',
+          bottom: '1in',
         }}
-      />
-    </Stack>
+      >
+        <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
+        <h1>Heading 1</h1>
+        <h2>Heading 2</h2>
+        <h3>Heading 3</h3>
+        <h4>Heading 4</h4>
+        <h5>Heading 5</h5>
+        <h6>Heading 6</h6>
 
-    <Stack
-      innerPageClassName="preview__page"
-      layouts={mockPageTypes('SECOND SECTION')}
-      margin={{
-        top: '1in',
-        header: '0.25in',
-      }}
-    >
-      <LongText />
-    </Stack>
-  </Document>
-);
+        <Typography as="p" paragraph={{ lineHeight: '2' }}>
+          Double Line Height: Circumambulate the city of a dreamy Sabbath
+          afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
+          Whitehall, northward.
+        </Typography>
+
+        <Typography as="p" paragraph={{ textAlign: 'left' }}>
+          Left Paragraph
+        </Typography>
+        <Typography as="p" paragraph={{ textAlign: 'center' }}>
+          Centered Paragraph
+        </Typography>
+        <Typography as="p" paragraph={{ textAlign: 'right' }}>
+          Right Paragraph
+        </Typography>
+        <Typography as="p" paragraph={{ textAlign: 'justify' }}>
+          Justified Paragraph: Circumambulate the city of a dreamy Sabbath
+          afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
+          Whitehall, northward.
+        </Typography>
+
+        <p>
+          <a href="https://www.google.com">Link Text</a>
+        </p>
+        <p>
+          <Typography text={{ fontWeight: 'bold' }}>Bold Text</Typography>
+        </p>
+        <p>
+          <b>{'<b>'} Text</b>
+        </p>
+        <p>
+          <strong>{'<strong>'} Text</strong>
+        </p>
+        <p>
+          <Typography text={{ fontStyle: 'italic' }}>Italic Text</Typography>
+        </p>
+        <p>
+          <em>{'<em>'} Text</em>
+        </p>
+        <p>
+          <Typography text={{ textDecoration: 'underline' }}>
+            Underlined Text
+          </Typography>
+        </p>
+        <p>
+          <u>{'<u>'} Text</u>
+        </p>
+        <p>
+          <Typography text={{ textDecoration: 'line-through' }}>
+            Strikethrough Text
+          </Typography>
+        </p>
+        <p>
+          <s>{'<s>'} Text</s>
+        </p>
+        <p>
+          <Typography text={{ fontSize: '2rem' }}>Size 2rem Text</Typography>
+        </p>
+        <p>
+          <Typography text={{ color: '#ff0000' }}>Red Text</Typography>
+        </p>
+        <p>
+          <Typography text={{ highlightColor: '#00ff00' }}>
+            Highlighted Text
+          </Typography>
+        </p>
+        <p>
+          Text with <sup>superscript</sup>
+        </p>
+        <p>
+          Text with <sub>subscript</sub>
+        </p>
+        <p>
+          <Typography text={{ textTransform: 'uppercase' }}>
+            Uppercase Text
+          </Typography>
+        </p>
+        <div
+          dangerouslySetInnerHTML={{
+            __html: '<p>dangerouslySetInnerHTML Content</p>',
+          }}
+        />
+      </Stack>
+
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={mockPageTypes('SECOND SECTION')}
+        margin={{
+          top: '1in',
+          header: '0.25in',
+        }}
+      >
+        <LongText />
+      </Stack>
+    </Document>
+  );
+}
+
+export const mockDocument = <MockDocument />;
 
 export const mockDocumentHtml = renderToStaticMarkup(mockDocument);
 

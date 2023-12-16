@@ -15,8 +15,6 @@ export function EnvironmentProvider({
   options,
   children,
 }: ExecutionProviderProps) {
-  console.log(useContext(ReactEnvironmentContext));
-
   if (useContext(ReactEnvironmentContext)) {
     throw new TypeError('Do not nest EnvironmentProvider elements.');
   }

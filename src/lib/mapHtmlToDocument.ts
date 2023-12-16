@@ -157,9 +157,12 @@ export const mapHtmlToDocument = <TContent>(
         });
 
         if (elementData.elementType === 'counter') {
-          merge(childContext.properties, {
-            ['data-counter-type']: elementData.elementOptions.counterType,
-          });
+          if (
+            !isChildOfElementType(parentElementTypes, 'header') &&
+            !isChildOfElementType(parentElementTypes, 'footer')
+          ) {
+            throw new TypeError('Counter must be a child of header of footer.');
+          }
         }
 
         return childContext;

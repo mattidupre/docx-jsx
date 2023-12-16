@@ -16,14 +16,42 @@ const createDataPrefix = (options?: Options) => {
   return `data-${options.prefix}-`;
 };
 
+export const encodeDataAttributeKey = (key: string, options?: Options) => {
+  if (!/^[a-z][a-zA-Z0-9]*$/.test(key)) {
+    throw new TypeError('Key must be kebab case.');
+  }
+  return createDataPrefix(options) + kebabCase(key);
+};
+
+export const encodeDataAttributeValue = (value: unknown) => {
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return encodeURI(String(value));
+  }
+  return encodeURI(JSON.stringify(value));
+};
+
+export const selectByDataAttributes = (
+  rootDomElement: Element,
+  dataAttributes: Record<string, undefined | string>,
+  options?: Options,
+) => {
+  const query = Object.entries(dataAttributes)
+    .map(([key, value]) =>
+      value ? `[${encodeDataAttributeKey(key, options)}="${value}"]` : '',
+    )
+    .join('');
+  return rootDomElement.querySelectorAll(query);
+};
+
 export const encodeDataAttributes = (data: Data, options?: Options) => {
   let attributes: Attributes = {};
   for (const key in data) {
-    if (!/^[a-z][a-zA-Z0-9]*$/.test(key)) {
-      throw new TypeError('Key must be kebab case.');
-    }
-    attributes[createDataPrefix(options) + kebabCase(key)] = encodeURI(
-      JSON.stringify(data[key]),
+    attributes[encodeDataAttributeKey(key, options)] = encodeDataAttributeValue(
+      data[key],
     );
   }
   return attributes;

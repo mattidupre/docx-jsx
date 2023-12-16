@@ -1,6 +1,7 @@
 import { intersection } from 'lodash-es';
 import type { JsonObject } from 'type-fest';
 import {
+  selectByDataAttributes,
   encodeDataAttributes,
   decodeDataAttributes,
 } from '../utils/dataAttributes.js';
@@ -31,6 +32,18 @@ type ConfigByElementType = {
 
 export type ElementType = keyof ConfigByElementType;
 
+export const selectDomElement = <TElementType extends ElementType>(
+  rootDomElement: Element,
+  elementType: TElementType,
+  elementConfig: Partial<ConfigByElementType[TElementType]> &
+    Record<string, undefined | string>,
+) =>
+  selectByDataAttributes(
+    rootDomElement,
+    { elementType, ...elementConfig },
+    { prefix: ID_PREFIX },
+  );
+
 export type DocumentElement<TContent> = DocumentConfig & {
   stacks: Array<StackElement<TContent>>;
 };
@@ -59,13 +72,19 @@ export type ElementData<
     }
   : never;
 
+// TODO: Expand to data-[prefix]-[subkey of options] vs
+// data-[prefix]-[elementType or elementOptions]
 export const encodeElementData = ({
   elementType,
   elementOptions,
-}: ElementData<ElementType>) =>
-  encodeDataAttributes({ elementType, elementOptions } as JsonObject, {
-    prefix: ID_PREFIX,
-  }) as Record<string, unknown>;
+  ...extraData
+}: Record<string, unknown> & ElementData<ElementType>) =>
+  encodeDataAttributes(
+    { elementType, elementOptions, ...extraData } as JsonObject,
+    {
+      prefix: ID_PREFIX,
+    },
+  ) as Record<string, unknown>;
 
 // TODO: Add TagName here.
 export const decodeElementData = ({

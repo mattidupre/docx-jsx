@@ -1,5 +1,6 @@
-import type { ReactElement } from 'react';
+import { useMemo, type ReactElement } from 'react';
 import type { ReactToDomOptions } from '../reactToDom.js';
+import { EnvironmentProvider } from './EnvironmentProvider.js';
 import { usePreview } from './usePreview.js';
 
 type PreviewProps = ReactToDomOptions & {
@@ -8,6 +9,14 @@ type PreviewProps = ReactToDomOptions & {
 };
 
 export function Preview({ children, loading, ...options }: PreviewProps) {
-  const { isLoading, previewElRef } = usePreview(children, options);
+  const memoizedChildren = useMemo(
+    () => (
+      <EnvironmentProvider options={{ target: 'pdf' }}>
+        {children}
+      </EnvironmentProvider>
+    ),
+    [children],
+  );
+  const { isLoading, previewElRef } = usePreview(memoizedChildren, options);
   return <div ref={previewElRef}>{isLoading && loading}</div>;
 }

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useEffect, useMemo } from 'react';
-import { mockDocument } from '../fixtures/mockDocument.js';
+import { MockDocument } from '../fixtures/mockDocument.js';
 // @ts-expect-error
 import mockStyleSheet from '../fixtures/mockPages.css?inline';
 import { Preview } from './Preview.js';
@@ -30,7 +30,7 @@ export const DocumentWeb: Story = {
         );
       };
     }, []);
-    return mockDocument;
+    return <MockDocument />;
   },
 };
 
@@ -38,6 +38,10 @@ export const DocumentPreview: Story = {
   render: () => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const styleSheet = useMemo(() => createStyleSheet(), []);
-    return <Preview styleSheets={[styleSheet]}>{mockDocument}</Preview>;
+    return (
+      <Preview styleSheets={[styleSheet]}>
+        <MockDocument />
+      </Preview>
+    );
   },
 };

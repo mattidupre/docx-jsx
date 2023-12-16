@@ -1,4 +1,5 @@
 import { kebabCase } from 'lodash-es';
+import { encodeDataAttributeKey } from '../utils/dataAttributes.js';
 
 // TODO: Add more semantic HTML TagNames. IMPORTANT: Keep these in sync with
 // typography stylesheet.
@@ -35,6 +36,7 @@ export const assignHtmlAttributes = (
       for (const attributeKey in thisAttributes) {
         const attributeValue =
           thisAttributes[attributeKey as keyof HtmlAttributes];
+
         if (!attributeValue) {
           continue;
         }
@@ -56,13 +58,13 @@ export const assignHtmlAttributes = (
 
         const kebabKey = kebabCase(attributeKey) as `data-${string}`;
         if (kebabKey.startsWith('data-')) {
-          targetAttributes[kebabKey] = thisAttributes[kebabKey];
+          targetAttributes[kebabKey] = thisAttributes[attributeKey];
           continue;
         }
 
         // All other attributes are omitted.
       }
-      return thisAttributes;
+      return targetAttributes;
     },
     (arg0 ?? {}) as HtmlAttributes,
   );

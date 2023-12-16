@@ -158,6 +158,9 @@ export const assignParagraphOptions = (
   ...args: ReadonlyArray<undefined | ParagraphOptions>
 ): ParagraphConfig => mergeWithDefault({}, ...args);
 
+export const paragraphOptionsToCssVars = (paragraphOptions: ParagraphOptions) =>
+  optionsToCssVars({ paragraph: paragraphOptions });
+
 // TODO: add false since undefined will not overwrite parent.
 export type TextOptions = {
   fontWeight?: 'bold';
@@ -186,6 +189,9 @@ const INTRINSIC_TEXT_OPTIONS = {
   sup: { superScript: true },
   sub: { subScript: true },
 } as const satisfies Partial<Record<TagName, TextOptions>>;
+
+export const textOptionsToCssVars = (textOptions: TextOptions) =>
+  optionsToCssVars({ text: textOptions });
 
 export const INTRINSIC_CSS_VARS = mapValues(INTRINSIC_TEXT_OPTIONS, (value) =>
   optionsToCssVars({ text: value }),

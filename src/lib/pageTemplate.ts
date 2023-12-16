@@ -1,4 +1,5 @@
-import type { PageSize, PageMargin } from '../entities/options.js';
+import { selectDomElement } from '../entities';
+import type { PageSize, PageMargin } from '../entities';
 import { mathUnits } from '../utils/units.js';
 
 type InnerNode = undefined | Node | NodeList;
@@ -235,17 +236,17 @@ export class PageTemplate {
 
   public replaceCounters({ pageNumber, pageCount }: ReplaceCountersOptions) {
     [this.headerEl, this.footerEl].forEach((headerFooterEl) => {
-      headerFooterEl
-        .querySelectorAll('[data-counter-type="page-number"]')
-        .forEach((counterEl) => {
-          counterEl.replaceWith(document.createTextNode(`${pageNumber}`));
-        });
+      selectDomElement(headerFooterEl, 'counter', {
+        counterType: 'page-number',
+      }).forEach((counterEl) => {
+        counterEl.replaceWith(document.createTextNode(`${pageNumber}`));
+      });
 
-      headerFooterEl
-        .querySelectorAll('[data-counter-type="page-count"]')
-        .forEach((counterEl) => {
-          counterEl.replaceWith(document.createTextNode(`${pageCount}`));
-        });
+      selectDomElement(headerFooterEl, 'counter', {
+        counterType: 'page-count',
+      }).forEach((counterEl) => {
+        counterEl.replaceWith(document.createTextNode(`${pageCount}`));
+      });
     });
   }
 

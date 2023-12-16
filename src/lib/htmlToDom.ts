@@ -26,7 +26,7 @@ const objToDom = (node: HtmlNode) => {
       properties,
       tagName,
       data: {
-        element: { elementOptions },
+        element: { elementType, elementOptions },
       },
     } = node;
 
@@ -45,6 +45,7 @@ const objToDom = (node: HtmlNode) => {
       }
     }
     element.append(...children);
+
     return element;
   }
 
