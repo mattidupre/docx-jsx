@@ -3,6 +3,8 @@ import type { KebabCase } from 'type-fest';
 
 type VarValue = string | boolean;
 
+export type CssVars = Record<`--${string}`, string>;
+
 const createKebabPrefix = <T extends string>(prefix?: T) =>
   (prefix ? `${kebabCase(prefix)}-` : '') as T extends undefined
     ? ''
@@ -17,7 +19,7 @@ export const optionsToCssVars = <
 >(
   options?: TOptions,
   prefix?: TPrefix,
-): Record<`--${string}`, string> => {
+): CssVars => {
   if (!options) {
     return {};
   }
@@ -38,9 +40,7 @@ export const optionsToCssVars = <
   }, {});
 };
 
-export const optionsToCssVarsString = (
-  ...args: Parameters<typeof optionsToCssVars>
-): string =>
-  Object.entries(optionsToCssVars(...args))
+export const cssVarsToString = (cssVars: CssVars) =>
+  Object.entries(cssVars)
     .map(([key, value]) => `${key}: ${String(value)};`)
     .join(' ');

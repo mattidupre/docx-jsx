@@ -1,14 +1,15 @@
-import { pick } from 'lodash-es';
 import {
   type LayoutType,
   LAYOUT_TYPES,
   type DocumentElement,
   assignHtmlAttributes,
   assignElementsContext,
+  textOptionsToCssVars,
+  paragraphOptionsToCssVars,
 } from '../entities';
 import { Pager } from '../utils/pager.js';
 import { documentStyleCss } from '../style.js';
-import { optionsToCssVarsString } from '../utils/cssVars';
+import { cssVarsToString } from '../utils/cssVars';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
 
@@ -33,9 +34,10 @@ const objToDom = (node: HtmlNode) => {
     const elementContext = assignElementsContext({}, elementOptions);
 
     const attributes = assignHtmlAttributes({}, properties, {
-      style: optionsToCssVarsString(
-        pick(elementContext, ['text', 'paragraph'] as const),
-      ),
+      style: cssVarsToString({
+        ...textOptionsToCssVars(elementContext.text),
+        ...paragraphOptionsToCssVars(elementContext.paragraph),
+      }),
     });
 
     const element = document.createElement(tagName);

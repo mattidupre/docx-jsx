@@ -158,8 +158,9 @@ export const assignParagraphOptions = (
   ...args: ReadonlyArray<undefined | ParagraphOptions>
 ): ParagraphConfig => mergeWithDefault({}, ...args);
 
-export const paragraphOptionsToCssVars = (paragraphOptions: ParagraphOptions) =>
-  optionsToCssVars({ paragraph: paragraphOptions });
+export const paragraphOptionsToCssVars = (
+  paragraphOptions?: ParagraphOptions,
+) => optionsToCssVars({ paragraph: paragraphOptions });
 
 // TODO: add false since undefined will not overwrite parent.
 export type TextOptions = {
@@ -190,7 +191,7 @@ const INTRINSIC_TEXT_OPTIONS = {
   sub: { subScript: true },
 } as const satisfies Partial<Record<TagName, TextOptions>>;
 
-export const textOptionsToCssVars = (textOptions: TextOptions) =>
+export const textOptionsToCssVars = (textOptions?: TextOptions) =>
   optionsToCssVars({ text: textOptions });
 
 export const INTRINSIC_CSS_VARS = mapValues(INTRINSIC_TEXT_OPTIONS, (value) =>
@@ -202,9 +203,6 @@ export const getIntrinsicTextOptions = (tagName: TagName): TextOptions => {
     INTRINSIC_TEXT_OPTIONS[tagName as keyof typeof INTRINSIC_TEXT_OPTIONS];
   return options ? structuredClone(options) : {};
 };
-
-// TODO: Separate 'page-number' and 'page-count' elements with no bespoke
-// options?
 
 export type CounterType = (typeof COUNTER_TYPES)[number];
 

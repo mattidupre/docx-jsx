@@ -33,7 +33,6 @@ type MapData = {
   parentElementTypes: ReadonlyArray<ElementType>;
   parentTagNames: ReadonlyArray<TagName>;
   element: ElementData<ElementType>;
-  // TODO: Rename to elementsContext
   elementsContext: ElementsContext;
 };
 
@@ -67,7 +66,6 @@ export type ParseHtmlNode = (
   node: HtmlNode,
 ) => unknown | ReadonlyArray<unknown>;
 
-// TODO: Create enum for explicit fragment / omit.
 export const mapHtmlToDocument = <TContent>(
   html: string,
   parseNode: ParseHtmlNode,
