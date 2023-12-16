@@ -1,28 +1,26 @@
-import {
-  encodeElementData,
-  type TextOptions,
-  type CounterOptions,
-} from '../entities';
+import type { TextOptions, CounterOptions } from '../entities';
 import { useTarget } from './useTarget';
+import { InternalElement } from './InternalElement.js';
+import type { ExtendableProps } from './entities.js';
 
-export type CounterProps = {
+export type CounterProps = ExtendableProps & {
   text?: TextOptions;
 } & CounterOptions;
 
-// TODO: Throw if not in headers and footers.
-
-export function Counter(props: CounterProps) {
+export function Counter({ text, counterType, ...props }: CounterProps) {
   if (useTarget() === 'web') {
     console.warn('Counter elements will be ignored in web output.');
   }
 
   return (
-    <span
-      {...encodeElementData({
-        elementType: 'counter',
-        elementOptions: props,
-        counterType: props.counterType,
-      })}
+    <InternalElement
+      tagName="span"
+      elementType="counter"
+      elementOptions={{ text, counterType }}
+      elementAttributes={{
+        counterType,
+      }}
+      {...props}
     />
   );
 }

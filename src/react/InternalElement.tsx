@@ -15,13 +15,15 @@ import { useTarget } from './useTarget.js';
 
 type InternalElementProps = ElementData &
   ExtendableProps & {
-    children: ReactNode;
+    elementAttributes?: Record<string, unknown>;
+    children?: ReactNode;
     tagName: TagName;
   };
 
 export function InternalElement({
   elementType,
   elementOptions,
+  elementAttributes,
   tagName,
   className,
   style,
@@ -34,7 +36,7 @@ export function InternalElement({
       target === 'web'
         ? {
             ...('text' in elementOptions &&
-              textOptionsToCssVars(elementOptions as TextOptions)),
+              textOptionsToCssVars(elementOptions.text as TextOptions)),
             ...('paragraph' in elementOptions &&
               paragraphOptionsToCssVars(
                 elementOptions.paragraph as ParagraphOptions,
@@ -58,7 +60,11 @@ export function InternalElement({
 
   return createElement(
     tagName,
-    encodeElementData({ elementType, elementOptions } as ElementData),
+    encodeElementData({
+      ...elementAttributes,
+      elementType,
+      elementOptions,
+    } as ElementData),
     children,
   );
 }

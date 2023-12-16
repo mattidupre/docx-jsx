@@ -1,10 +1,7 @@
-import { type ReactNode, createElement } from 'react';
-import {
-  encodeElementData,
-  type TagName,
-  type TextOptions,
-  type ParagraphOptions,
-} from '../entities';
+import { type ReactNode, useMemo } from 'react';
+import type { TagName, TextOptions, ParagraphOptions } from '../entities';
+import { InternalElement } from './InternalElement';
+import type { ExtendableProps } from './entities.js';
 
 export type TypographyOptions = {
   text?: TextOptions;
@@ -22,29 +19,31 @@ export type TypographyProps = (
       text?: TypographyOptions['text'];
       paragraph?: TypographyOptions['paragraph'];
     }
-) & {
-  className?: string;
-  children: ReactNode;
-};
+) &
+  ExtendableProps & { children: ReactNode };
 
 // TODO: If not within a <Document> or if target is web: do not encode data set
 // CSS variables on element
 
 export function Typography({
   as = 'span',
-  className,
+  text,
+  paragraph,
   children,
-  ...options
+  ...props
 }: TypographyProps) {
-  return createElement(
-    as,
-    {
-      ...encodeElementData({
-        elementType: 'htmltag',
-        elementOptions: options,
-      }),
-      className,
-    },
-    children,
+  const elementOptions = useMemo(
+    () => ({ text, paragraph }),
+    [paragraph, text],
+  );
+  return (
+    <InternalElement
+      tagName={as}
+      elementType="htmltag"
+      elementOptions={elementOptions}
+      {...props}
+    >
+      {children}
+    </InternalElement>
   );
 }

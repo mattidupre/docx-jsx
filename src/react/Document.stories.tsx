@@ -3,11 +3,12 @@ import { useEffect, useMemo } from 'react';
 import { MockDocument } from '../fixtures/mockDocument.js';
 // @ts-expect-error
 import mockStyleSheet from '../fixtures/mockPages.css?inline';
+import { documentStyleCss } from '../style.js';
 import { Preview } from './Preview.js';
 
 const createStyleSheet = () => {
   const styleSheet = new CSSStyleSheet();
-  styleSheet.replaceSync([mockStyleSheet].join('\n'));
+  styleSheet.replaceSync([mockStyleSheet, documentStyleCss].join('\n'));
   return styleSheet;
 };
 
