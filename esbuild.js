@@ -8,10 +8,9 @@ import fs from 'node:fs/promises';
 const omToCssPlugin = {
   name: 'omToCss',
   setup(build) {
-    build.onEnd(async () => {
-      const { documentStyleCss } = await import('./dist/style.mjs');
-      await fs.writeFile('./dist/style.css', documentStyleCss);
-    });
+    // build.onEnd(async () => { const { documentStyleCss } = await
+    //   import('./dist/style.mjs'); await fs.writeFile('./dist/style.css',
+    //   documentStyleCss); });
   },
 };
 

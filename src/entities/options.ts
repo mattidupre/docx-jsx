@@ -1,7 +1,7 @@
 import { isObject, toLower, map } from 'lodash-es';
+import type { Simplify } from 'type-fest';
 import { mergeWithDefault } from '../utils/object.js';
 import type { UnitsNumber } from '../utils/units.js';
-import { objectToCssVars } from '../utils/cssVars.js';
 import { pluckFromArray } from '../utils/array.js';
 import type { TagName } from './html.js';
 
@@ -156,8 +156,8 @@ export const assignLayoutOptions = <TContent>(
   ) as LayoutConfig<TContent>;
 
 export type Variant = {
-  text: TextOptions;
-  paragraph: ParagraphOptions;
+  text: ContentTextOptions;
+  paragraph: ContentParagraphOptions;
 };
 
 export type VariantName = string;
@@ -202,8 +202,8 @@ export const assignVariants = (
   const arraysByVariantName: Record<
     string,
     {
-      text: Array<undefined | TextOptions>;
-      paragraph: Array<undefined | ParagraphOptions>;
+      text: Array<undefined | ContentTextOptions>;
+      paragraph: Array<undefined | ContentParagraphOptions>;
     }
   > = {};
   for (const variants of args) {
@@ -220,11 +220,11 @@ export const assignVariants = (
     const targetVariant = structuredClone(
       targetVariants[variantName] ?? DEFAULT_VARIANT,
     );
-    targetVariant.text = assignTextOptions(
+    targetVariant.text = Object.assign(
       targetVariant.text,
       ...arraysByVariantName[variantName].text,
     );
-    targetVariant.paragraph = assignParagraphOptions(
+    targetVariant.paragraph = Object.assign(
       targetVariant.paragraph,
       ...arraysByVariantName[variantName].paragraph,
     );
@@ -278,43 +278,51 @@ export const assignStackOptions = (
 ): StackConfig => mergeWithDefault({ margin: DEFAULT_PAGE_MARGIN }, ...args);
 
 // TODO: add false since undefined will not overwrite parent.
-export type ParagraphOptions = {
-  textAlign?: 'left' | 'center' | 'right' | 'justify';
-  lineHeight?: `${number}`;
-};
+export type ContentOptions = Partial<{
+  breakInside: 'avoid';
+  textAlign: 'left' | 'center' | 'right' | 'justify';
+  lineHeight: `${number}`;
+  fontWeight: 'bold';
+  fontStyle: 'italic';
+  fontSize: `${number}rem`;
+  color: Color;
+  highlightColor: Color;
+  textTransform: 'uppercase';
+  textDecoration: 'underline' | 'line-through';
+  superScript: boolean;
+  subScript: boolean;
+}>;
 
-export type ParagraphConfig = ParagraphOptions;
+export const assignContentOptions = (
+  ...[args0, ...args]: ReadonlyArray<undefined | ContentOptions>
+) => Object.assign(args0 ?? {}, ...args) as ContentOptions;
 
-export const assignParagraphOptions = (
-  ...args: ReadonlyArray<undefined | ParagraphOptions>
-): ParagraphConfig => mergeWithDefault({}, ...args);
+export const PARAGRAPH_OPTIONS_KEYS = [
+  'textAlign',
+  'lineHeight',
+] as const satisfies Array<keyof ContentOptions>;
 
-export const paragraphOptionsToCssVars = (
-  ...args: ReadonlyArray<undefined | ParagraphOptions>
-) => objectToCssVars({ paragraph: assignParagraphOptions({}, ...args) });
+export type ContentParagraphOptions = Pick<
+  ContentOptions,
+  (typeof PARAGRAPH_OPTIONS_KEYS)[number]
+>;
 
-// TODO: add false since undefined will not overwrite parent.
-export type TextOptions = {
-  fontWeight?: 'bold';
-  fontStyle?: 'italic';
-  fontSize?: `${number}rem`;
-  color?: Color;
-  highlightColor?: Color;
-  textTransform?: 'uppercase';
-  textDecoration?: 'underline' | 'line-through';
-  superScript?: boolean;
-  subScript?: boolean;
-};
+const TEXT_OPTIONS_KEYS = [
+  'fontWeight',
+  'fontStyle',
+  'fontSize',
+  'color',
+  'highlightColor',
+  'textTransform',
+  'textDecoration',
+  'superScript',
+  'subScript',
+] as const satisfies Array<keyof ContentOptions>;
 
-export type TextConfig = TextOptions;
-
-export const assignTextOptions = (
-  ...args: ReadonlyArray<undefined | TextOptions>
-): TextConfig => mergeWithDefault({}, ...args);
-
-export const textOptionsToCssVars = (
-  ...args: ReadonlyArray<undefined | TextOptions>
-) => objectToCssVars({ text: assignTextOptions({}, ...args) });
+export type ContentTextOptions = Pick<
+  ContentOptions,
+  (typeof TEXT_OPTIONS_KEYS)[number]
+>;
 
 export const INTRINSIC_TEXT_OPTIONS = {
   b: { fontWeight: 'bold' },
@@ -324,13 +332,7 @@ export const INTRINSIC_TEXT_OPTIONS = {
   s: { textDecoration: 'line-through' },
   sup: { superScript: true },
   sub: { subScript: true },
-} as const satisfies Partial<Record<TagName, TextOptions>>;
-
-export const getIntrinsicTextOptions = (tagName: TagName): TextOptions => {
-  const options =
-    INTRINSIC_TEXT_OPTIONS[tagName as keyof typeof INTRINSIC_TEXT_OPTIONS];
-  return options ? structuredClone(options) : {};
-};
+} as const satisfies Partial<Record<TagName, ContentTextOptions>>;
 
 export type CounterType = (typeof COUNTER_TYPES)[number];
 
@@ -338,6 +340,4 @@ export const COUNTER_TYPES = ['page-number', 'page-count'] as const;
 
 export type CounterOptions = {
   counterType: CounterType;
-  text?: TextOptions;
-  variant?: VariantName;
 };

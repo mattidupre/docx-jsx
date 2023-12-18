@@ -7,5 +7,5 @@ export const usePageMargins = (): PageMargin => {
   if (!stackConfig) {
     throw new Error('Cannot determine page margins outside stack.');
   }
-  return structuredClone(stackConfig.margin);
+  return stackConfig.margin;
 };

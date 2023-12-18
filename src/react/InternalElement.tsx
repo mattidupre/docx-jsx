@@ -1,22 +1,15 @@
 import { type ReactNode, createElement, useMemo, useContext } from 'react';
 import { compact } from 'lodash-es';
-import {
-  encodeElementData,
-  paragraphOptionsToCssVars,
-  textOptionsToCssVars,
-} from '../entities';
-import type {
-  ElementData,
-  ParagraphOptions,
-  TagName,
-  TextOptions,
-} from '../entities';
-import type { ExtendableProps } from './entities';
-import { ReactDocumentContext } from './entities';
+import { encodeElementData } from '../entities';
+import type { ContentOptions, ElementData, TagName } from '../entities';
+import { optionsToCssVars, variantNameToClassName } from '../lib/toCss.js';
+import type { ExtendableProps } from './entities.js';
+import { ReactDocumentContext } from './entities.js';
 import { useTarget } from './useTarget.js';
 
 type InternalElementProps = ElementData &
   ExtendableProps & {
+    contentOptions?: ContentOptions;
     elementAttributes?: Record<string, unknown>;
     children?: ReactNode;
     tagName: TagName;
@@ -25,6 +18,7 @@ type InternalElementProps = ElementData &
 export function InternalElement({
   elementType,
   elementOptions,
+  contentOptions,
   elementAttributes,
   tagName,
   className: classNameProp,
@@ -33,22 +27,34 @@ export function InternalElement({
 }: InternalElementProps) {
   const target = useTarget();
 
+  const { prefixes } = useContext(ReactDocumentContext)!;
+
   const optionsStyle = useMemo(
     () => ({
-      ...(target === 'web' && {
-        ...('text' in elementOptions &&
-          textOptionsToCssVars(elementOptions.text as TextOptions)),
-        ...('paragraph' in elementOptions &&
-          paragraphOptionsToCssVars(
-            elementOptions.paragraph as ParagraphOptions,
-          )),
-      }),
+      ...(target === 'web' &&
+        optionsToCssVars(
+          { prefixes },
+          {
+            ...contentOptions,
+            ...elementOptions.text,
+            ...elementOptions.paragraph,
+          },
+        )),
     }),
-    [elementOptions, target],
+    [
+      contentOptions,
+      elementOptions.paragraph,
+      elementOptions.text,
+      prefixes,
+      target,
+    ],
   );
 
-  const { prefixes } = useContext(ReactDocumentContext)!;
-  const variantClassName = prefixes.variantClassName + elementOptions.variant;
+  // TODO: Just put variant on it's own prop.
+  const variantClassName = variantNameToClassName(
+    { prefixes },
+    elementOptions.variant,
+  );
 
   const baseAttributes = {
     className: compact([classNameProp, variantClassName]),
@@ -69,7 +75,16 @@ export function InternalElement({
       ...encodeElementData({
         ...elementAttributes,
         elementType,
-        elementOptions,
+        contentOptions: {
+          ...contentOptions,
+          ...elementOptions.text,
+          ...elementOptions.paragraph,
+        },
+        // TODO: Separate these.
+        elementOptions: {
+          ...elementOptions,
+          ...contentOptions,
+        },
       } as ElementData),
     },
     children,

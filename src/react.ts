@@ -1,5 +1,6 @@
 export * from './react/Counter.js';
 export * from './react/Document.js';
+export * from './react/NoPageBreak.js';
 export * from './react/Preview.js';
 export * from './react/Stack.js';
 export * from './react/Typography.js';

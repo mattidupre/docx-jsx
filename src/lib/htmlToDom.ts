@@ -12,7 +12,7 @@ import {
   variantsToCss,
   optionsToCssVars,
   variantNameToClassName,
-} from './toCss';
+} from './toCss.js';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
@@ -29,7 +29,7 @@ const objToDom = (node: HtmlNode) => {
       tagName,
       data: {
         elementsContext,
-        element: { elementOptions },
+        element: { elementOptions, contentOptions },
       },
     } = node;
 
@@ -37,15 +37,7 @@ const objToDom = (node: HtmlNode) => {
 
     const attributes = assignHtmlAttributes({}, properties, {
       class: variantNameToClassName({ prefixes }, elementOptions.variant),
-      style: cssVarsToString(
-        optionsToCssVars(
-          { prefixes },
-          {
-            ...elementOptions.text,
-            ...elementOptions.paragraph,
-          },
-        ),
-      ),
+      style: cssVarsToString(optionsToCssVars({ prefixes }, contentOptions)),
     });
 
     const element = document.createElement(tagName);
@@ -72,8 +64,6 @@ export type DocumentRootToDomOptions = {
   styleSheets?: ReadonlyArray<string | CSSStyleSheet | HTMLStyleElement>;
   onDocument?: (document: DocumentDom) => void;
 };
-
-let styleSheetPromise: Promise<CSSStyleSheet>;
 
 export const htmlToDom = async (
   html: string,

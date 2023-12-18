@@ -23,7 +23,7 @@ const isMapText = (value: any): value is MapText => value?.type === 'text';
 
 export type MapHtmlElementBeforeChildren<TContext extends Context> = {
   htmlElement: MapElement;
-  parentContext: TContext;
+  parentContext: undefined | TContext;
 };
 
 export type MapTextBeforeChildren<TContext extends Context> = {
@@ -36,13 +36,11 @@ export type MapHtmlElementAfterChildren<
   TMappedNode,
 > = {
   childContext: TContext;
-  parentContext: TContext;
+  parentContext: undefined | TContext;
   children: Array<TMappedNode>;
 };
 
 type Options<TContext extends Context, TMappedNode> = {
-  initialContext: TContext;
-
   onElementBeforeChildren: (
     data: MapHtmlElementBeforeChildren<TContext>,
   ) => TContext;
@@ -61,7 +59,8 @@ const mapHast = <TMappedNode>(
   parentContext: unknown,
   options: Options<any, any>,
 ): TMappedNode[] => {
-  // TODO: Constructor root from return instead of just returning flattened array.
+  // TODO: Constructor root from return instead of just returning flattened
+  // array.
 
   return nodes.flatMap((node) => {
     if (isMapText(node)) {
@@ -103,5 +102,5 @@ export const mapHtml = <TContext extends Context, TNode>(
   options: Options<TContext, TNode>,
 ): TNode[] => {
   const hast = fromHtmlIsomorphic(html, { fragment: true });
-  return mapHast<TNode>(hast.children, options.initialContext, options);
+  return mapHast<TNode>(hast.children, undefined, options);
 };

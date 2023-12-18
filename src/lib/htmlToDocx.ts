@@ -3,7 +3,7 @@ import {
   Header,
   Footer,
   TextRun,
-  Paragraph,
+  Paragraph as DocxParagraph,
   PageNumber,
   AlignmentType,
   HeadingLevel,
@@ -19,16 +19,38 @@ import {
 } from 'docx';
 import { startCase } from 'lodash-es';
 import type {
-  ParagraphOptions,
-  TextOptions,
+  ContentParagraphOptions,
+  ContentTextOptions,
   Color,
   VariantsConfig,
 } from '../entities';
 import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 
+const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
+class Paragraph extends DocxParagraph {
+  public [PARAGRAPH_OPTIONS_KEY]: IParagraphOptions;
+
+  public static clone(
+    paragraph: Paragraph,
+    extraOptions: Omit<Partial<IParagraphOptions>, 'children'> = {},
+  ) {
+    const newOptions = Object.assign(
+      {},
+      paragraph[PARAGRAPH_OPTIONS_KEY],
+      extraOptions,
+    );
+    return new Paragraph(newOptions);
+  }
+
+  constructor(options: IParagraphOptions) {
+    super(options);
+    this[PARAGRAPH_OPTIONS_KEY] = options;
+  }
+}
+
 const parseColor = (color?: Color) => color && color.replace('#', '');
 
-const parseTextSize = (fontSize: TextOptions['fontSize']) =>
+const parseTextSize = (fontSize: ContentTextOptions['fontSize']) =>
   fontSize !== undefined ? parseFloat(fontSize) * 22 : undefined;
 
 const DOCX_HEADING = {
@@ -72,7 +94,7 @@ const parseVariants = (variants: VariantsConfig): IStylesOptions => ({
 const parseParagraphOptions = ({
   textAlign,
   lineHeight,
-}: ParagraphOptions = {}): IParagraphOptions => ({
+}: ContentParagraphOptions = {}): IParagraphOptions => ({
   spacing: {
     line: lineHeight && parseFloat(lineHeight) * 240,
   },
@@ -89,7 +111,7 @@ const parseTextRunOptions = ({
   textDecoration,
   superScript,
   subScript,
-}: TextOptions = {}): IRunOptions => ({
+}: ContentTextOptions = {}): IRunOptions => ({
   size: parseTextSize(fontSize),
   color: color && color.replace('#', ''),
   shading: highlightColor && {
@@ -122,6 +144,20 @@ export const htmlToDocx = (html: string) => {
     } = node;
 
     if (node.type === 'element') {
+      if (element.contentOptions.breakInside === 'avoid') {
+        node.children = node.children.map((child, index) => {
+          if (child instanceof Paragraph) {
+            return Paragraph.clone(child, {
+              keepLines: true,
+              // If Paragraph is the last child, do not keep the next element.
+              // If there is a parent breakInside it will overwrite this.
+              keepNext: index !== node.children.length - 1,
+            });
+          }
+          return child;
+        });
+      }
+
       if (element.elementType === 'counter') {
         const { counterType } = element.elementOptions;
         const children: NonNullable<IRunOptions['children']>[number][] = [];
@@ -139,6 +175,17 @@ export const htmlToDocx = (html: string) => {
           ...parseTextRunOptions(text),
           style: elementsContext.variant,
           children,
+        });
+      }
+
+      if (node.tagName === 'li') {
+        return new Paragraph({
+          ...parseParagraphOptions(paragraph),
+          bullet: {
+            level: elementsContext.list!.level!,
+          },
+          style: elementsContext.variant,
+          children: node.children as ParagraphChild[],
         });
       }
 

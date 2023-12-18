@@ -1,4 +1,3 @@
-import { mapValues } from 'lodash-es';
 import { simpleCssToString } from '../utils/css.js';
 import type { SimpleCss } from '../utils/css.js';
 import { getValueOf } from '../utils/object.js';
@@ -6,7 +5,6 @@ import {
   objectToCssVars,
   cssVarKey,
   cssVarProperty,
-  cssVarsToString,
 } from '../utils/cssVars.js';
 import {
   INTRINSIC_TEXT_OPTIONS,
@@ -22,10 +20,13 @@ type BaseOptions = {
   variants: VariantsOptions;
 };
 
-export const variantNameToClassName = (
+export const variantNameToClassName = <
+  TVariantName extends undefined | VariantName,
+>(
   { prefixes }: Pick<BaseOptions, 'prefixes'>,
-  variantName: VariantName,
-) => `${prefixes.variantClassName}${variantName}`;
+  variantName: TVariantName,
+): TVariantName extends undefined ? undefined | string : string =>
+  variantName && `${prefixes.variantClassName}${variantName}`;
 
 export const optionsToCssVars = (
   { prefixes }: Pick<BaseOptions, 'prefixes'>,
@@ -58,7 +59,7 @@ const createIntrinsics = ({
   prefixes,
 }: Pick<BaseOptions, 'prefixes'>): SimpleCss => ({
   '*': {
-    ...createOptionsDeclarations({ prefixes }, ['color']),
+    ...createOptionsDeclarations({ prefixes }, ['color', 'breakInside']),
   },
   ':where(a)': {
     color: 'inherit',

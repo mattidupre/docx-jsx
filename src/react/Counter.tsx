@@ -1,12 +1,16 @@
 import type { CSSProperties } from 'react';
-import type { TextOptions, CounterOptions, VariantName } from '../entities';
+import type {
+  ContentTextOptions,
+  CounterOptions,
+  VariantName,
+} from '../entities';
 import { useTarget } from './useTarget';
 import { InternalElement } from './InternalElement.js';
 import type { ExtendableProps } from './entities.js';
 
 export type CounterProps = ExtendableProps & {
   variant?: VariantName;
-  text?: TextOptions;
+  text?: ContentTextOptions;
 } & CounterOptions;
 
 export function Counter({

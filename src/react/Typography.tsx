@@ -1,16 +1,16 @@
 import { type ReactNode, useMemo } from 'react';
 import type {
   TagName,
-  TextOptions,
-  ParagraphOptions,
+  ContentTextOptions,
+  ContentParagraphOptions,
   VariantName,
 } from '../entities';
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities.js';
 
 export type TypographyOptions = {
-  text?: TextOptions;
-  paragraph?: ParagraphOptions;
+  text?: ContentTextOptions;
+  paragraph?: ContentParagraphOptions;
 };
 
 export type TypographyProps = (

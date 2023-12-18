@@ -84,3 +84,20 @@ export const pluckFromArray = <
     TKey
   >;
 };
+
+/**
+ * Fixes TypeScripts stubborn index errors.
+ */
+export const isValueInArray = (array: ReadonlyArray<any>, value: any) => {
+  return array.includes(value);
+};
+
+export const isAllValuesInArray = (
+  array: ReadonlyArray<any>,
+  ...values: ReadonlyArray<any>
+) => values.every((value) => array.includes(value));
+
+export const isAnyValuesInArray = (
+  array: ReadonlyArray<any>,
+  ...values: ReadonlyArray<any>
+) => values.some((value) => array.includes(value));

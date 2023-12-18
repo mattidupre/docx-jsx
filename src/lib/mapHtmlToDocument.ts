@@ -14,9 +14,11 @@ import {
   type StackElement,
   type ElementsContext,
   assignElementsContext,
-  getIntrinsicTextOptions,
+  INTRINSIC_TEXT_OPTIONS,
 } from '../entities';
-import { mapHtml } from '../utils/mapHtml/mapHtml';
+import { mapHtml, type MapElement } from '../utils/mapHtml/mapHtml';
+import { getValueOf } from 'src/utils/object';
+import { isValueInArray } from 'src/utils/array';
 
 const CONTENT_ELEMENT_TYPES = [
   'htmltag',
@@ -30,16 +32,46 @@ const CONTENT_ROOT_TYPES = [
 ] as const satisfies ReadonlyArray<ElementType>;
 
 type MapData = {
+  parentData: ReadonlyArray<MapData>;
   parentElementTypes: ReadonlyArray<ElementType>;
   parentTagNames: ReadonlyArray<TagName>;
   element: ElementData<ElementType>;
   elementsContext: ElementsContext;
+  children: Array<unknown>;
 };
 
-type NodeBase = {
+type HtmlContext = {
   tagName: TagName;
   properties: HtmlAttributes;
   data: MapData;
+};
+
+const extendHtmlContext = (
+  prevHtmlContext: undefined | HtmlContext,
+  mapElement: MapElement,
+): HtmlContext => {
+  const prevData = prevHtmlContext?.data;
+  const { tagName } = mapElement;
+  const element = decodeElementData(mapElement);
+  const {
+    parentData = [],
+    parentElementTypes = [],
+    parentTagNames = [],
+    elementsContext,
+  } = prevData ?? {};
+  return {
+    ...mapElement,
+    data: {
+      parentData: prevHtmlContext?.data
+        ? [...parentData, prevHtmlContext.data]
+        : [],
+      parentElementTypes: [...parentElementTypes, element.elementType],
+      parentTagNames: [...parentTagNames, tagName],
+      element,
+      elementsContext: assignElementsContext({}, elementsContext),
+      children: [],
+    },
+  };
 };
 
 export type HtmlTextNode = {
@@ -50,13 +82,13 @@ export type HtmlTextNode = {
 
 export type HtmlElementNode = {
   type: 'element';
-} & NodeBase & {
+} & HtmlContext & {
     children: ReadonlyArray<unknown>;
   };
 
 export type HtmlRootNode = {
   type: 'root';
-} & NodeBase & {
+} & HtmlContext & {
     children: ReadonlyArray<unknown>;
   };
 
@@ -73,29 +105,15 @@ export const mapHtmlToDocument = <TContent>(
   let layoutElements = createDefaultLayoutConfig();
   let contentElement: unknown = undefined;
 
-  const documents = mapHtml<NodeBase, unknown>(html, {
-    initialContext: {} as NodeBase,
+  const documents = mapHtml<HtmlContext, unknown>(html, {
     onElementBeforeChildren: ({ htmlElement, parentContext }) => {
       const { tagName } = htmlElement;
-      const {
-        parentElementTypes = [],
-        parentTagNames = [],
-        elementsContext: parentOptionsContext = {},
-      } = parentContext?.data ?? {};
+      const { parentElementTypes = [], parentTagNames = [] } =
+        parentContext?.data ?? {};
 
-      const elementData = decodeElementData(htmlElement);
+      const childContext = extendHtmlContext(parentContext, htmlElement);
 
-      const optionsContext = assignElementsContext({}, parentOptionsContext);
-
-      const childContext: NodeBase = {
-        ...htmlElement,
-        data: {
-          parentElementTypes: [...parentElementTypes, elementData.elementType],
-          parentTagNames: [...parentTagNames, htmlElement.tagName],
-          element: elementData,
-          elementsContext: optionsContext,
-        },
-      };
+      const { element: elementData, elementsContext } = childContext.data;
 
       if (isElementOfType(elementData, 'document')) {
         // TODO: This will throw if there are HTML elements above the document?
@@ -105,7 +123,7 @@ export const mapHtmlToDocument = <TContent>(
           );
         }
 
-        assignElementsContext(optionsContext, {
+        assignElementsContext(elementsContext, {
           document: elementData.elementOptions,
         });
 
@@ -119,7 +137,7 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Stack must be a child of document.');
         }
 
-        assignElementsContext(optionsContext, {
+        assignElementsContext(elementsContext, {
           stack: elementData.elementOptions,
         });
 
@@ -149,9 +167,29 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Content must be a child of content root.');
         }
 
-        assignElementsContext(optionsContext, elementData.elementOptions, {
-          text: getIntrinsicTextOptions(tagName),
+        if (
+          isValueInArray(PARAGRAPH_TAG_NAMES, tagName) &&
+          isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES)
+        ) {
+          throw new TypeError(
+            'Paragraph-ish tags (e.g., p, h1, li) cannot be nested inside one another.',
+          );
+        }
+
+        assignElementsContext(elementsContext, elementData.elementOptions, {
+          text: structuredClone(getValueOf(tagName, INTRINSIC_TEXT_OPTIONS)),
+          contentOptions: structuredClone(
+            getValueOf(tagName, INTRINSIC_TEXT_OPTIONS),
+          ),
         });
+
+        if (tagName === 'ul' || tagName === 'ol') {
+          assignElementsContext(elementsContext, {
+            list: {
+              level: elementsContext.list.level + 1,
+            },
+          });
+        }
 
         if (elementData.elementType === 'counter') {
           if (
@@ -165,7 +203,11 @@ export const mapHtmlToDocument = <TContent>(
         return childContext;
       }
 
-      throw new TypeError('Invalid context.');
+      throw new TypeError(
+        `Invalid element ${
+          (elementData as ElementData).elementType
+        } / tagName ${tagName}.`,
+      );
     },
     onText: ({ text, parentContext: { data } }) => {
       const { parentTagNames } = data;

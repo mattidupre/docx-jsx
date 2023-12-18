@@ -1,1 +1,4 @@
-export type { TextOptions, ParagraphOptions } from './entities';
+export type {
+  ContentTextOptions as TextOptions,
+  ContentParagraphOptions as ParagraphOptions,
+} from './entities';

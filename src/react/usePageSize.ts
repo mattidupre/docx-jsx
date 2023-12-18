@@ -7,5 +7,5 @@ export const usePageSize = (): PageSize => {
   if (!documentConfig) {
     throw new Error('Cannot determine page size outside document.');
   }
-  return structuredClone(documentConfig.size);
+  return documentConfig.size;
 };

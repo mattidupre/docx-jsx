@@ -2,17 +2,18 @@ import { compact, merge } from 'lodash-es';
 import {
   type DocumentOptions,
   type StackOptions,
-  type ParagraphOptions,
-  type TextOptions,
+  type ContentParagraphOptions,
+  type ContentTextOptions,
   type DocumentConfig,
   type StackConfig,
   type Target,
   assignDocumentOptions,
   assignStackOptions,
-  assignParagraphOptions,
-  assignTextOptions,
   type VariantName,
+  assignContentOptions,
+  type ContentOptions,
 } from './options';
+import { mergeWithDefault } from 'src/utils/object';
 
 export type EnvironmentContextOptions = {
   target: undefined | Target;
@@ -35,16 +36,20 @@ export const assignEnvironmentContext = (
 type ElementsContextOptions = {
   document?: DocumentOptions;
   stack?: StackOptions;
-  paragraph?: ParagraphOptions;
-  text?: TextOptions;
+  contentOptions?: ContentOptions;
+  list?: { level: number };
+  paragraph?: ContentParagraphOptions;
+  text?: ContentTextOptions;
   variant?: VariantName;
 };
 
 export type ElementsContext = {
-  document: undefined | DocumentConfig;
-  stack: undefined | StackConfig;
-  paragraph: undefined | ParagraphOptions;
-  text: undefined | TextOptions;
+  document: DocumentConfig;
+  stack: StackConfig;
+  contentOptions: ContentOptions;
+  list: { level: number };
+  paragraph: ContentParagraphOptions;
+  text: ContentTextOptions;
   variant: undefined | VariantName;
 };
 
@@ -62,16 +67,21 @@ const pluckContext = <TKey extends keyof ElementsContext>(
 
 export const assignElementsContext = (
   ...args: ReadonlyArray<
-    Record<string, unknown> &
-      (ElementsContextOptions | ElementsContext | undefined)
+    | undefined
+    | (Record<string, unknown> &
+        (ElementsContextOptions | ElementsContext | undefined))
   >
 ): ElementsContext =>
-  Object.assign(args[0], {
+  Object.assign(args[0] ?? {}, {
     document: assignDocumentOptions(...pluckContext('document', ...args)),
     stack: assignStackOptions(...pluckContext('stack', ...args)),
-    paragraph: assignParagraphOptions(...pluckContext('paragraph', ...args)),
-    text: assignTextOptions(...pluckContext('text', ...args)),
+    list: mergeWithDefault({ level: -1 }, ...pluckContext('list', ...args)),
+    paragraph: assignContentOptions(...pluckContext('paragraph', ...args)),
+    text: assignContentOptions(...pluckContext('paragraph', ...args)),
     variant: compact(pluckContext('variant', ...args)).at(-1),
+    contentOptions: assignContentOptions(
+      ...pluckContext('contentOptions', ...args),
+    ),
   } satisfies ElementsContext);
 
 /**

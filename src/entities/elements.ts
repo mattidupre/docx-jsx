@@ -9,12 +9,13 @@ import {
   ID_PREFIX,
   type DocumentConfig,
   type LayoutType,
-  type ParagraphOptions,
-  type TextOptions,
+  type ContentParagraphOptions,
+  type ContentTextOptions,
   type CounterOptions,
   type StackConfig,
   type LayoutConfig,
   type VariantName,
+  type ContentOptions,
 } from './options.js';
 import type { TagName } from './html.js';
 
@@ -24,9 +25,9 @@ type ConfigByElementType = {
   header: { layoutType: LayoutType };
   content: Record<string, unknown>;
   footer: { layoutType: LayoutType };
-  htmltag: {
-    paragraph?: ParagraphOptions;
-    text?: TextOptions;
+  htmltag: ContentOptions & {
+    paragraph?: ContentParagraphOptions;
+    text?: ContentTextOptions;
     variant?: VariantName;
   };
   counter: CounterOptions;
@@ -63,6 +64,7 @@ export const PARAGRAPH_TAG_NAMES = [
   'h4',
   'h5',
   'h6',
+  'li',
 ] as const satisfies readonly TagName[];
 
 export type ElementData<
@@ -71,20 +73,22 @@ export type ElementData<
   ? {
       elementType: TElementType;
       elementOptions: ConfigByElementType[TElementType];
+      contentOptions: ContentOptions;
     }
   : never;
 
-export type ContentElementOptions = TextOptions & ParagraphOptions;
+export type ContentElementOptions = ContentOptions;
 
 // TODO: Expand to data-[prefix]-[subkey of options] vs
 // data-[prefix]-[elementType or elementOptions]
 export const encodeElementData = ({
   elementType,
   elementOptions,
+  contentOptions,
   ...extraData
 }: Record<string, unknown> & ElementData<ElementType>) =>
   encodeDataAttributes(
-    { elementType, elementOptions, ...extraData } as JsonObject,
+    { elementType, elementOptions, contentOptions, ...extraData } as JsonObject,
     {
       prefix: ID_PREFIX,
     },
@@ -96,12 +100,20 @@ export const decodeElementData = ({
 }: {
   properties: Record<string, unknown>;
 }): ElementData => {
-  const { elementType, elementOptions } = decodeDataAttributes(properties, {
+  const {
+    elementType,
+    elementOptions,
+    contentOptions = {},
+  } = decodeDataAttributes(properties, {
     prefix: ID_PREFIX,
   });
   if (!elementType && !elementOptions) {
     // Default to element type htmltag.
-    return { elementType: 'htmltag', elementOptions: {} };
+    return {
+      elementType: 'htmltag',
+      elementOptions: {},
+      contentOptions,
+    } as ElementData;
   }
   if (!elementType || !elementOptions) {
     throw new TypeError('Both type and data must be set.');
@@ -109,6 +121,7 @@ export const decodeElementData = ({
   return {
     elementType,
     elementOptions,
+    contentOptions,
   } as ElementData;
 };
 
