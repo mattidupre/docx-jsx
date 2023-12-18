@@ -239,13 +239,13 @@ export class PageTemplate {
       selectDomElement(headerFooterEl, 'counter', {
         counterType: 'page-number',
       }).forEach((counterEl) => {
-        counterEl.replaceWith(document.createTextNode(`${pageNumber}`));
+        counterEl.appendChild(document.createTextNode(`${pageNumber}`));
       });
 
       selectDomElement(headerFooterEl, 'counter', {
         counterType: 'page-count',
       }).forEach((counterEl) => {
-        counterEl.replaceWith(document.createTextNode(`${pageCount}`));
+        counterEl.appendChild(document.createTextNode(`${pageCount}`));
       });
     });
   }

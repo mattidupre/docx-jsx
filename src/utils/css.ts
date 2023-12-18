@@ -8,7 +8,7 @@ export type SimpleCss = Record<
   }
 >;
 
-export const parseSimpleCss = (object: SimpleCss) => {
+export const simpleCssToString = (object: SimpleCss) => {
   const cssArr: Array<string> = [];
   for (const selector in object) {
     const rulesArray: Array<string> = [];
@@ -17,7 +17,8 @@ export const parseSimpleCss = (object: SimpleCss) => {
       const parsedProp = prop.startsWith('--') ? prop : kebabCase(prop);
       rulesArray.push(`  ${parsedProp}: ${rules[prop as keyof typeof rules]};`);
     }
-    cssArr.push(`${selector} {\n${rulesArray.join('\n')}\n}`);
+    const rulesString = rulesArray.length ? `\n${rulesArray.join('\n')}\n` : '';
+    cssArr.push(`${selector} {${rulesString}}`);
   }
   return cssArr.join('\n');
 };

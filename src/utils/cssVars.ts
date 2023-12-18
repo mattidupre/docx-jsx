@@ -1,16 +1,26 @@
 import { kebabCase, isObject } from 'lodash-es';
-import type { KebabCase } from 'type-fest';
 
-type VarValue = string | boolean;
+type VarValue = number | string | boolean;
 
-export type CssVars = Record<`--${string}`, string>;
+type VarKey = Lowercase<`--${string}`>;
 
-const createKebabPrefix = <T extends string>(prefix?: T) =>
-  (prefix ? `${kebabCase(prefix)}-` : '') as T extends undefined
-    ? ''
-    : `${KebabCase<T>}-`;
+export type CssVars = Record<Lowercase<`--${string}`>, Lowercase<string>>;
 
-export const optionsToCssVars = <
+const cssVarKeyBase = (...values: ReadonlyArray<undefined | string>) =>
+  values
+    .flatMap((value) => (value ? kebabCase(value) : []))
+    .join('-') as Lowercase<string>;
+
+export const cssVarKey = (...values: ReadonlyArray<undefined | string>) =>
+  ('--' + cssVarKeyBase(...values)) as VarKey;
+
+// TODO: facilitate var(--foo, var(--bar, var(--baz)))
+export const cssVarProperty = (key: VarKey, defaultValue?: VarValue) =>
+  (defaultValue
+    ? `var(${key}, ${defaultValue})`
+    : `var(${key})`) as `var(--${string})`;
+
+export const objectToCssVars = <
   TOptions extends Record<
     string,
     undefined | VarValue | Record<string, undefined | VarValue>
@@ -23,17 +33,16 @@ export const optionsToCssVars = <
   if (!options) {
     return {};
   }
-  const kebabPrefix = createKebabPrefix(prefix);
   return Object.entries(options).reduce((obj, [key, value]) => {
-    const keyPrefix = kebabPrefix + kebabCase(key);
+    const keyBase = cssVarKeyBase(prefix, key);
     if (!value) {
       return obj;
     }
     if (isObject(value)) {
-      Object.assign(obj, optionsToCssVars(value, keyPrefix));
+      Object.assign(obj, objectToCssVars(value, keyBase));
     } else if (value) {
       Object.assign(obj, {
-        [`--${keyPrefix}`]: value,
+        [cssVarKey(keyBase)]: String(value),
       });
     }
     return obj;

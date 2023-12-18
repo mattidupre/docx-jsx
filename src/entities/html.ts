@@ -1,4 +1,5 @@
 import { kebabCase } from 'lodash-es';
+import { PrefixesConfig, VariantName } from './options.js';
 
 // TODO: Add more semantic HTML TagNames.
 //* IMPORTANT: Keep these in sync with typography stylesheet.
@@ -26,6 +27,7 @@ export type TagName = keyof Pick<
 
 export type HtmlAttributes = Record<string, string>;
 
+// TODO: Pull this out of entities.
 export const assignHtmlAttributes = (
   arg0: HtmlAttributes,
   ...args: ReadonlyArray<HtmlAttributes>

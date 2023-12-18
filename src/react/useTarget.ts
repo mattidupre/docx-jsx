@@ -1,7 +1,7 @@
 import { useContext } from 'react';
-import { ReactEnvironmentContext } from './entities';
-import { DEFAULT_TARGET } from 'src/entities';
-import type { Target } from 'src/entities';
+import { DEFAULT_TARGET } from '../entities';
+import type { Target } from '../entities';
+import { ReactEnvironmentContext } from './entities.js';
 
 /**
  * Defaults to web.

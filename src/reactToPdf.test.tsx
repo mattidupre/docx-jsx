@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import { it } from 'vitest';
 import { reactToPdf } from './reactToPdf.js';
-import { mockDocument } from './fixtures/mockDocument.js';
+import { MockDocument } from './fixtures/mockDocument.js';
 import { writeTestFile } from './fixtures/writeTestFile.js';
 import { PUPPETEER_OPTIONS } from './fixtures/puppeteerOptions.js';
 
@@ -14,7 +14,7 @@ const mockStyleSheets = await Promise.all(
 );
 
 it('runs without error', async () => {
-  const buffer = await reactToPdf(mockDocument, {
+  const buffer = await reactToPdf(<MockDocument />, {
     puppeteer: PUPPETEER_OPTIONS,
     styleSheets: mockStyleSheets,
   });

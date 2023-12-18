@@ -1,4 +1,5 @@
-import { type ReactNode, createElement, useMemo } from 'react';
+import { type ReactNode, createElement, useMemo, useContext } from 'react';
+import { compact } from 'lodash-es';
 import {
   encodeElementData,
   paragraphOptionsToCssVars,
@@ -11,6 +12,7 @@ import type {
   TextOptions,
 } from '../entities';
 import type { ExtendableProps } from './entities';
+import { ReactDocumentContext } from './entities';
 import { useTarget } from './useTarget.js';
 
 type InternalElementProps = ElementData &
@@ -25,46 +27,51 @@ export function InternalElement({
   elementOptions,
   elementAttributes,
   tagName,
-  className,
-  style,
+  className: classNameProp,
+  style: styleProp,
   children,
 }: InternalElementProps) {
   const target = useTarget();
 
-  const mergedStyle = useMemo(
-    () =>
-      target === 'web'
-        ? {
-            ...('text' in elementOptions &&
-              textOptionsToCssVars(elementOptions.text as TextOptions)),
-            ...('paragraph' in elementOptions &&
-              paragraphOptionsToCssVars(
-                elementOptions.paragraph as ParagraphOptions,
-              )),
-            ...style,
-          }
-        : undefined,
-    [elementOptions, style, target],
+  const optionsStyle = useMemo(
+    () => ({
+      ...(target === 'web' && {
+        ...('text' in elementOptions &&
+          textOptionsToCssVars(elementOptions.text as TextOptions)),
+        ...('paragraph' in elementOptions &&
+          paragraphOptionsToCssVars(
+            elementOptions.paragraph as ParagraphOptions,
+          )),
+      }),
+    }),
+    [elementOptions, target],
   );
 
-  if (useTarget() === 'web') {
-    return createElement(
-      tagName,
-      {
-        className,
-        style: mergedStyle,
-      },
-      children,
-    );
+  const { prefixes } = useContext(ReactDocumentContext)!;
+  const variantClassName = prefixes.variantClassName + elementOptions.variant;
+
+  const baseAttributes = {
+    className: compact([classNameProp, variantClassName]),
+    style: {
+      ...optionsStyle,
+      styleProp,
+    },
+  };
+
+  if (target === 'web') {
+    return createElement(tagName, baseAttributes, children);
   }
 
   return createElement(
     tagName,
-    encodeElementData({
-      ...elementAttributes,
-      elementType,
-      elementOptions,
-    } as ElementData),
+    {
+      ...baseAttributes,
+      ...encodeElementData({
+        ...elementAttributes,
+        elementType,
+        elementOptions,
+      } as ElementData),
+    },
     children,
   );
 }

@@ -14,6 +14,7 @@ import {
   type CounterOptions,
   type StackConfig,
   type LayoutConfig,
+  type VariantName,
 } from './options.js';
 import type { TagName } from './html.js';
 
@@ -26,6 +27,7 @@ type ConfigByElementType = {
   htmltag: {
     paragraph?: ParagraphOptions;
     text?: TextOptions;
+    variant?: VariantName;
   };
   counter: CounterOptions;
 };
@@ -71,6 +73,8 @@ export type ElementData<
       elementOptions: ConfigByElementType[TElementType];
     }
   : never;
+
+export type ContentElementOptions = TextOptions & ParagraphOptions;
 
 // TODO: Expand to data-[prefix]-[subkey of options] vs
 // data-[prefix]-[elementType or elementOptions]

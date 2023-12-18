@@ -45,7 +45,17 @@ const mockPageTypes = (prefix: string) => {
 
 export function MockDocument() {
   return (
-    <Document size={{ width: '8.5in', height: '11in' }}>
+    <Document
+      size={{ width: '8.5in', height: '11in' }}
+      variants={{
+        mockVariant: {
+          text: {
+            color: '#00ff00',
+            fontWeight: 'bold',
+          },
+        },
+      }}
+    >
       <Stack
         innerPageClassName="preview__page"
         layouts={mockPageTypes('FIRST SECTION')}
@@ -63,27 +73,9 @@ export function MockDocument() {
         <h5>Heading 5</h5>
         <h6>Heading 6</h6>
 
-        <Typography as="p" paragraph={{ lineHeight: '2' }}>
-          Double Line Height: Circumambulate the city of a dreamy Sabbath
-          afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
-          Whitehall, northward.
-        </Typography>
-
-        <Typography as="p" paragraph={{ textAlign: 'left' }}>
-          Left Paragraph
-        </Typography>
-        <Typography as="p" paragraph={{ textAlign: 'center' }}>
-          Centered Paragraph
-        </Typography>
-        <Typography as="p" paragraph={{ textAlign: 'right' }}>
-          Right Paragraph
-        </Typography>
-        <Typography as="p" paragraph={{ textAlign: 'justify' }}>
-          Justified Paragraph: Circumambulate the city of a dreamy Sabbath
-          afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
-          Whitehall, northward.
-        </Typography>
-
+        <p>
+          <Typography variant="mockVariant">MockVariant Text</Typography>
+        </p>
         <p>
           <a href="https://www.google.com">Link Text</a>
         </p>
@@ -145,6 +137,27 @@ export function MockDocument() {
             __html: '<p>dangerouslySetInnerHTML Content</p>',
           }}
         />
+
+        <Typography as="p" paragraph={{ lineHeight: '2' }}>
+          Double Line Height: Circumambulate the city of a dreamy Sabbath
+          afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
+          Whitehall, northward.
+        </Typography>
+
+        <Typography as="p" paragraph={{ textAlign: 'left' }}>
+          Left Paragraph
+        </Typography>
+        <Typography as="p" paragraph={{ textAlign: 'center' }}>
+          Centered Paragraph
+        </Typography>
+        <Typography as="p" paragraph={{ textAlign: 'right' }}>
+          Right Paragraph
+        </Typography>
+        <Typography as="p" paragraph={{ textAlign: 'justify' }}>
+          Justified Paragraph: Circumambulate the city of a dreamy Sabbath
+          afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
+          Whitehall, northward.
+        </Typography>
       </Stack>
 
       <Stack

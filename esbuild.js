@@ -24,7 +24,6 @@ const SHARED_OPTIONS = {
   logLevel: 'info',
   outdir: './dist',
   sourcemap: true,
-  plugins: [omToCssPlugin],
 };
 
 const SRC_OPTIONS = [
@@ -41,12 +40,7 @@ const SRC_OPTIONS = [
   // Exports targeting the browser.
   {
     ...SHARED_OPTIONS,
-    entryPoints: [
-      './src/index.ts',
-      './src/react.ts',
-      './src/reactToDom.ts',
-      './src/style.ts',
-    ],
+    entryPoints: ['./src/index.ts', './src/react.ts', './src/reactToDom.ts'],
     bundle: true,
     treeShaking: true,
     platform: 'browser',
@@ -54,11 +48,12 @@ const SRC_OPTIONS = [
     packages: 'external',
     format: 'esm',
     outExtension: { '.js': '.mjs' },
+    plugins: [omToCssPlugin],
   },
   // Exports targeting the server.
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/reactToDocx.ts', './src/reactToPdf.ts'],
+    entryPoints: ['./src/reactToDocx.tsx', './src/reactToPdf.tsx'],
     bundle: true,
     packages: 'external',
     treeShaking: true,

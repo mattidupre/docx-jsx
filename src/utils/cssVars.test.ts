@@ -1,15 +1,15 @@
 import { expect, test, describe } from 'vitest';
-import { optionsToCssVars } from './cssVars.js';
+import { objectToCssVars } from './cssVars.js';
 
 describe('passing undefined', () => {
   test('returns an empty object', () => {
-    expect(optionsToCssVars(undefined)).toEqual({});
+    expect(objectToCssVars(undefined)).toEqual({});
   });
 });
 
 describe('passing empty object', () => {
   test('returns an empty object', () => {
-    expect(optionsToCssVars({})).toEqual({});
+    expect(objectToCssVars({})).toEqual({});
   });
 });
 
@@ -17,7 +17,7 @@ describe('passing a flat object', () => {
   describe('without prefix', () => {
     test('returns an object of vars', () => {
       expect(
-        optionsToCssVars({
+        objectToCssVars({
           one: 'alpha',
           two: 'beta',
           three: 'gamma',
@@ -33,7 +33,7 @@ describe('passing a flat object', () => {
   describe('with prefix', () => {
     test('returns an object of vars', () => {
       expect(
-        optionsToCssVars(
+        objectToCssVars(
           {
             one: 'alpha',
             two: 'beta',
@@ -54,7 +54,7 @@ describe('passing a deep object', () => {
   describe('without prefix', () => {
     test('returns an object of vars', () => {
       expect(
-        optionsToCssVars({
+        objectToCssVars({
           one: 'alpha',
           two: 'beta',
           three: {
@@ -74,7 +74,7 @@ describe('passing a deep object', () => {
   describe('with prefix', () => {
     test('returns an object of vars', () => {
       expect(
-        optionsToCssVars(
+        objectToCssVars(
           {
             one: 'alpha',
             two: 'beta',

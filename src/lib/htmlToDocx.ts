@@ -12,9 +12,18 @@ import {
   type IParagraphOptions,
   type ISectionOptions,
   type IRunOptions,
+  type IStylesOptions,
+  type IParagraphStyleOptions,
+  type ICharacterStyleOptions,
   ExternalHyperlink,
 } from 'docx';
-import type { ParagraphOptions, TextOptions, Color } from '../entities';
+import { startCase } from 'lodash-es';
+import type {
+  ParagraphOptions,
+  TextOptions,
+  Color,
+  VariantsConfig,
+} from '../entities';
 import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 
 const parseColor = (color?: Color) => color && color.replace('#', '');
@@ -37,6 +46,28 @@ const DOCX_TEXT_ALIGN = {
   right: AlignmentType.RIGHT,
   justify: AlignmentType.JUSTIFIED,
 } as const;
+
+const parseVariants = (variants: VariantsConfig): IStylesOptions => ({
+  paragraphStyles: Object.entries(variants).map(
+    ([variantName, variant]) =>
+      ({
+        id: variantName,
+        name: startCase(variantName),
+        quickFormat: true,
+        paragraph: parseParagraphOptions(variant.paragraph),
+      }) satisfies IParagraphStyleOptions,
+  ),
+  characterStyles: Object.entries(variants).map(
+    ([variantName, variant]) =>
+      ({
+        id: variantName,
+        name: startCase(variantName),
+        quickFormat: true,
+        basedOn: 'Normal',
+        run: parseTextRunOptions(variant.text),
+      }) satisfies ICharacterStyleOptions,
+  ),
+});
 
 const parseParagraphOptions = ({
   textAlign,
@@ -75,11 +106,13 @@ const parseTextRunOptions = ({
 
 export const htmlToDocx = (html: string) => {
   const mappedDocument = mapHtmlToDocument(html, (node) => {
-    const { text, paragraph } = node.data.elementsContext;
+    const elementsContext = node.data.elementsContext;
+    const { text, paragraph } = elementsContext;
 
     if (node.type === 'text') {
       return new TextRun({
         ...parseTextRunOptions(text),
+        style: elementsContext.variant,
         text: node.value,
       });
     }
@@ -99,8 +132,12 @@ export const htmlToDocx = (html: string) => {
         } else {
           throw new TypeError('Invalid counter type.');
         }
+
+        // if (variant) { console.log(variant, element.elementType); }
+
         return new TextRun({
           ...parseTextRunOptions(text),
+          style: elementsContext.variant,
           children,
         });
       }
@@ -108,6 +145,7 @@ export const htmlToDocx = (html: string) => {
       if (node.tagName === 'p') {
         return new Paragraph({
           ...parseParagraphOptions(paragraph),
+          style: elementsContext.variant,
           children: node.children as ParagraphChild[],
         });
       }
@@ -115,6 +153,7 @@ export const htmlToDocx = (html: string) => {
       if (node.tagName in DOCX_HEADING) {
         return new Paragraph({
           ...parseParagraphOptions(paragraph),
+          style: elementsContext.variant,
           heading: DOCX_HEADING[node.tagName as keyof typeof DOCX_HEADING],
           children: node.children as ParagraphChild[],
         });
@@ -194,6 +233,7 @@ export const htmlToDocx = (html: string) => {
         footnoteText: { run: {} },
         footnoteTextChar: { run: {} },
       },
+      ...parseVariants(mappedDocument.variants),
     },
   });
 };

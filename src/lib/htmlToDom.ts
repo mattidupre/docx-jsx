@@ -3,15 +3,16 @@ import {
   LAYOUT_TYPES,
   type DocumentElement,
   assignHtmlAttributes,
-  assignElementsContext,
-  textOptionsToCssVars,
-  paragraphOptionsToCssVars,
 } from '../entities';
 import { Pager } from '../utils/pager.js';
-import { documentStyleCss } from '../style.js';
 import { cssVarsToString } from '../utils/cssVars';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
+import {
+  variantsToCss,
+  optionsToCssVars,
+  variantNameToClassName,
+} from './toCss';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
@@ -27,17 +28,24 @@ const objToDom = (node: HtmlNode) => {
       properties,
       tagName,
       data: {
+        elementsContext,
         element: { elementOptions },
       },
     } = node;
 
-    const elementContext = assignElementsContext({}, elementOptions);
+    const { prefixes } = elementsContext.document!;
 
     const attributes = assignHtmlAttributes({}, properties, {
-      style: cssVarsToString({
-        ...textOptionsToCssVars(elementContext.text),
-        ...paragraphOptionsToCssVars(elementContext.paragraph),
-      }),
+      class: variantNameToClassName({ prefixes }, elementOptions.variant),
+      style: cssVarsToString(
+        optionsToCssVars(
+          { prefixes },
+          {
+            ...elementOptions.text,
+            ...elementOptions.paragraph,
+          },
+        ),
+      ),
     });
 
     const element = document.createElement(tagName);
@@ -74,14 +82,17 @@ export const htmlToDom = async (
     onDocument,
   }: DocumentRootToDomOptions = {},
 ): Promise<HTMLElement> => {
-  if (!styleSheetPromise) {
-    const styleSheet = new CSSStyleSheet();
-    styleSheetPromise = styleSheet.replace(documentStyleCss);
-  }
+  const documentObj = mapHtmlToDocument<HTMLElement>(
+    html,
+    objToDom,
+  ) satisfies DocumentDom;
+
+  onDocument?.(documentObj);
+
+  const documentStyleCss = variantsToCss(documentObj);
 
   const styleSheets = await Promise.all([
-    styleSheetPromise,
-    ...styleSheetsOption.map((style) => {
+    ...[documentStyleCss, ...styleSheetsOption].map((style) => {
       if (typeof style === 'string') {
         const styleSheet = new CSSStyleSheet();
         return styleSheet.replace(style);
@@ -94,13 +105,6 @@ export const htmlToDom = async (
       return style;
     }),
   ]);
-
-  const documentObj = mapHtmlToDocument<HTMLElement>(
-    html,
-    objToDom,
-  ) satisfies DocumentDom;
-
-  onDocument?.(documentObj);
 
   const { size, stacks: stacksOption } = documentObj;
 

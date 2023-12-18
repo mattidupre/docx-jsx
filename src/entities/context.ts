@@ -1,4 +1,4 @@
-import { merge } from 'lodash-es';
+import { compact, merge } from 'lodash-es';
 import {
   type DocumentOptions,
   type StackOptions,
@@ -11,6 +11,7 @@ import {
   assignStackOptions,
   assignParagraphOptions,
   assignTextOptions,
+  type VariantName,
 } from './options';
 
 export type EnvironmentContextOptions = {
@@ -36,6 +37,7 @@ type ElementsContextOptions = {
   stack?: StackOptions;
   paragraph?: ParagraphOptions;
   text?: TextOptions;
+  variant?: VariantName;
 };
 
 export type ElementsContext = {
@@ -43,40 +45,20 @@ export type ElementsContext = {
   stack: undefined | StackConfig;
   paragraph: undefined | ParagraphOptions;
   text: undefined | TextOptions;
+  variant: undefined | VariantName;
 };
 
-const assignElementsContextValue = <T extends keyof ElementsContext>(
-  key: T,
-  [targetOption = {}, ...options]: ReadonlyArray<
-    ElementsContextOptions | ElementsContext | undefined
-  >,
-): undefined | ElementsContext[T] => {
-  const values = options.flatMap((option) => option?.[key] || []);
-  switch (key) {
-    case 'document':
-      return assignDocumentOptions(
-        targetOption.document,
-        ...values,
-      ) as ElementsContext[T];
-    case 'stack':
-      return assignStackOptions(
-        targetOption.stack,
-        ...values,
-      ) as ElementsContext[T];
-    case 'paragraph':
-      return assignParagraphOptions(
-        targetOption.paragraph,
-        ...values,
-      ) as ElementsContext[T];
-    case 'text':
-      return assignTextOptions(
-        targetOption.text,
-        ...values,
-      ) as ElementsContext[T];
-    default:
-      throw new TypeError('Invalid key.');
-  }
-};
+const pluckContext = <TKey extends keyof ElementsContext>(
+  key: TKey,
+  ...args: ReadonlyArray<undefined | ElementsContext | ElementsContextOptions>
+) =>
+  args.reduce(
+    (target, obj) => {
+      target.push(obj?.[key]);
+      return target;
+    },
+    [] as Array<undefined | ElementsContextOptions[TKey]>,
+  );
 
 export const assignElementsContext = (
   ...args: ReadonlyArray<
@@ -85,8 +67,21 @@ export const assignElementsContext = (
   >
 ): ElementsContext =>
   Object.assign(args[0], {
-    document: assignElementsContextValue('document', args),
-    stack: assignElementsContextValue('stack', args),
-    paragraph: assignElementsContextValue('paragraph', args),
-    text: assignElementsContextValue('text', args),
-  });
+    document: assignDocumentOptions(...pluckContext('document', ...args)),
+    stack: assignStackOptions(...pluckContext('stack', ...args)),
+    paragraph: assignParagraphOptions(...pluckContext('paragraph', ...args)),
+    text: assignTextOptions(...pluckContext('text', ...args)),
+    variant: compact(pluckContext('variant', ...args)).at(-1),
+  } satisfies ElementsContext);
+
+/**
+ * Once a variant is consumed it should not be passed down to its children.
+ */
+export const extractElementsContextConfig = <TKey extends 'text' | 'paragraph'>(
+  key: TKey,
+  elementsContext: ElementsContext,
+): ElementsContext[TKey] => {
+  const value = elementsContext[key];
+  delete elementsContext[key];
+  return value;
+};
