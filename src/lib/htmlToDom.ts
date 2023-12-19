@@ -3,13 +3,14 @@ import {
   LAYOUT_TYPES,
   type DocumentElement,
   assignHtmlAttributes,
+  type StyleSheetsValue,
 } from '../entities';
 import { Pager } from '../utils/pager.js';
 import { cssVarsToString } from '../utils/cssVars';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
 import {
-  variantsToCss,
+  createEnvironmentCss,
   optionsToCssVars,
   variantNameToClassName,
 } from './toCss.js';
@@ -29,21 +30,21 @@ const objToDom = (node: HtmlNode) => {
       tagName,
       data: {
         elementsContext,
-        element: { elementOptions, contentOptions },
+        element: { contentOptions, variant },
       },
     } = node;
 
     const { prefixes } = elementsContext.document!;
 
     const attributes = assignHtmlAttributes({}, properties, {
-      class: variantNameToClassName({ prefixes }, elementOptions.variant),
+      class: variantNameToClassName({ prefixes }, variant),
       style: cssVarsToString(optionsToCssVars({ prefixes }, contentOptions)),
     });
 
     const element = document.createElement(tagName);
     for (const attributeName in attributes) {
       if (attributes[attributeName]) {
-        element.setAttribute(attributeName, attributes[attributeName]);
+        element.setAttribute(attributeName, attributes[attributeName]!);
       }
     }
     element.append(...children);
@@ -60,17 +61,14 @@ const objToDom = (node: HtmlNode) => {
   throw new TypeError('Invalid node type.');
 };
 
-export type DocumentRootToDomOptions = {
-  styleSheets?: ReadonlyArray<string | CSSStyleSheet | HTMLStyleElement>;
+export type HtmlToDomOptions = {
+  styleSheets?: ReadonlyArray<StyleSheetsValue>;
   onDocument?: (document: DocumentDom) => void;
 };
 
 export const htmlToDom = async (
   html: string,
-  {
-    styleSheets: styleSheetsOption = [],
-    onDocument,
-  }: DocumentRootToDomOptions = {},
+  { styleSheets: styleSheetsOption = [], onDocument }: HtmlToDomOptions = {},
 ): Promise<HTMLElement> => {
   const documentObj = mapHtmlToDocument<HTMLElement>(
     html,
@@ -79,10 +77,16 @@ export const htmlToDom = async (
 
   onDocument?.(documentObj);
 
-  const documentStyleCss = variantsToCss(documentObj);
+  const documentStyleCss = createEnvironmentCss(documentObj);
 
+  const { size, stacks: stacksOption, prefixes } = documentObj;
+
+  // TODO: Abstract into utils with an injectStyleSheets method.
   const styleSheets = await Promise.all([
-    ...[documentStyleCss, ...styleSheetsOption].map((style) => {
+    ...[documentStyleCss, ...styleSheetsOption].flatMap((style) => {
+      if (style === undefined) {
+        return [];
+      }
       if (typeof style === 'string') {
         const styleSheet = new CSSStyleSheet();
         return styleSheet.replace(style);
@@ -92,11 +96,12 @@ export const htmlToDom = async (
         styleElement.removeAttribute('disabled');
         return styleElement;
       }
-      return style;
+      if (style instanceof CSSStyleSheet) {
+        return style;
+      }
+      throw new TypeError('Invalid stylesheet.');
     }),
   ]);
-
-  const { size, stacks: stacksOption } = documentObj;
 
   // const perf = performance.now();
 
@@ -124,6 +129,7 @@ export const htmlToDom = async (
           (target, layoutType) =>
             Object.assign(target, {
               [layoutType]: new PageTemplate({
+                prefixes,
                 size,
                 margin,
                 header: layouts[layoutType]?.header,

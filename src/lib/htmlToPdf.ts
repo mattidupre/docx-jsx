@@ -6,7 +6,7 @@ import puppeteer, {
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
 import type { Headless } from '../headless.js';
-import type { DocumentDom, DocumentRootToDomOptions } from './htmlToDom.js';
+import type { DocumentDom } from './htmlToDom.js';
 
 let browserPromise: null | Promise<Browser>;
 
@@ -18,24 +18,21 @@ export const resetHtmlToPdf = async () => {
   }
 };
 
-export type DocumentRootToPdfOptions = Omit<
-  DocumentRootToDomOptions,
-  'styleSheets'
-> & { styleSheets?: ReadonlyArray<string> } & {
+export type HtmlToPdfOptions = {
+  styleSheets?: ReadonlyArray<string>;
   puppeteer?: PuppeteerLaunchOptions;
 };
 
 export const htmlToPdf = async (
   html: string,
-  { puppeteer: puppeteerOptions, ...options }: DocumentRootToPdfOptions,
+  { puppeteer: puppeteerOptions, ...options }: HtmlToPdfOptions,
 ) => {
   let FRONTEND_PATH = '';
   if (import.meta.url === undefined) {
     // Netlify transpiles back to CJS.
-    // https://github.com/netlify/cli/issues/4601
-    // This file is explicitly included by netlify.toml.
-    // TODO: Add to options, combined with puppeteerOptions.
-    // TODO: Infer from __dirname
+    // https://github.com/netlify/cli/issues/4601 This file is explicitly
+    // included by netlify.toml. TODO: Add to options, combined with
+    // puppeteerOptions. TODO: Infer from __dirname
     FRONTEND_PATH = './.yalc/matti-docs/dist/headless.js';
   } else {
     FRONTEND_PATH = path.resolve(

@@ -6,16 +6,16 @@ import {
   decodeDataAttributes,
 } from '../utils/dataAttributes.js';
 import {
-  ID_PREFIX,
+  DEFAULT_PREFIX,
   type DocumentConfig,
   type LayoutType,
   type ContentParagraphOptions,
   type ContentTextOptions,
-  type CounterOptions,
   type StackConfig,
   type LayoutConfig,
   type VariantName,
   type ContentOptions,
+  type PrefixesConfig,
 } from './options.js';
 import type { TagName } from './html.js';
 
@@ -23,29 +23,18 @@ type ConfigByElementType = {
   document: DocumentConfig;
   stack: StackConfig;
   header: { layoutType: LayoutType };
-  content: Record<string, unknown>;
+  content: Record<string, never>;
   footer: { layoutType: LayoutType };
   htmltag: ContentOptions & {
     paragraph?: ContentParagraphOptions;
     text?: ContentTextOptions;
     variant?: VariantName;
   };
-  counter: CounterOptions;
+  pagenumber: Record<string, never>;
+  pagecount: Record<string, never>;
 };
 
 export type ElementType = keyof ConfigByElementType;
-
-export const selectDomElement = <TElementType extends ElementType>(
-  rootDomElement: Element,
-  elementType: TElementType,
-  elementConfig: Partial<ConfigByElementType[TElementType]> &
-    Record<string, undefined | string>,
-) =>
-  selectByDataAttributes(
-    rootDomElement,
-    { elementType, ...elementConfig },
-    { prefix: ID_PREFIX },
-  );
 
 export type DocumentElement<TContent> = DocumentConfig & {
   stacks: Array<StackElement<TContent>>;
@@ -74,27 +63,25 @@ export type ElementData<
       elementType: TElementType;
       elementOptions: ConfigByElementType[TElementType];
       contentOptions: ContentOptions;
+      variant: undefined | VariantName;
     }
   : never;
 
 export type ContentElementOptions = ContentOptions;
 
-// TODO: Expand to data-[prefix]-[subkey of options] vs
-// data-[prefix]-[elementType or elementOptions]
 export const encodeElementData = ({
   elementType,
   elementOptions,
   contentOptions,
-  ...extraData
-}: Record<string, unknown> & ElementData<ElementType>) =>
+  variant,
+}: ElementData<ElementType>) =>
   encodeDataAttributes(
-    { elementType, elementOptions, contentOptions, ...extraData } as JsonObject,
+    { elementType, elementOptions, contentOptions, variant } as JsonObject,
     {
-      prefix: ID_PREFIX,
+      prefix: DEFAULT_PREFIX,
     },
   ) as Record<string, unknown>;
 
-// TODO: Add TagName here.
 export const decodeElementData = ({
   properties,
 }: {
@@ -104,8 +91,9 @@ export const decodeElementData = ({
     elementType,
     elementOptions,
     contentOptions = {},
+    variant,
   } = decodeDataAttributes(properties, {
-    prefix: ID_PREFIX,
+    prefix: DEFAULT_PREFIX,
   });
   if (!elementType && !elementOptions) {
     // Default to element type htmltag.
@@ -113,6 +101,7 @@ export const decodeElementData = ({
       elementType: 'htmltag',
       elementOptions: {},
       contentOptions,
+      variant,
     } as ElementData;
   }
   if (!elementType || !elementOptions) {
@@ -122,7 +111,22 @@ export const decodeElementData = ({
     elementType,
     elementOptions,
     contentOptions,
+    variant,
   } as ElementData;
+};
+
+export const selectDomElement = <TElementType extends ElementType>(
+  prefixes: PrefixesConfig,
+  rootDomElement: Element,
+  elementType: TElementType,
+  elementConfig?: Partial<ConfigByElementType[TElementType]> &
+    Record<string, undefined | string>,
+) => {
+  return selectByDataAttributes(
+    rootDomElement,
+    { elementType, ...elementConfig },
+    { prefix: DEFAULT_PREFIX },
+  );
 };
 
 const isIntersection = (...arrays: ReadonlyArray<ReadonlyArray<any>>) => {

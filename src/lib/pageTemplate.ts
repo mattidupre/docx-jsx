@@ -1,10 +1,11 @@
 import { selectDomElement } from '../entities';
-import type { PageSize, PageMargin } from '../entities';
+import type { PageSize, PageMargin, PrefixesConfig } from '../entities';
 import { mathUnits } from '../utils/units.js';
 
 type InnerNode = undefined | Node | NodeList;
 
 export type PageTemplateOptions = {
+  prefixes: PrefixesConfig;
   size: PageSize;
   margin: PageMargin;
   header?: InnerNode;
@@ -236,15 +237,19 @@ export class PageTemplate {
 
   public replaceCounters({ pageNumber, pageCount }: ReplaceCountersOptions) {
     [this.headerEl, this.footerEl].forEach((headerFooterEl) => {
-      selectDomElement(headerFooterEl, 'counter', {
-        counterType: 'page-number',
-      }).forEach((counterEl) => {
+      selectDomElement(
+        this.options.prefixes,
+        headerFooterEl,
+        'pagenumber',
+      ).forEach((counterEl) => {
         counterEl.appendChild(document.createTextNode(`${pageNumber}`));
       });
 
-      selectDomElement(headerFooterEl, 'counter', {
-        counterType: 'page-count',
-      }).forEach((counterEl) => {
+      selectDomElement(
+        this.options.prefixes,
+        headerFooterEl,
+        'pagecount',
+      ).forEach((counterEl) => {
         counterEl.appendChild(document.createTextNode(`${pageCount}`));
       });
     });

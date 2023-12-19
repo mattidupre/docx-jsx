@@ -1,11 +1,18 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Document, Stack, Typography, Counter, NoPageBreak } from '../react.js';
+import {
+  DocumentProvider,
+  Stack,
+  Typography,
+  PageNumber,
+  PageCount,
+  NoPageBreak,
+  type DocumentProviderProps,
+} from '../react.js';
 
 const PageCounter = () => {
   return (
     <span>
-      Page <Counter counterType="page-number" /> of{' '}
-      <Counter counterType="page-count" />
+      Page <PageNumber /> of <PageCount />
     </span>
   );
 };
@@ -43,18 +50,17 @@ const mockPageTypes = (prefix: string) => {
   } as const;
 };
 
-export function MockDocument() {
+export function MockDocument(props: Partial<DocumentProviderProps>) {
   return (
-    <Document
+    <DocumentProvider
       size={{ width: '8.5in', height: '11in' }}
       variants={{
         mockVariant: {
-          text: {
-            color: '#00ff00',
-            fontWeight: 'bold',
-          },
+          color: '#00ff00',
+          fontWeight: 'bold',
         },
       }}
+      {...props}
     >
       <Stack
         innerPageClassName="preview__page"
@@ -90,7 +96,7 @@ export function MockDocument() {
           <a href="https://www.google.com">Link Text</a>
         </p>
         <p>
-          <Typography text={{ fontWeight: 'bold' }}>Bold Text</Typography>
+          <Typography fontWeight="bold">Bold Text</Typography>
         </p>
         <p>
           <b>{'<b>'} Text</b>
@@ -99,21 +105,19 @@ export function MockDocument() {
           <strong>{'<strong>'} Text</strong>
         </p>
         <p>
-          <Typography text={{ fontStyle: 'italic' }}>Italic Text</Typography>
+          <Typography fontStyle="italic">Italic Text</Typography>
         </p>
         <p>
           <em>{'<em>'} Text</em>
         </p>
         <p>
-          <Typography text={{ textDecoration: 'underline' }}>
-            Underlined Text
-          </Typography>
+          <Typography textDecoration="underline">Underlined Text</Typography>
         </p>
         <p>
           <u>{'<u>'} Text</u>
         </p>
         <p>
-          <Typography text={{ textDecoration: 'line-through' }}>
+          <Typography textDecoration="line-through">
             Strikethrough Text
           </Typography>
         </p>
@@ -121,15 +125,13 @@ export function MockDocument() {
           <s>{'<s>'} Text</s>
         </p>
         <p>
-          <Typography text={{ fontSize: '2rem' }}>Size 2rem Text</Typography>
+          <Typography fontSize="2rem">Size 2rem Text</Typography>
         </p>
         <p>
-          <Typography text={{ color: '#ff0000' }}>Red Text</Typography>
+          <Typography color="#f00000">Red Text</Typography>
         </p>
         <p>
-          <Typography text={{ highlightColor: '#00ff00' }}>
-            Highlighted Text
-          </Typography>
+          <Typography highlightColor="#00ff00">Highlighted Text</Typography>
         </p>
         <p>
           Text with <sup>superscript</sup>
@@ -138,9 +140,7 @@ export function MockDocument() {
           Text with <sub>subscript</sub>
         </p>
         <p>
-          <Typography text={{ textTransform: 'uppercase' }}>
-            Uppercase Text
-          </Typography>
+          <Typography textTransform="uppercase">Uppercase Text</Typography>
         </p>
         <div
           dangerouslySetInnerHTML={{
@@ -148,22 +148,22 @@ export function MockDocument() {
           }}
         />
 
-        <Typography as="p" paragraph={{ lineHeight: '2' }}>
+        <Typography as="p" lineHeight="2">
           Double Line Height: Circumambulate the city of a dreamy Sabbath
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
         </Typography>
 
-        <Typography as="p" paragraph={{ textAlign: 'left' }}>
+        <Typography as="p" textAlign="left">
           Left Paragraph
         </Typography>
-        <Typography as="p" paragraph={{ textAlign: 'center' }}>
+        <Typography as="p" textAlign="center">
           Centered Paragraph
         </Typography>
-        <Typography as="p" paragraph={{ textAlign: 'right' }}>
+        <Typography as="p" textAlign="right">
           Right Paragraph
         </Typography>
-        <Typography as="p" paragraph={{ textAlign: 'justify' }}>
+        <Typography as="p" textAlign="justify">
           Justified Paragraph: Circumambulate the city of a dreamy Sabbath
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
@@ -214,7 +214,7 @@ export function MockDocument() {
       >
         <LongText />
       </Stack>
-    </Document>
+    </DocumentProvider>
   );
 }
 

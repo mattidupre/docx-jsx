@@ -8,7 +8,7 @@ import {
   mapLayoutKeys,
 } from '../entities/options.js';
 import { ReactStackContext } from './entities';
-import { useTarget } from './useTarget';
+import { useEnvironment } from './useEnvironment';
 import { InternalElement } from './InternalElement';
 
 export type StackProps = StackOptions & {
@@ -22,7 +22,7 @@ export function Stack({ children, layouts, ...options }: StackProps) {
     [options],
   );
 
-  if (useTarget() === 'web') {
+  if (useEnvironment().documentType === 'web') {
     return (
       <ReactStackContext.Provider value={stackConfig}>
         {children}

@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import type {
   TagName,
   ContentTextOptions,
@@ -13,41 +13,37 @@ export type TypographyOptions = {
   paragraph?: ContentParagraphOptions;
 };
 
-export type TypographyProps = (
-  | {
-      as?: 'span';
-      text?: TypographyOptions['text'];
-      paragraph?: never;
-    }
-  | {
-      as: Exclude<TagName, 'span'>;
-      text?: TypographyOptions['text'];
-      paragraph?: TypographyOptions['paragraph'];
-    }
-) &
-  ExtendableProps & { variant?: VariantName; children: ReactNode };
+export type TypographyProps = ExtendableProps &
+  (
+    | ({
+        as?: 'span';
+      } & ContentTextOptions)
+    | ({
+        as: Exclude<TagName, 'span'>;
+      } & ContentTextOptions &
+        ContentParagraphOptions)
+  ) & { variant?: VariantName; children: ReactNode };
 
 // TODO: If not within a <Document> or if target is web: do not encode data set
 // CSS variables on element
 
 export function Typography({
   as = 'span',
-  text,
-  paragraph,
   variant,
+  className,
+  style,
   children,
-  ...props
+  ...contentOptions
 }: TypographyProps) {
-  const elementOptions = useMemo(
-    () => ({ text, paragraph, variant }),
-    [paragraph, text, variant],
-  );
   return (
     <InternalElement
       tagName={as}
       elementType="htmltag"
-      elementOptions={elementOptions}
-      {...props}
+      variant={variant}
+      className={className}
+      style={style}
+      elementOptions={{}}
+      contentOptions={contentOptions}
     >
       {children}
     </InternalElement>

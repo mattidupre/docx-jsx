@@ -1,15 +1,15 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement } from 'react';
-import { type HtmlToPdfOptions, htmlToPdf } from './lib/htmlToPdf.js';
+import { htmlToDom, type HtmlToDomOptions } from './lib/htmlToDom.js';
 import { EnvironmentProvider } from './react/EnvironmentProvider.js';
 
-export type ReactToPdfOptions = HtmlToPdfOptions;
+export type ReactToDomOptions = HtmlToDomOptions;
 
-export const reactToPdf = async (
+export const reactToDom = async (
   rootElement: ReactElement,
-  options: ReactToPdfOptions,
-) => {
-  return htmlToPdf(
+  options: HtmlToDomOptions,
+) =>
+  htmlToDom(
     renderToStaticMarkup(
       <EnvironmentProvider documentType="pdf">
         {rootElement}
@@ -17,4 +17,3 @@ export const reactToPdf = async (
     ),
     options,
   );
-};

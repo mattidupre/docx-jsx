@@ -1,26 +1,54 @@
 import { useMemo, type ReactNode, useContext } from 'react';
-import { assignEnvironmentContext } from '../entities';
-import type { EnvironmentContextOptions } from '../entities';
-import { ReactEnvironmentContext } from './entities.js';
+import {
+  ReactEnvironmentContext,
+  type ReactEnvironmentContextValue,
+} from './entities.js';
 
-type ExecutionProviderProps = {
-  options: EnvironmentContextOptions;
+type ExecutionProviderProps = ReactEnvironmentContextValue & {
   children: ReactNode;
 };
 
+const PROPERTIES = [
+  'documentType',
+  'isWebPreview',
+] as const satisfies ReadonlyArray<
+  keyof NonNullable<ReactEnvironmentContextValue>
+>;
+
+const compareDefinedProperties = <T extends Record<string, unknown>>(
+  valueA: T,
+  valueB: T,
+  key: keyof T,
+): boolean =>
+  valueA[key] === undefined ||
+  valueB[key] === undefined ||
+  valueA[key] === valueB[key];
+
 /**
- * For internal use only.
+ * For internal use only. Parent contexts will completely overwrite child
+ * contexts.
  */
 export function EnvironmentProvider({
-  options,
   children,
+  ...newContextValue
 }: ExecutionProviderProps) {
-  if (useContext(ReactEnvironmentContext)) {
-    throw new TypeError('Do not nest EnvironmentProvider elements.');
-  }
-  const value = useMemo(() => assignEnvironmentContext(options), [options]);
+  const prevContextValue = useContext(ReactEnvironmentContext);
+  PROPERTIES.forEach((key) => {
+    if (
+      !compareDefinedProperties(prevContextValue ?? {}, newContextValue, key)
+    ) {
+      console.log(prevContextValue, newContextValue);
+      throw new Error(`Do not override ${key}.`);
+    }
+  });
+
+  const contextValue = useMemo(
+    () => Object.assign({}, prevContextValue, newContextValue),
+    [newContextValue, prevContextValue],
+  );
+
   return (
-    <ReactEnvironmentContext.Provider value={value}>
+    <ReactEnvironmentContext.Provider value={contextValue}>
       {children}
     </ReactEnvironmentContext.Provider>
   );

@@ -1,18 +1,27 @@
-import { createContext, type CSSProperties } from 'react';
+import { createContext, type HTMLAttributes } from 'react';
 import type {
-  EnvironmentContext,
   DocumentConfig,
   StackConfig,
+  ContentOptions,
+  VariantName,
+  DocumentType,
 } from '../entities';
 
 export type ExtendableProps = {
   className?: string;
-  style?: CSSProperties;
+  style?: HTMLAttributes<unknown>;
 };
 
-export const ReactEnvironmentContext = createContext<
-  undefined | EnvironmentContext
->(undefined);
+export type ContentProps = ContentOptions & {
+  variant: VariantName;
+};
+
+export type ReactEnvironmentContextValue =
+  | undefined
+  | { documentType?: DocumentType; isWebPreview?: boolean };
+
+export const ReactEnvironmentContext =
+  createContext<ReactEnvironmentContextValue>(undefined);
 
 export const ReactDocumentContext = createContext<undefined | DocumentConfig>(
   undefined,

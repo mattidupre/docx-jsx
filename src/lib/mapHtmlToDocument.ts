@@ -15,6 +15,7 @@ import {
   type ElementsContext,
   assignElementsContext,
   INTRINSIC_TEXT_OPTIONS,
+  assignContentOptions,
 } from '../entities';
 import { mapHtml, type MapElement } from '../utils/mapHtml/mapHtml';
 import { getValueOf } from 'src/utils/object';
@@ -22,7 +23,8 @@ import { isValueInArray } from 'src/utils/array';
 
 const CONTENT_ELEMENT_TYPES = [
   'htmltag',
-  'counter',
+  'pagecount',
+  'pagenumber',
 ] as const satisfies ReadonlyArray<ElementType>;
 
 const CONTENT_ROOT_TYPES = [
@@ -48,11 +50,11 @@ type HtmlContext = {
 
 const extendHtmlContext = (
   prevHtmlContext: undefined | HtmlContext,
+  elementData: ElementData,
   mapElement: MapElement,
 ): HtmlContext => {
   const prevData = prevHtmlContext?.data;
   const { tagName } = mapElement;
-  const element = decodeElementData(mapElement);
   const {
     parentData = [],
     parentElementTypes = [],
@@ -65,9 +67,9 @@ const extendHtmlContext = (
       parentData: prevHtmlContext?.data
         ? [...parentData, prevHtmlContext.data]
         : [],
-      parentElementTypes: [...parentElementTypes, element.elementType],
+      parentElementTypes: [...parentElementTypes, elementData.elementType],
       parentTagNames: [...parentTagNames, tagName],
-      element,
+      element: elementData,
       elementsContext: assignElementsContext({}, elementsContext),
       children: [],
     },
@@ -108,12 +110,17 @@ export const mapHtmlToDocument = <TContent>(
   const documents = mapHtml<HtmlContext, unknown>(html, {
     onElementBeforeChildren: ({ htmlElement, parentContext }) => {
       const { tagName } = htmlElement;
+      const elementData = decodeElementData(htmlElement);
       const { parentElementTypes = [], parentTagNames = [] } =
         parentContext?.data ?? {};
 
-      const childContext = extendHtmlContext(parentContext, htmlElement);
+      const childContext = extendHtmlContext(
+        parentContext,
+        elementData,
+        htmlElement,
+      );
 
-      const { element: elementData, elementsContext } = childContext.data;
+      const { elementsContext } = childContext.data;
 
       if (isElementOfType(elementData, 'document')) {
         // TODO: This will throw if there are HTML elements above the document?
@@ -127,8 +134,6 @@ export const mapHtmlToDocument = <TContent>(
           document: elementData.elementOptions,
         });
 
-        // assignDocumentOptions(elementData.elementOptions);
-        // optionsContext.document = elementData.elementOptions;
         return childContext;
       }
 
@@ -177,10 +182,12 @@ export const mapHtmlToDocument = <TContent>(
         }
 
         assignElementsContext(elementsContext, elementData.elementOptions, {
-          text: structuredClone(getValueOf(tagName, INTRINSIC_TEXT_OPTIONS)),
-          contentOptions: structuredClone(
+          contentOptions: assignContentOptions(
+            {},
             getValueOf(tagName, INTRINSIC_TEXT_OPTIONS),
+            elementData.contentOptions,
           ),
+          variant: elementData.variant,
         });
 
         if (tagName === 'ul' || tagName === 'ol') {
@@ -191,7 +198,10 @@ export const mapHtmlToDocument = <TContent>(
           });
         }
 
-        if (elementData.elementType === 'counter') {
+        if (
+          elementData.elementType === 'pagecount' ||
+          elementData.elementType === 'pagenumber'
+        ) {
           if (
             !isChildOfElementType(parentElementTypes, 'header') &&
             !isChildOfElementType(parentElementTypes, 'footer')

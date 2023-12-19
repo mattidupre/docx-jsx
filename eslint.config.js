@@ -64,6 +64,7 @@ export default defineFlatConfig([
     },
     rules: {
       ...typescriptPlugin.configs.recommended.rules,
+      '@typescript-eslint/no-unnecessary-type-constraint': 'off',
       '@typescript-eslint/no-import-type-side-effects': 'error',
       '@typescript-eslint/no-unused-vars': 'warn',
       '@typescript-eslint/no-explicit-any': 'off',

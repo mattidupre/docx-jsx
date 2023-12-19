@@ -17,13 +17,8 @@ import {
   type ICharacterStyleOptions,
   ExternalHyperlink,
 } from 'docx';
-import { startCase } from 'lodash-es';
-import type {
-  ContentParagraphOptions,
-  ContentTextOptions,
-  Color,
-  VariantsConfig,
-} from '../entities';
+import { pick, startCase } from 'lodash-es';
+import type { Color, VariantsConfig, ContentOptions } from '../entities';
 import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
@@ -50,8 +45,39 @@ class Paragraph extends DocxParagraph {
 
 const parseColor = (color?: Color) => color && color.replace('#', '');
 
-const parseTextSize = (fontSize: ContentTextOptions['fontSize']) =>
+const parseTextSize = (fontSize: ContentOptions['fontSize']) =>
   fontSize !== undefined ? parseFloat(fontSize) * 22 : undefined;
+
+const parseContentOptions = ({
+  textAlign,
+  lineHeight,
+  fontSize,
+  color,
+  highlightColor,
+  fontWeight,
+  fontStyle,
+  textTransform,
+  textDecoration,
+  superScript,
+  subScript,
+}: ContentOptions = {}): IParagraphOptions & IRunOptions => ({
+  spacing: {
+    line: lineHeight && parseFloat(lineHeight) * 240,
+  },
+  alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
+  size: parseTextSize(fontSize),
+  color: color && color.replace('#', ''),
+  shading: highlightColor && {
+    fill: parseColor(highlightColor),
+  },
+  bold: fontWeight === 'bold',
+  italics: fontStyle === 'italic',
+  allCaps: textTransform === 'uppercase',
+  underline: textDecoration === 'underline' ? {} : undefined,
+  strike: textDecoration === 'line-through' ? true : undefined,
+  superScript,
+  subScript,
+});
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -69,6 +95,32 @@ const DOCX_TEXT_ALIGN = {
   justify: AlignmentType.JUSTIFIED,
 } as const;
 
+const DOCX_TEXT_RUN_OPTIONS_KEYS = [
+  'size',
+  'color',
+  'shading',
+  'bold',
+  'italics',
+  'allCaps',
+  'underline',
+  'strike',
+  'superScript',
+  'subScript',
+] as const satisfies ReadonlyArray<keyof IRunOptions>;
+
+const parseTextRunOptions = (contentOptions: ContentOptions): IRunOptions =>
+  pick(parseContentOptions(contentOptions), DOCX_TEXT_RUN_OPTIONS_KEYS);
+
+const DOCX_PARAGRAPH_OPTIONS_KEYS = [
+  'spacing',
+  'alignment',
+] as const satisfies ReadonlyArray<keyof IParagraphOptions>;
+
+const parseParagraphOptions = (
+  contentOptions: ContentOptions,
+): IParagraphOptions =>
+  pick(parseContentOptions(contentOptions), DOCX_PARAGRAPH_OPTIONS_KEYS);
+
 const parseVariants = (variants: VariantsConfig): IStylesOptions => ({
   paragraphStyles: Object.entries(variants).map(
     ([variantName, variant]) =>
@@ -76,7 +128,7 @@ const parseVariants = (variants: VariantsConfig): IStylesOptions => ({
         id: variantName,
         name: startCase(variantName),
         quickFormat: true,
-        paragraph: parseParagraphOptions(variant.paragraph),
+        paragraph: parseParagraphOptions(variant),
       }) satisfies IParagraphStyleOptions,
   ),
   characterStyles: Object.entries(variants).map(
@@ -86,54 +138,19 @@ const parseVariants = (variants: VariantsConfig): IStylesOptions => ({
         name: startCase(variantName),
         quickFormat: true,
         basedOn: 'Normal',
-        run: parseTextRunOptions(variant.text),
+        run: parseTextRunOptions(variant),
       }) satisfies ICharacterStyleOptions,
   ),
-});
-
-const parseParagraphOptions = ({
-  textAlign,
-  lineHeight,
-}: ContentParagraphOptions = {}): IParagraphOptions => ({
-  spacing: {
-    line: lineHeight && parseFloat(lineHeight) * 240,
-  },
-  alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
-});
-
-const parseTextRunOptions = ({
-  fontSize,
-  color,
-  highlightColor,
-  fontWeight,
-  fontStyle,
-  textTransform,
-  textDecoration,
-  superScript,
-  subScript,
-}: ContentTextOptions = {}): IRunOptions => ({
-  size: parseTextSize(fontSize),
-  color: color && color.replace('#', ''),
-  shading: highlightColor && {
-    fill: parseColor(highlightColor),
-  },
-  bold: fontWeight === 'bold',
-  italics: fontStyle === 'italic',
-  allCaps: textTransform === 'uppercase',
-  underline: textDecoration === 'underline' ? {} : undefined,
-  strike: textDecoration === 'line-through' ? true : undefined,
-  superScript,
-  subScript,
 });
 
 export const htmlToDocx = (html: string) => {
   const mappedDocument = mapHtmlToDocument(html, (node) => {
     const elementsContext = node.data.elementsContext;
-    const { text, paragraph } = elementsContext;
+    const { contentOptions } = elementsContext;
 
     if (node.type === 'text') {
       return new TextRun({
-        ...parseTextRunOptions(text),
+        ...parseTextRunOptions(contentOptions),
         style: elementsContext.variant,
         text: node.value,
       });
@@ -158,29 +175,25 @@ export const htmlToDocx = (html: string) => {
         });
       }
 
-      if (element.elementType === 'counter') {
-        const { counterType } = element.elementOptions;
-        const children: NonNullable<IRunOptions['children']>[number][] = [];
-        if (counterType === 'page-number') {
-          children.push(PageNumber.CURRENT);
-        } else if (counterType === 'page-count') {
-          children.push(PageNumber.TOTAL_PAGES);
-        } else {
-          throw new TypeError('Invalid counter type.');
-        }
-
-        // if (variant) { console.log(variant, element.elementType); }
-
+      if (element.elementType === 'pagenumber') {
         return new TextRun({
-          ...parseTextRunOptions(text),
+          ...parseTextRunOptions(contentOptions),
           style: elementsContext.variant,
-          children,
+          children: [PageNumber.CURRENT],
+        });
+      }
+
+      if (element.elementType === 'pagecount') {
+        return new TextRun({
+          ...parseTextRunOptions(contentOptions),
+          style: elementsContext.variant,
+          children: [PageNumber.TOTAL_PAGES],
         });
       }
 
       if (node.tagName === 'li') {
         return new Paragraph({
-          ...parseParagraphOptions(paragraph),
+          ...parseParagraphOptions(contentOptions),
           bullet: {
             level: elementsContext.list!.level!,
           },
@@ -191,7 +204,7 @@ export const htmlToDocx = (html: string) => {
 
       if (node.tagName === 'p') {
         return new Paragraph({
-          ...parseParagraphOptions(paragraph),
+          ...parseParagraphOptions(contentOptions),
           style: elementsContext.variant,
           children: node.children as ParagraphChild[],
         });
@@ -199,7 +212,7 @@ export const htmlToDocx = (html: string) => {
 
       if (node.tagName in DOCX_HEADING) {
         return new Paragraph({
-          ...parseParagraphOptions(paragraph),
+          ...parseParagraphOptions(contentOptions),
           style: elementsContext.variant,
           heading: DOCX_HEADING[node.tagName as keyof typeof DOCX_HEADING],
           children: node.children as ParagraphChild[],
@@ -208,7 +221,7 @@ export const htmlToDocx = (html: string) => {
 
       if (node.tagName === 'a') {
         return new ExternalHyperlink({
-          ...parseTextRunOptions(text),
+          ...parseTextRunOptions(contentOptions),
           children: node.children as ParagraphChild[],
           link: node.properties.href,
         });

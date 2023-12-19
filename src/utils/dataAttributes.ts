@@ -13,14 +13,16 @@ const createDataPrefix = (options?: Options) => {
   if (!options?.prefix) {
     return 'data-';
   }
-  return `data-${options.prefix}-`;
+  return `data-${options.prefix}`;
 };
 
 export const encodeDataAttributeKey = (key: string, options?: Options) => {
   if (!/^[a-z][a-zA-Z0-9]*$/.test(key)) {
     throw new TypeError('Key must be kebab case.');
   }
-  return createDataPrefix(options) + kebabCase(key);
+  const dataKey = createDataPrefix(options) + kebabCase(key);
+
+  return dataKey;
 };
 
 export const encodeDataAttributeValue = (value: unknown) => {
@@ -40,9 +42,11 @@ export const selectByDataAttributes = (
   options?: Options,
 ) => {
   const query = Object.entries(dataAttributes)
-    .map(([key, value]) =>
-      value ? `[${encodeDataAttributeKey(key, options)}="${value}"]` : '',
-    )
+    .map(([key, value]) => {
+      return value
+        ? `[${encodeDataAttributeKey(key, options)}="${value}"]`
+        : '';
+    })
     .join('');
   return rootDomElement.querySelectorAll(query);
 };
@@ -50,9 +54,10 @@ export const selectByDataAttributes = (
 export const encodeDataAttributes = (data: Data, options?: Options) => {
   let attributes: Attributes = {};
   for (const key in data) {
-    attributes[encodeDataAttributeKey(key, options)] = encodeDataAttributeValue(
-      data[key],
-    );
+    if (data[key]) {
+      attributes[encodeDataAttributeKey(key, options)] =
+        encodeDataAttributeValue(data[key]);
+    }
   }
   return attributes;
 };

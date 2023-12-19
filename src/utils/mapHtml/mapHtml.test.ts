@@ -12,10 +12,10 @@ type Context = {
 test('runs without error', () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const result = mapHtml<Context, unknown>(mockHtml, {
-    initialContext: {
-      prevTagNames: [] as Array<string>,
-    },
-    onElementBeforeChildren: ({ htmlElement: { tagName }, parentContext }) => ({
+    onElementBeforeChildren: ({
+      htmlElement: { tagName },
+      parentContext = { prevTagNames: [] },
+    }) => ({
       ...parentContext,
       prevTagNames: [...parentContext.prevTagNames, tagName],
     }),

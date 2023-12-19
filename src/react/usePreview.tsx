@@ -7,6 +7,7 @@ import {
   type ReactElement,
 } from 'react';
 import { reactToDom, type ReactToDomOptions } from '../reactToDom';
+import { EnvironmentProvider } from './EnvironmentProvider.js';
 
 type PreviewHandle = {
   previewElRef: RefObject<HTMLDivElement>;
@@ -14,11 +15,12 @@ type PreviewHandle = {
 };
 
 export const usePreview = (
-  previewReactEl: ReactElement,
+  createReactEl: () => ReactElement,
   { styleSheets = [], ...options }: ReactToDomOptions,
 ): PreviewHandle => {
   const previewElRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const reactEl = useMemo(() => createReactEl(), [createReactEl]);
 
   useEffect(
     () => {
@@ -40,10 +42,15 @@ export const usePreview = (
 
       // reactToPreview is a React-less async operation resolving to a detached
       // element.
-      reactToDom(previewReactEl, {
-        ...options,
-        styleSheets,
-      }).then((resumeEl) => {
+      reactToDom(
+        <EnvironmentProvider documentType="pdf" isWebPreview>
+          {reactEl}
+        </EnvironmentProvider>,
+        {
+          ...options,
+          styleSheets,
+        },
+      ).then((resumeEl) => {
         if (isInterrupted) {
           return;
         }
@@ -60,7 +67,7 @@ export const usePreview = (
       };
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [previewReactEl, styleSheets],
+    [createReactEl, styleSheets],
   );
 
   return useMemo(

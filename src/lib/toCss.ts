@@ -10,14 +10,14 @@ import {
   INTRINSIC_TEXT_OPTIONS,
   INTRINSIC_TAG_NAMES_BY_VARIANT,
   type PrefixesConfig,
-  type VariantsOptions,
+  type VariantsConfig,
   type VariantName,
   type ContentElementOptions,
 } from '../entities';
 
 type BaseOptions = {
   prefixes: PrefixesConfig;
-  variants: VariantsOptions;
+  variants: VariantsConfig;
 };
 
 export const variantNameToClassName = <
@@ -30,17 +30,12 @@ export const variantNameToClassName = <
 
 export const optionsToCssVars = (
   { prefixes }: Pick<BaseOptions, 'prefixes'>,
-  options: ContentElementOptions,
+  options: ContentElementOptions = {},
 ) => {
   return objectToCssVars(options, prefixes.cssVariable);
 };
 
-// TODO: mapObjectToDeclarations(obj: {}, (value, key) => CSSAttributes):
-// CSSAttributes;
-
-export const createOptionsDeclarations = <
-  TKeys extends keyof ContentElementOptions,
->(
+export const optionsToStyle = <TKeys extends keyof ContentElementOptions>(
   { prefixes }: Pick<BaseOptions, 'prefixes'>,
   optionsKeys: ReadonlyArray<TKeys>,
   defaultValues: Partial<Pick<ContentElementOptions, TKeys>> = {},
@@ -59,7 +54,7 @@ const createIntrinsics = ({
   prefixes,
 }: Pick<BaseOptions, 'prefixes'>): SimpleCss => ({
   '*': {
-    ...createOptionsDeclarations({ prefixes }, ['color', 'breakInside']),
+    ...optionsToStyle({ prefixes }, ['color', 'breakInside']),
   },
   ':where(a)': {
     color: 'inherit',
@@ -70,28 +65,25 @@ const createIntrinsics = ({
     fontStyle: 'normal',
   },
   ':where(h1, h2, h3, h4, h5, h6, p)': {
-    ...createOptionsDeclarations({ prefixes }, ['lineHeight', 'textAlign'], {
+    ...optionsToStyle({ prefixes }, ['lineHeight', 'textAlign'], {
       lineHeight: '1',
     }),
     marginBlockStart: '0',
     marginBlockEnd: '0',
   },
   ':where(h1, h2, h3, h4, h5, h6, p, a, b, em, strong, s, u, span)': {
-    // TODO: Remove all cssVarProperty
-    fontWeight: cssVarProperty(
-      cssVarKey(prefixes.cssVariable, 'fontWeight'),
-      1,
-    ),
-    fontStyle: cssVarProperty(cssVarKey(prefixes.cssVariable, 'fontStyle')),
-    fontSize: cssVarProperty(
-      cssVarKey(prefixes.cssVariable, 'fontSize'),
-      '1rem',
-    ),
-    textTransform: cssVarProperty(
-      cssVarKey(prefixes.cssVariable, 'textTransform'),
-    ),
-    textDecoration: cssVarProperty(
-      cssVarKey(prefixes.cssVariable, 'textDecoration'),
+    ...optionsToStyle(
+      { prefixes },
+      [
+        'fontWeight',
+        'fontStyle',
+        'fontSize',
+        'textTransform',
+        'textDecoration',
+      ],
+      {
+        fontSize: '1rem',
+      },
     ),
   },
   ...Object.fromEntries(
@@ -112,20 +104,16 @@ const createVariants = ({ prefixes, variants }: BaseOptions): SimpleCss =>
       if (intrinsicTagName) {
         selector += `, ${intrinsicTagName}`;
       }
-      return [
-        [selector],
-        optionsToCssVars(
-          { prefixes },
-          { ...variant.text, ...variant.paragraph },
-        ),
-      ];
+      return [[selector], optionsToCssVars({ prefixes }, variant)];
     }),
   );
 
-export const variantsToSimpleCss = (options: BaseOptions): SimpleCss => ({
+export const createEnvironmentSimpleCss = (
+  options: BaseOptions,
+): SimpleCss => ({
   ...createIntrinsics(options),
   ...createVariants(options),
 });
 
-export const variantsToCss = (options: BaseOptions): string =>
-  simpleCssToString(variantsToSimpleCss(options));
+export const createEnvironmentCss = (options: BaseOptions): string =>
+  simpleCssToString(createEnvironmentSimpleCss(options));

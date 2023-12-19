@@ -1,32 +1,33 @@
-import { isObject, toLower, map } from 'lodash-es';
-import type { Simplify } from 'type-fest';
+import { isObject, map } from 'lodash-es';
+import type { SetOptional } from 'type-fest';
+import { toLowercase } from '../utils/string.js';
 import { mergeWithDefault } from '../utils/object.js';
 import type { UnitsNumber } from '../utils/units.js';
 import { pluckFromArray } from '../utils/array.js';
 import type { TagName } from './html.js';
 
-const toLowercase = <T extends string>(string: T) =>
-  toLower(string) as Lowercase<T>;
+export const APP_NAME = 'Matti Docs';
 
 export const PACKAGE_NAME: Lowercase<string> = 'matti-docs';
 
-export const ID_PREFIX: Lowercase<string> = PACKAGE_NAME;
+export const DEFAULT_PREFIX: Lowercase<string> = PACKAGE_NAME;
 
-const PREFIX_TYPES = [
-  'variantClassName',
-  'cssVariable',
-  'dataAttribute',
-] as const;
+export type StyleSheetsValue =
+  | undefined
+  | string
+  | CSSStyleSheet
+  | HTMLStyleElement;
 
-type PrefixType = (typeof PREFIX_TYPES)[number];
-
-export type PrefixesConfig = Record<PrefixType, Lowercase<string>>;
+export type PrefixesConfig = {
+  variantClassName: Lowercase<string>;
+  cssVariable: Lowercase<string>;
+};
 
 export type PrefixesOptions = string | Partial<PrefixesConfig>;
 
 const parsePrefixes = (prefixOptions?: PrefixesOptions): PrefixesConfig => {
   const defaultPrefix = toLowercase(
-    typeof prefixOptions === 'string' ? prefixOptions : `${ID_PREFIX}-`,
+    typeof prefixOptions === 'string' ? prefixOptions : `${DEFAULT_PREFIX}-`,
   );
 
   const prefixOptionsObject: PrefixesOptions =
@@ -37,9 +38,6 @@ const parsePrefixes = (prefixOptions?: PrefixesOptions): PrefixesConfig => {
       prefixOptionsObject.variantClassName ?? defaultPrefix + 'variant-',
     ),
     cssVariable: toLowercase(prefixOptionsObject.cssVariable ?? defaultPrefix),
-    dataAttribute: toLowercase(
-      prefixOptionsObject.cssVariable ?? defaultPrefix,
-    ),
   };
 };
 
@@ -47,11 +45,7 @@ export const assignPrefixesOptions = (
   ...args: ReadonlyArray<undefined | PrefixesOptions>
 ): PrefixesConfig => mergeWithDefault(parsePrefixes(), ...args);
 
-export const APP_NAME = 'Matti Docs';
-
-export type Target = 'web' | 'docx' | 'pdf';
-
-export const DEFAULT_TARGET = 'web' satisfies Target;
+export type DocumentType = 'web' | 'docx' | 'pdf';
 
 export type Color = Lowercase<`#${string}`>;
 
@@ -155,34 +149,24 @@ export const assignLayoutOptions = <TContent>(
     args0 ?? createDefaultLayoutConfig(),
   ) as LayoutConfig<TContent>;
 
-export type Variant = {
-  text: ContentTextOptions;
-  paragraph: ContentParagraphOptions;
-};
+export type VariantConfig = ContentOptions;
 
 export type VariantName = string;
 
-export type VariantsOptions = Record<string, Partial<Variant>>;
-
-export type VariantsConfig = Record<string, Variant>;
-
-const DEFAULT_VARIANT: Variant = {
-  text: {},
-  paragraph: {},
-};
+export type VariantsConfig = Record<string, VariantConfig>;
 
 const DEFAULT_VARIANTS: VariantsConfig = {
-  document: { text: {}, paragraph: {} },
-  title: { text: {}, paragraph: {} },
-  heading1: { text: {}, paragraph: {} },
-  heading2: { text: {}, paragraph: {} },
-  heading3: { text: {}, paragraph: {} },
-  heading4: { text: {}, paragraph: {} },
-  heading5: { text: {}, paragraph: {} },
-  heading6: { text: {}, paragraph: {} },
-  strong: { text: {}, paragraph: {} },
-  listParagraph: { text: {}, paragraph: {} },
-  hyperlink: { text: {}, paragraph: {} },
+  document: {},
+  title: {},
+  heading1: {},
+  heading2: {},
+  heading3: {},
+  heading4: {},
+  heading5: {},
+  heading6: {},
+  strong: {},
+  listParagraph: {},
+  hyperlink: {},
 };
 
 export type IntrinsicVariantNames = keyof typeof DEFAULT_VARIANTS;
@@ -197,48 +181,13 @@ export const INTRINSIC_TAG_NAMES_BY_VARIANT = {
 } satisfies Partial<Record<IntrinsicVariantNames, TagName>>;
 
 export const assignVariants = (
-  ...args: ReadonlyArray<undefined | Partial<VariantsOptions>>
-) => {
-  const arraysByVariantName: Record<
-    string,
-    {
-      text: Array<undefined | ContentTextOptions>;
-      paragraph: Array<undefined | ContentParagraphOptions>;
-    }
-  > = {};
-  for (const variants of args) {
-    for (const variantName in variants) {
-      arraysByVariantName[variantName] ??= { text: [], paragraph: [] };
-      arraysByVariantName[variantName].text.push(variants?.[variantName]?.text);
-      arraysByVariantName[variantName].paragraph.push(
-        variants?.[variantName]?.paragraph,
-      );
-    }
-  }
-  const targetVariants = {} as VariantsConfig;
-  for (const variantName in arraysByVariantName) {
-    const targetVariant = structuredClone(
-      targetVariants[variantName] ?? DEFAULT_VARIANT,
-    );
-    targetVariant.text = Object.assign(
-      targetVariant.text,
-      ...arraysByVariantName[variantName].text,
-    );
-    targetVariant.paragraph = Object.assign(
-      targetVariant.paragraph,
-      ...arraysByVariantName[variantName].paragraph,
-    );
-    Object.assign(
-      (targetVariants[variantName] ??= {} as Variant),
-      targetVariant,
-    );
-  }
-  return Object.assign(args[0] ?? {}, targetVariants);
-};
+  ...args: ReadonlyArray<undefined | Partial<VariantsConfig>>
+): VariantsConfig =>
+  Object.assign(args[0] ?? {}, ...args.filter((v) => v !== undefined));
 
 export type DocumentOptions = {
   size?: PageSize;
-  variants?: VariantsOptions;
+  variants?: VariantsConfig;
   prefixes?: PrefixesOptions;
 };
 
@@ -300,7 +249,7 @@ export const assignContentOptions = (
 export const PARAGRAPH_OPTIONS_KEYS = [
   'textAlign',
   'lineHeight',
-] as const satisfies Array<keyof ContentOptions>;
+] as const satisfies ReadonlyArray<keyof ContentOptions>;
 
 export type ContentParagraphOptions = Pick<
   ContentOptions,
@@ -317,7 +266,7 @@ const TEXT_OPTIONS_KEYS = [
   'textDecoration',
   'superScript',
   'subScript',
-] as const satisfies Array<keyof ContentOptions>;
+] as const satisfies ReadonlyArray<keyof ContentOptions>;
 
 export type ContentTextOptions = Pick<
   ContentOptions,
@@ -333,11 +282,3 @@ export const INTRINSIC_TEXT_OPTIONS = {
   sup: { superScript: true },
   sub: { subScript: true },
 } as const satisfies Partial<Record<TagName, ContentTextOptions>>;
-
-export type CounterType = (typeof COUNTER_TYPES)[number];
-
-export const COUNTER_TYPES = ['page-number', 'page-count'] as const;
-
-export type CounterOptions = {
-  counterType: CounterType;
-};

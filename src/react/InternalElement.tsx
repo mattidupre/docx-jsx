@@ -1,70 +1,68 @@
 import { type ReactNode, createElement, useMemo, useContext } from 'react';
 import { compact } from 'lodash-es';
 import { encodeElementData } from '../entities';
-import type { ContentOptions, ElementData, TagName } from '../entities';
+import type {
+  ContentOptions,
+  ElementData,
+  TagName,
+  VariantName,
+} from '../entities';
 import { optionsToCssVars, variantNameToClassName } from '../lib/toCss.js';
 import type { ExtendableProps } from './entities.js';
 import { ReactDocumentContext } from './entities.js';
-import { useTarget } from './useTarget.js';
+import { useEnvironment } from './useEnvironment.js';
 
-type InternalElementProps = ElementData &
-  ExtendableProps & {
-    contentOptions?: ContentOptions;
-    elementAttributes?: Record<string, unknown>;
-    children?: ReactNode;
-    tagName: TagName;
-  };
+type InternalElementProps = ExtendableProps & {
+  preferFragment?: boolean;
+  elementType: ElementData['elementType'];
+  elementOptions: ElementData['elementOptions'];
+  variant?: VariantName;
+  contentOptions?: ContentOptions;
+  children?: ReactNode;
+  tagName: TagName;
+};
 
 export function InternalElement({
+  preferFragment,
   elementType,
   elementOptions,
   contentOptions,
-  elementAttributes,
+  variant,
   tagName,
   className: classNameProp,
   style: styleProp,
   children,
 }: InternalElementProps) {
-  const target = useTarget();
+  const isWeb = useEnvironment().documentType === 'web';
+  const isFragment = preferFragment && isWeb;
 
   const { prefixes } = useContext(ReactDocumentContext)!;
 
   const optionsStyle = useMemo(
     () => ({
-      ...(target === 'web' &&
-        optionsToCssVars(
-          { prefixes },
-          {
-            ...contentOptions,
-            ...elementOptions.text,
-            ...elementOptions.paragraph,
-          },
-        )),
+      ...(isWeb &&
+        !isFragment &&
+        optionsToCssVars({ prefixes }, contentOptions)),
     }),
-    [
-      contentOptions,
-      elementOptions.paragraph,
-      elementOptions.text,
-      prefixes,
-      target,
-    ],
+    [contentOptions, isFragment, isWeb, prefixes],
   );
 
-  // TODO: Just put variant on it's own prop.
-  const variantClassName = variantNameToClassName(
-    { prefixes },
-    elementOptions.variant,
-  );
+  if (isFragment) {
+    return children;
+  }
 
   const baseAttributes = {
-    className: compact([classNameProp, variantClassName]),
+    className: compact([
+      classNameProp,
+      variantNameToClassName({ prefixes }, variant),
+    ]),
     style: {
       ...optionsStyle,
-      styleProp,
+      ...styleProp,
     },
   };
 
-  if (target === 'web') {
+  if (isWeb) {
     return createElement(tagName, baseAttributes, children);
   }
 
@@ -73,18 +71,10 @@ export function InternalElement({
     {
       ...baseAttributes,
       ...encodeElementData({
-        ...elementAttributes,
         elementType,
-        contentOptions: {
-          ...contentOptions,
-          ...elementOptions.text,
-          ...elementOptions.paragraph,
-        },
-        // TODO: Separate these.
-        elementOptions: {
-          ...elementOptions,
-          ...contentOptions,
-        },
+        contentOptions,
+        elementOptions,
+        variant,
       } as ElementData),
     },
     children,

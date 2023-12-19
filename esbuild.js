@@ -39,7 +39,7 @@ const SRC_OPTIONS = [
   // Exports targeting the browser.
   {
     ...SHARED_OPTIONS,
-    entryPoints: ['./src/index.ts', './src/react.ts', './src/reactToDom.ts'],
+    entryPoints: ['./src/index.ts', './src/react.ts', './src/reactToDom.tsx'],
     bundle: true,
     treeShaking: true,
     platform: 'browser',
