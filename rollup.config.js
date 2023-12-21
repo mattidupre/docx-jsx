@@ -9,6 +9,11 @@ import jsonPlugin from '@rollup/plugin-json';
 import nodeExternalsPlugin from 'rollup-plugin-node-externals';
 
 export default defineConfig([
+  // { input: 'src/index.ts', output: { file: 'dist/index.js', sourcemap: true,
+  //   format: 'esm', }, plugins: [ nodeExternalsPlugin({}), pluginCommonJs(),
+  //   pluginNodeResolve(), jsonPlugin(), pluginEsBuild({ target: 'esnext', }),
+  //     ], },
+
   {
     input: 'src/headless.ts',
     output: {
@@ -25,36 +30,12 @@ export default defineConfig([
       }),
     ],
   },
-  {
-    input: 'src/react.ts',
-    output: {
-      sourcemap: true,
-      dir: 'dist',
-      format: 'esm',
-    },
-    plugins: [
-      nodeExternalsPlugin({
-        builtins: false,
-      }),
-      jsonPlugin(),
-      pluginEsBuild({
-        target: 'esnext',
-      }),
-    ],
-  },
-  {
-    input: ['src/reactToDocx.tsx', 'src/reactToDom.tsx', 'src/reactToPdf.tsx'],
-    output: {
-      sourcemap: true,
-      dir: 'dist',
-      format: 'esm',
-    },
-    plugins: [
-      nodeExternalsPlugin({}),
-      jsonPlugin(),
-      pluginEsBuild({
-        target: 'esnext',
-      }),
-    ],
-  },
+
+  // { input: 'src/react.ts', output: { sourcemap: true, dir: 'dist', format:
+  //   'esm', }, plugins: [ nodeExternalsPlugin({ builtins: false, }),
+  //   jsonPlugin(), pluginEsBuild({ target: 'esnext', }), ], }, { input:
+  // ['src/reactToDocx.tsx', 'src/reactToDom.tsx', 'src/reactToPdf.tsx'],
+  // output: { sourcemap: true, dir: 'dist', format: 'esm', }, plugins: [
+  //   nodeExternalsPlugin({}), jsonPlugin(), pluginEsBuild({ target: 'esnext',
+  //   }), ], },
 ]);

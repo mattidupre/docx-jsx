@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement } from 'react';
 import { Packer } from 'docx';
 import { htmlToDocx } from './lib/htmlToDocx.js';
-import { InternalEnvironmentProvider } from './react/InternalEnvironmentProvider.js';
+import { InternalEnvironmentProvider } from './reactComponents/InternalEnvironmentProvider.js';
 
 export const reactToDocx = async (rootElement: ReactElement) => {
   const html = renderToStaticMarkup(

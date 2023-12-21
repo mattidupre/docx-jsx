@@ -9,12 +9,16 @@
     "tsconfig.json"
   ],
   "exports": {
-    "./package.json": {
-      "default": "./package.json"
+    ".": {
+      "module": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
     "./*": {
       "module": "./dist/*.js",
       "types": "./dist/*.d.ts"
+    },
+    "./package.json": {
+      "default": "./package.json"
     }
   },
   "devDependencies": {
@@ -48,6 +52,7 @@
     "prettier": "^3.0.3",
     "rollup": "^4.9.1",
     "rollup-plugin-node-externals": "^6.1.2",
+    "tsc-alias": "^1.8.8",
     "type-fest": "^4.6.0",
     "typescript": "^5.2.2"
   },
@@ -99,8 +104,9 @@
     "clean": "rm -rf dist/*",
     "build": "pnpm clean && pnpm build:all",
     "dev": "pnpm clean && nodemon --exec pnpm run build:all",
-    "build:all": "pnpm run \"/^build:(src|types)$/\" && pnpm link:push",
-    "build:src": "rollup -c",
+    "build:all": "pnpm run \"/^build:(src|headless|types)$/\" && pnpm link:push",
+    "build:src": "tsc && tsc-alias",
+    "build:headless": "rollup -c",
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
     "test": "vitest",
     "lint": "eslint ./src",
