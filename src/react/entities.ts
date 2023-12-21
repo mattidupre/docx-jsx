@@ -1,4 +1,4 @@
-import { createContext, type HTMLAttributes } from 'react';
+import { createContext, type CSSProperties } from 'react';
 import type {
   DocumentConfig,
   StackConfig,
@@ -9,7 +9,7 @@ import type {
 
 export type ExtendableProps = {
   className?: string;
-  style?: HTMLAttributes<unknown>;
+  style?: CSSProperties;
 };
 
 export type ContentProps = ContentOptions & {
@@ -18,7 +18,7 @@ export type ContentProps = ContentOptions & {
 
 export type ReactEnvironmentContextValue =
   | undefined
-  | { documentType?: DocumentType; isWebPreview?: boolean };
+  | { documentType?: DocumentType; isPreview?: boolean };
 
 export const ReactEnvironmentContext =
   createContext<ReactEnvironmentContextValue>(undefined);

@@ -13,6 +13,28 @@ export type MergedObjectValues<T extends KeyedObject> = {
     : never;
 };
 
+export const assignDefined = <T extends KeyedObject>(
+  value0: T,
+  ...values: ReadonlyArray<undefined | Partial<T>>
+): T =>
+  values.reduce((target: NonNullable<T>, value) => {
+    if (value !== undefined) {
+      Object.keys(value).forEach((key: keyof T) => {
+        if (value[key] !== undefined) {
+          target[key] = value[key] as T[keyof T];
+        } else if (!(key in target)) {
+          target[key] = undefined as T[keyof T];
+        }
+      });
+    }
+    return target;
+  }, value0);
+
+export const extendDefined = <T extends KeyedObject>(
+  value0: T,
+  ...values: ReadonlyArray<undefined | Partial<T>>
+): T => assignDefined({} as T, value0, ...values);
+
 export const mergeWithDefault = <T>(
   defaultValue: T,
   ...[targetValue, ...values]: ReadonlyArray<undefined | PartialDeep<T>>
@@ -28,7 +50,7 @@ export const mapAssign = <TOut extends Record<string, unknown>, TIn = unknown>(
   callback: (value: TIn) => TOut,
 ): TOut => {
   const target = (isPlainObject(values[0]) ? values[0] : {}) as TOut;
-  return Object.assign(target, ...values.map((value) => callback(value)));
+  return assignDefined(target, ...values.map((value) => callback(value)));
 };
 
 /**

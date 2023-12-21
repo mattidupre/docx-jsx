@@ -1,16 +1,13 @@
 import * as esbuild from 'esbuild';
-import fs from 'node:fs/promises';
 
-// TODO: index and reactToDocx should target both browser and server.
-
-// TODO: Tree shaking is not omitting paged-js Previewer. Disable bundling?
-
-const omToCssPlugin = {
-  name: 'omToCss',
+const pluginMarkExternal = {
+  name: 'mark-external',
   setup(build) {
-    // build.onEnd(async () => { const { documentStyleCss } = await
-    //   import('./dist/style.mjs'); await fs.writeFile('./dist/style.css',
-    //   documentStyleCss); });
+    build.onResolve({ filter: /.*/ }, (args) => {
+      console.log(args.path);
+      // if (!/^(#|\/|\.\/|\.\.\/)/.test(args.path)) {
+      //   reportPackagePath(args.path); return { external: true }; }
+    });
   },
 };
 
@@ -23,6 +20,8 @@ const SHARED_OPTIONS = {
   logLevel: 'info',
   outdir: './dist',
   sourcemap: true,
+  treeShaking: true,
+  plugins: [pluginMarkExternal],
 };
 
 const SRC_OPTIONS = [
@@ -32,33 +31,25 @@ const SRC_OPTIONS = [
     entryPoints: ['./src/headless.ts'],
     bundle: true,
     splitting: false,
-    treeShaking: true,
     format: 'iife',
+    outExtension: { '.js': '.cjs' },
     platform: 'browser',
   },
   // Exports targeting the browser.
   {
     ...SHARED_OPTIONS,
     entryPoints: ['./src/index.ts', './src/react.ts', './src/reactToDom.tsx'],
-    bundle: true,
-    treeShaking: true,
     platform: 'browser',
-    // external: ['react', 'react-dom'],
-    packages: 'external',
     format: 'esm',
-    outExtension: { '.js': '.mjs' },
-    plugins: [omToCssPlugin],
+    // outExtension: { '.js': '.mjs' },
   },
   // Exports targeting the server.
   {
     ...SHARED_OPTIONS,
     entryPoints: ['./src/reactToDocx.tsx', './src/reactToPdf.tsx'],
-    bundle: true,
-    packages: 'external',
-    treeShaking: true,
     platform: 'node',
     format: 'esm',
-    outExtension: { '.js': '.mjs' },
+    // outExtension: { '.js': '.mjs' },
   },
 ];
 

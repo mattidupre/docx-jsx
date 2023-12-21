@@ -6,7 +6,8 @@ import {
   type StyleSheetsValue,
 } from '../entities';
 import { Pager } from '../utils/pager.js';
-import { cssVarsToString } from '../utils/cssVars';
+import { cssVarsToString } from '../utils/cssVars.js';
+import { assignDefined } from '../utils/object.js';
 import { PageTemplate } from './pageTemplate.js';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
 import {
@@ -62,13 +63,18 @@ const objToDom = (node: HtmlNode) => {
 };
 
 export type HtmlToDomOptions = {
+  initialStyleSheets?: ReadonlyArray<StyleSheetsValue>;
   styleSheets?: ReadonlyArray<StyleSheetsValue>;
   onDocument?: (document: DocumentDom) => void;
 };
 
 export const htmlToDom = async (
   html: string,
-  { styleSheets: styleSheetsOption = [], onDocument }: HtmlToDomOptions = {},
+  {
+    initialStyleSheets: initialStyleSheetsOption = [],
+    styleSheets: styleSheetsOption = [],
+    onDocument,
+  }: HtmlToDomOptions = {},
 ): Promise<HTMLElement> => {
   const documentObj = mapHtmlToDocument<HTMLElement>(
     html,
@@ -83,18 +89,17 @@ export const htmlToDom = async (
 
   // TODO: Abstract into utils with an injectStyleSheets method.
   const styleSheets = await Promise.all([
-    ...[documentStyleCss, ...styleSheetsOption].flatMap((style) => {
+    ...[
+      ...initialStyleSheetsOption,
+      documentStyleCss,
+      ...styleSheetsOption,
+    ].flatMap((style) => {
       if (style === undefined) {
         return [];
       }
       if (typeof style === 'string') {
         const styleSheet = new CSSStyleSheet();
         return styleSheet.replace(style);
-      }
-      if (style instanceof HTMLStyleElement) {
-        const styleElement = style.cloneNode() as HTMLStyleElement;
-        styleElement.removeAttribute('disabled');
-        return styleElement;
       }
       if (style instanceof CSSStyleSheet) {
         return style;
@@ -127,7 +132,7 @@ export const htmlToDom = async (
 
         const templates = LAYOUT_TYPES.reduce(
           (target, layoutType) =>
-            Object.assign(target, {
+            assignDefined(target, {
               [layoutType]: new PageTemplate({
                 prefixes,
                 size,

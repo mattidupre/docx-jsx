@@ -1,4 +1,5 @@
 import { kebabCase, isObject } from 'lodash-es';
+import { assignDefined } from './object.js';
 
 type VarValue = number | string | boolean;
 
@@ -39,9 +40,9 @@ export const objectToCssVars = <
       return obj;
     }
     if (isObject(value)) {
-      Object.assign(obj, objectToCssVars(value, keyBase));
+      assignDefined(obj, objectToCssVars(value, keyBase));
     } else if (value) {
-      Object.assign(obj, {
+      assignDefined(obj, {
         [cssVarKey(keyBase)]: String(value),
       });
     }

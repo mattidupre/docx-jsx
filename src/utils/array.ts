@@ -1,8 +1,9 @@
 import type { ArrayValues, Simplify, UnionToIntersection } from 'type-fest';
-import type {
-  MergedObjectKeys,
-  KeyedObject,
-  MergedObjectValues,
+import {
+  type MergedObjectKeys,
+  type KeyedObject,
+  type MergedObjectValues,
+  assignDefined,
 } from './object.js';
 
 export type ToDefinedArray<T> = Simplify<
@@ -60,7 +61,7 @@ export const pickFromArray = <
         if (value === undefined) {
           return target;
         }
-        return Object.assign(target, { [key]: value[key] });
+        return assignDefined(target, { [key]: value[key] } as TValue);
       },
       Object.fromEntries(keysArray.map((k) => [k, undefined])) as TValue,
     ),

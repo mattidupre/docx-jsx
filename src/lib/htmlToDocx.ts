@@ -19,6 +19,7 @@ import {
 } from 'docx';
 import { pick, startCase } from 'lodash-es';
 import type { Color, VariantsConfig, ContentOptions } from '../entities';
+import { assignDefined } from '../utils/object.js';
 import { mapHtmlToDocument } from './mapHtmlToDocument.js';
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
@@ -29,7 +30,7 @@ class Paragraph extends DocxParagraph {
     paragraph: Paragraph,
     extraOptions: Omit<Partial<IParagraphOptions>, 'children'> = {},
   ) {
-    const newOptions = Object.assign(
+    const newOptions = assignDefined(
       {},
       paragraph[PARAGRAPH_OPTIONS_KEY],
       extraOptions,

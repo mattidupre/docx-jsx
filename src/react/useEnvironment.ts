@@ -1,4 +1,5 @@
 import { useContext, useMemo } from 'react';
+import { extendDefined } from '../utils/object.js';
 import {
   ReactEnvironmentContext,
   ReactDocumentContext,
@@ -9,7 +10,7 @@ type Environment = NonNullable<Required<ReactEnvironmentContextValue>>;
 
 const DEFAULT_ENVIRONMENT: Environment = {
   documentType: 'web',
-  isWebPreview: false,
+  isPreview: false,
 };
 
 type UseEnvironmentOptions = {
@@ -28,8 +29,9 @@ export const useEnvironment = ({
     throw new Error('Document Context not found.');
   }
   const environmentConfig = useContext(ReactEnvironmentContext);
+
   return useMemo(
-    () => Object.assign({}, DEFAULT_ENVIRONMENT, environmentConfig),
+    () => extendDefined<Environment>(DEFAULT_ENVIRONMENT, environmentConfig),
     [environmentConfig],
   );
 };

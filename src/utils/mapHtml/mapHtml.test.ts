@@ -1,9 +1,8 @@
 import { test } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { mockDocument } from '../../fixtures/mockDocument';
+import { createMockHtml } from '../../fixtures/mockDocument';
 import { mapHtml } from './mapHtml.js';
 
-const mockHtml = renderToStaticMarkup(mockDocument);
+const mockHtml = createMockHtml();
 
 type Context = {
   prevTagNames: string[];

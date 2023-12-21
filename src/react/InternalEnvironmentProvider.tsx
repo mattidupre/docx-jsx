@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode, useContext } from 'react';
+import { extendDefined } from '../utils/object.js';
 import {
   ReactEnvironmentContext,
   type ReactEnvironmentContextValue,
@@ -10,7 +11,7 @@ type ExecutionProviderProps = ReactEnvironmentContextValue & {
 
 const PROPERTIES = [
   'documentType',
-  'isWebPreview',
+  'isPreview',
 ] as const satisfies ReadonlyArray<
   keyof NonNullable<ReactEnvironmentContextValue>
 >;
@@ -28,27 +29,35 @@ const compareDefinedProperties = <T extends Record<string, unknown>>(
  * For internal use only. Parent contexts will completely overwrite child
  * contexts.
  */
-export function EnvironmentProvider({
+export function InternalEnvironmentProvider({
   children,
-  ...newContextValue
+  documentType,
+  isPreview,
 }: ExecutionProviderProps) {
   const prevContextValue = useContext(ReactEnvironmentContext);
+
+  const newContextValue = useMemo(
+    () =>
+      extendDefined<NonNullable<ReactEnvironmentContextValue>>(
+        prevContextValue ?? {},
+        {
+          documentType,
+          isPreview,
+        },
+      ),
+    [documentType, isPreview, prevContextValue],
+  );
+
   PROPERTIES.forEach((key) => {
     if (
       !compareDefinedProperties(prevContextValue ?? {}, newContextValue, key)
     ) {
-      console.log(prevContextValue, newContextValue);
       throw new Error(`Do not override ${key}.`);
     }
   });
 
-  const contextValue = useMemo(
-    () => Object.assign({}, prevContextValue, newContextValue),
-    [newContextValue, prevContextValue],
-  );
-
   return (
-    <ReactEnvironmentContext.Provider value={contextValue}>
+    <ReactEnvironmentContext.Provider value={newContextValue}>
       {children}
     </ReactEnvironmentContext.Provider>
   );

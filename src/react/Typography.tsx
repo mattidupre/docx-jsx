@@ -8,11 +8,6 @@ import type {
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities.js';
 
-export type TypographyOptions = {
-  text?: ContentTextOptions;
-  paragraph?: ContentParagraphOptions;
-};
-
 export type TypographyProps = ExtendableProps &
   (
     | ({

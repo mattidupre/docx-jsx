@@ -17,9 +17,9 @@ import {
   INTRINSIC_TEXT_OPTIONS,
   assignContentOptions,
 } from '../entities';
-import { mapHtml, type MapElement } from '../utils/mapHtml/mapHtml';
-import { getValueOf } from 'src/utils/object';
-import { isValueInArray } from 'src/utils/array';
+import { mapHtml, type MapElement } from '../utils/mapHtml/mapHtml.js';
+import { getValueOf } from '../utils/object.js';
+import { isValueInArray } from '../utils/array.js';
 
 const CONTENT_ELEMENT_TYPES = [
   'htmltag',

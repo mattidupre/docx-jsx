@@ -1,4 +1,5 @@
 import { compact } from 'lodash-es';
+import { assignDefined, mergeWithDefault } from '../utils/object.js';
 import {
   type DocumentOptions,
   type StackOptions,
@@ -10,7 +11,6 @@ import {
   assignContentOptions,
   type ContentOptions,
 } from './options';
-import { mergeWithDefault } from 'src/utils/object';
 
 type ElementsContextOptions = {
   document?: DocumentOptions;
@@ -47,7 +47,7 @@ export const assignElementsContext = (
         (ElementsContextOptions | ElementsContext | undefined))
   >
 ): ElementsContext =>
-  Object.assign(args[0] ?? {}, {
+  assignDefined((args[0] ?? {}) as ElementsContext, {
     document: assignDocumentOptions(...pluckContext('document', ...args)),
     stack: assignStackOptions(...pluckContext('stack', ...args)),
     list: mergeWithDefault({ level: -1 }, ...pluckContext('list', ...args)),

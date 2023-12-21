@@ -9,22 +9,19 @@
     "tsconfig.json"
   ],
   "exports": {
-    ".": {
-      "module": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
-    },
     "./package.json": {
       "default": "./package.json"
     },
-    "./*.css": {
-      "default": "./dist/*.css"
-    },
     "./*": {
-      "module": "./dist/*.mjs",
+      "module": "./dist/*.js",
       "types": "./dist/*.d.ts"
     }
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-typescript": "^11.1.5",
     "@types/hast": "^3.0.2",
     "@types/lodash-es": "^4.17.11",
     "@types/node": "^20.8.10",
@@ -37,6 +34,7 @@
     "@vitejs/plugin-react": "^4.1.1",
     "clean-publish": "^4.2.0",
     "concurrently": "^8.2.2",
+    "dotenv-cli": "^7.3.0",
     "esbuild": "^0.19.5",
     "eslint": "^8.55.0",
     "eslint-define-config": "^2.0.0",
@@ -48,6 +46,8 @@
     "globals": "^13.24.0",
     "jest-extended": "^4.0.2",
     "prettier": "^3.0.3",
+    "rollup": "^4.9.1",
+    "rollup-plugin-node-externals": "^6.1.2",
     "type-fest": "^4.6.0",
     "typescript": "^5.2.2"
   },
@@ -89,6 +89,7 @@
     "pagedjs": "^0.4.3",
     "prop-types": "^15.8.1",
     "puppeteer-core": "21.4.1",
+    "rollup-plugin-esbuild": "^6.1.0",
     "storybook": "^7.5.3",
     "uuid": "^9.0.1",
     "vitest": "^0.34.6",
@@ -99,15 +100,15 @@
     "build": "pnpm clean && pnpm build:all",
     "dev": "pnpm clean && nodemon --exec pnpm run build:all",
     "build:all": "pnpm run \"/^build:(src|types)$/\" && pnpm link:push",
-    "build:src": "node esbuild",
+    "build:src": "rollup -c",
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
     "test": "vitest",
     "lint": "eslint ./src",
     "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push --changed publish && rm -rf ./publish",
-    "storybook": "storybook dev"
+    "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
   },
   "nodemonConfig": {
-    "ext": "ts,js,json,css",
+    "ext": "ts,js,tsx,jsx,json,css",
     "watch": [
       "src/**",
       "package.json",

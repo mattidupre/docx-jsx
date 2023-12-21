@@ -1,7 +1,6 @@
 import { isObject, map } from 'lodash-es';
-import type { SetOptional } from 'type-fest';
 import { toLowercase } from '../utils/string.js';
-import { mergeWithDefault } from '../utils/object.js';
+import { assignDefined, mergeWithDefault } from '../utils/object.js';
 import type { UnitsNumber } from '../utils/units.js';
 import { pluckFromArray } from '../utils/array.js';
 import type { TagName } from './html.js';
@@ -121,7 +120,7 @@ export const mapLayoutKeys = <TContentOutput>(
           }
           elementsSet.add(element);
         }
-        return Object.assign(layout, { [elementType]: element });
+        return assignDefined(layout, { [elementType]: element });
       }, {}),
     }),
     {} as LayoutConfig<TContentOutput>,
@@ -138,7 +137,7 @@ export const assignLayoutOptions = <TContent>(
 ) =>
   args.reduce(
     (targetLayouts, thisLayouts) =>
-      Object.assign(
+      assignDefined(
         targetLayouts!,
         mapLayoutKeys(
           (layoutType, elementType) =>
@@ -181,9 +180,9 @@ export const INTRINSIC_TAG_NAMES_BY_VARIANT = {
 } satisfies Partial<Record<IntrinsicVariantNames, TagName>>;
 
 export const assignVariants = (
-  ...args: ReadonlyArray<undefined | Partial<VariantsConfig>>
+  ...args: ReadonlyArray<undefined | VariantsConfig>
 ): VariantsConfig =>
-  Object.assign(args[0] ?? {}, ...args.filter((v) => v !== undefined));
+  assignDefined(args[0] ?? {}, ...args.filter((v) => v !== undefined));
 
 export type DocumentOptions = {
   size?: PageSize;
@@ -200,7 +199,7 @@ export type DocumentConfig = {
 export const assignDocumentOptions = (
   ...args: ReadonlyArray<undefined | DocumentOptions>
 ): DocumentConfig =>
-  Object.assign((args[0] ?? {}) as DocumentConfig, {
+  assignDefined((args[0] ?? {}) as DocumentConfig, {
     size: mergeWithDefault(DEFAULT_PAGE_SIZE, ...pluckFromArray(args, 'size')),
     variants: assignVariants(
       args[0]?.variants,
@@ -226,7 +225,8 @@ export const assignStackOptions = (
   ...args: ReadonlyArray<undefined | StackOptions>
 ): StackConfig => mergeWithDefault({ margin: DEFAULT_PAGE_MARGIN }, ...args);
 
-// TODO: add false since undefined will not overwrite parent.
+// TODO: add false since undefined will not overwrite parent. TODO: Rename to
+// TypographyOptions.
 export type ContentOptions = Partial<{
   breakInside: 'avoid';
   textAlign: 'left' | 'center' | 'right' | 'justify';
@@ -244,7 +244,7 @@ export type ContentOptions = Partial<{
 
 export const assignContentOptions = (
   ...[args0, ...args]: ReadonlyArray<undefined | ContentOptions>
-) => Object.assign(args0 ?? {}, ...args) as ContentOptions;
+) => assignDefined(args0 ?? {}, ...args) as ContentOptions;
 
 export const PARAGRAPH_OPTIONS_KEYS = [
   'textAlign',

@@ -218,9 +218,7 @@ export function MockDocument(props: Partial<DocumentProviderProps>) {
   );
 }
 
-export const mockDocument = <MockDocument />;
-
-export const mockDocumentHtml = renderToStaticMarkup(mockDocument);
+export const createMockHtml = () => renderToStaticMarkup(<MockDocument />);
 
 function LongText() {
   return (

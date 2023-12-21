@@ -34,6 +34,7 @@ export function InternalElement({
   children,
 }: InternalElementProps) {
   const isWeb = useEnvironment().documentType === 'web';
+
   const isFragment = preferFragment && isWeb;
 
   const { prefixes } = useContext(ReactDocumentContext)!;

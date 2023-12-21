@@ -13,22 +13,25 @@ export type DocumentProviderProps = DocumentOptions & {
 
 export function DocumentProvider({
   injectEnvironmentCss,
-  children: childrenProp,
+  children,
   ...props
 }: DocumentProviderProps) {
-  const documentOptions = useMemo(() => assignDocumentOptions(props), [props]);
+  const documentOptions = useMemo(
+    () => assignDocumentOptions({}, props),
+    [props],
+  );
   const { variants, prefixes } = documentOptions;
 
-  const { documentType, isWebPreview } = useEnvironment({
+  const { documentType } = useEnvironment({
     disableAssert: true,
   });
 
   const environmentStyleSheets = useMemo(
     () =>
-      documentType === 'web' && (injectEnvironmentCss || isWebPreview)
+      documentType === 'web' && injectEnvironmentCss
         ? [createEnvironmentCss({ prefixes, variants })]
         : [],
-    [documentType, injectEnvironmentCss, isWebPreview, prefixes, variants],
+    [documentType, injectEnvironmentCss, prefixes, variants],
   );
 
   useInjectStyleSheets(environmentStyleSheets);
@@ -41,7 +44,7 @@ export function DocumentProvider({
         elementType="document"
         elementOptions={documentOptions}
       >
-        {childrenProp}
+        {children}
       </InternalElement>
     </ReactDocumentContext.Provider>
   );

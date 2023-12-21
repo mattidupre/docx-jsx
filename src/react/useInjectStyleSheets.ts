@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import type { StyleSheetsValue } from 'src/entities';
+import type { StyleSheetsValue } from '../entities';
 
 // TODO: Abstract into utils.
 export const useInjectStyleSheets = (

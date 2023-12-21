@@ -8,7 +8,6 @@ import {
   mapLayoutKeys,
 } from '../entities/options.js';
 import { ReactStackContext } from './entities';
-import { useEnvironment } from './useEnvironment';
 import { InternalElement } from './InternalElement';
 
 export type StackProps = StackOptions & {
@@ -22,13 +21,17 @@ export function Stack({ children, layouts, ...options }: StackProps) {
     [options],
   );
 
-  if (useEnvironment().documentType === 'web') {
-    return (
-      <ReactStackContext.Provider value={stackConfig}>
-        {children}
-      </ReactStackContext.Provider>
-    );
-  }
+  const contentElement = (
+    <InternalElement
+      preferFragment
+      key="content"
+      tagName="div"
+      elementType="content"
+      elementOptions={{}}
+    >
+      {children}
+    </InternalElement>
+  );
 
   const headerFooterElements: {
     header: Array<ReactNode>;
@@ -53,20 +56,10 @@ export function Stack({ children, layouts, ...options }: StackProps) {
     }
   });
 
-  const contentElement = (
-    <InternalElement
-      key="content"
-      tagName="div"
-      elementType="content"
-      elementOptions={{}}
-    >
-      {children}
-    </InternalElement>
-  );
-
   return (
     <ReactStackContext.Provider value={stackConfig}>
       <InternalElement
+        preferFragment
         tagName="div"
         elementType="stack"
         elementOptions={stackConfig}

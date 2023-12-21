@@ -33,13 +33,13 @@ export const htmlToPdf = async (
     // https://github.com/netlify/cli/issues/4601 This file is explicitly
     // included by netlify.toml. TODO: Add to options, combined with
     // puppeteerOptions. TODO: Infer from __dirname
-    FRONTEND_PATH = './.yalc/matti-docs/dist/headless.js';
+    FRONTEND_PATH = './.yalc/matti-docs/dist/headless.cjs';
   } else {
     FRONTEND_PATH = path.resolve(
       path.dirname(
         createRequire(import.meta.url).resolve('matti-docs/package.json'),
       ),
-      './dist/headless.js',
+      './dist/headless.cjs',
     );
   }
 

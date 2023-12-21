@@ -88,7 +88,7 @@ const createIntrinsics = ({
   },
   ...Object.fromEntries(
     Object.entries(INTRINSIC_TEXT_OPTIONS).map(([tagName, options]) => {
-      return [tagName, optionsToCssVars({ prefixes }, options)];
+      return [`:where(${tagName})`, optionsToCssVars({ prefixes }, options)];
     }),
   ),
 });
