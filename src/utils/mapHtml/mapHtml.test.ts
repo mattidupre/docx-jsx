@@ -1,6 +1,6 @@
 import { test } from 'vitest';
 import { createMockHtml } from '../../fixtures/mockDocument';
-import { mapHtml } from './mapHtml.js';
+import { mapHtml } from './mapHtml';
 
 const mockHtml = createMockHtml();
 

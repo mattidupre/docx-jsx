@@ -17,9 +17,9 @@ import {
   INTRINSIC_TEXT_OPTIONS,
   assignContentOptions,
 } from '../entities';
-import { mapHtml, type MapElement } from '../utils/mapHtml/mapHtml.js';
-import { getValueOf } from '../utils/object.js';
-import { isValueInArray } from '../utils/array.js';
+import { mapHtml, type MapElement } from '../utils/mapHtml/mapHtml';
+import { getValueOf } from '../utils/object';
+import { isValueInArray } from '../utils/array';
 
 const CONTENT_ELEMENT_TYPES = [
   'htmltag',
@@ -172,13 +172,12 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Content must be a child of content root.');
         }
 
-        if (
-          isValueInArray(PARAGRAPH_TAG_NAMES, tagName) &&
-          isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES)
-        ) {
-          throw new TypeError(
-            'Paragraph-ish tags (e.g., p, h1, li) cannot be nested inside one another.',
-          );
+        if (isValueInArray(PARAGRAPH_TAG_NAMES, tagName)) {
+          if (isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES)) {
+            throw new TypeError(
+              'Paragraph-ish tags (e.g., p, h1, li) cannot be nested inside one another.',
+            );
+          }
         }
 
         assignElementsContext(elementsContext, elementData.elementOptions, {
@@ -221,7 +220,8 @@ export const mapHtmlToDocument = <TContent>(
     },
     onText: ({ text, parentContext: { data } }) => {
       const { parentTagNames } = data;
-      if (!isChildOfTagName(parentTagNames!, PARAGRAPH_TAG_NAMES)) {
+      if (!isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES)) {
+        console.log(PARAGRAPH_TAG_NAMES);
         if (text.trim()) {
           console.warn(
             'Text not enclosed in a paragraph or heading is ignored.',
@@ -239,7 +239,7 @@ export const mapHtmlToDocument = <TContent>(
     onElementAfterChildren: (context) => {
       const { childContext } = context;
 
-      const children = context.children;
+      const { children } = context;
 
       const {
         data: { element: elementData },
@@ -291,6 +291,9 @@ export const mapHtmlToDocument = <TContent>(
       }
 
       if (isElementOfType(elementData, CONTENT_ELEMENT_TYPES)) {
+        // if (isChildOfTagName(parentTagNames, 'li')) { console.log('HERE:
+        //   Remove paragraph elements'); // Paragraph-ish children of li are
+        //   ignored. return children; }
         return parseNode({ ...childContext, type: 'element', children });
       }
 

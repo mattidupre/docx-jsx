@@ -1,11 +1,7 @@
-import { simpleCssToString } from '../utils/css.js';
-import type { SimpleCss } from '../utils/css.js';
-import { getValueOf } from '../utils/object.js';
-import {
-  objectToCssVars,
-  cssVarKey,
-  cssVarProperty,
-} from '../utils/cssVars.js';
+import { simpleCssToString } from '../utils/css';
+import type { SimpleCss } from '../utils/css';
+import { getValueOf } from '../utils/object';
+import { objectToCssVars, cssVarKey, cssVarProperty } from '../utils/cssVars';
 import {
   INTRINSIC_TEXT_OPTIONS,
   INTRINSIC_TAG_NAMES_BY_VARIANT,

@@ -1,5 +1,5 @@
-import { compact } from 'lodash-es';
-import { assignDefined, mergeWithDefault } from '../utils/object.js';
+import { compact } from 'lodash';
+import { assignDefined, mergeWithDefault } from '../utils/object';
 import {
   type DocumentOptions,
   type StackOptions,

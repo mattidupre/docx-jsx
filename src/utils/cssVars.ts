@@ -1,5 +1,5 @@
-import { kebabCase, isObject } from 'lodash-es';
-import { assignDefined } from './object.js';
+import { kebabCase, isObject } from 'lodash';
+import { assignDefined } from './object';
 
 type VarValue = number | string | boolean;
 

@@ -1,6 +1,6 @@
 import { type ReactNode, memo, useMemo, type ReactElement } from 'react';
-import type { HtmlToDomOptions } from '../lib/htmlToDom.js';
-import { usePreview } from './usePreview.js';
+import type { HtmlToDomOptions } from '../lib/htmlToDom';
+import { usePreview } from './usePreview';
 
 type DocumentPreviewProps = HtmlToDomOptions & {
   Loading?: () => ReactNode;

@@ -29,7 +29,7 @@ dependencies:
   hast-util-to-html:
     specifier: ^9.0.0
     version: 9.0.0
-  lodash-es:
+  lodash:
     specifier: ^4.17.21
     version: 4.17.21
   nodemon:
@@ -70,6 +70,9 @@ dependencies:
     version: 1.0.0-pre.53
 
 devDependencies:
+  '@optimize-lodash/rollup-plugin':
+    specifier: ^4.0.4
+    version: 4.0.4(rollup@4.9.1)
   '@rollup/plugin-commonjs':
     specifier: ^25.0.7
     version: 25.0.7(rollup@4.9.1)
@@ -85,9 +88,9 @@ devDependencies:
   '@types/hast':
     specifier: ^3.0.2
     version: 3.0.2
-  '@types/lodash-es':
-    specifier: ^4.17.11
-    version: 4.17.11
+  '@types/lodash':
+    specifier: ^4.14.202
+    version: 4.14.202
   '@types/node':
     specifier: ^20.8.10
     version: 20.8.10
@@ -2024,6 +2027,25 @@ packages:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.15.0
 
+  /@optimize-lodash/rollup-plugin@4.0.4(rollup@4.9.1):
+    resolution: {integrity: sha512-zcbnqx7oQWmGA3Xaf6I8m64+Rufebz4fnSuOHf0++aGqHdwbf19t5OdIebn8Deeb1DoyHbaWVezuTZyKw0vBJw==}
+    engines: {node: '>= 12'}
+    peerDependencies:
+      rollup: '>=2.x'
+    dependencies:
+      '@optimize-lodash/transform': 3.0.3
+      '@rollup/pluginutils': 5.0.5(rollup@4.9.1)
+      rollup: 4.9.1
+    dev: true
+
+  /@optimize-lodash/transform@3.0.3:
+    resolution: {integrity: sha512-LeH2C2nYPfwKLQ1OX7jrfZOYTyRajOhhgoCdz47+5d2oBP8YKL/NknCAcDt2QkzLDLbtZ5QHhKZN56S2D/I1JA==}
+    engines: {node: '>= 12'}
+    dependencies:
+      estree-walker: 2.0.2
+      magic-string: 0.30.5
+    dev: true
+
   /@pkgjs/parseargs@0.11.0:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
@@ -2818,14 +2840,8 @@ packages:
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
     dev: true
 
-  /@types/lodash-es@4.17.11:
-    resolution: {integrity: sha512-eCw8FYAWHt2DDl77s+AMLLzPn310LKohruumpucZI4oOFJkIgnlaJcy23OKMJxx4r9PeTF13Gv6w+jqjWQaYUg==}
-    dependencies:
-      '@types/lodash': 4.14.200
-    dev: true
-
-  /@types/lodash@4.14.200:
-    resolution: {integrity: sha512-YI/M/4HRImtNf3pJgbF+W6FrXovqj+T+/HpENLTooK9PnkacBsDpeP3IpHab40CClUfhNmdM2WTNP2sa2dni5Q==}
+  /@types/lodash@4.14.202:
+    resolution: {integrity: sha512-OvlIYQK9tNneDlS0VN54LLd5uiPCBOp7gS5Z0f1mjoJYBrtStzgmJBxONW3U6OZqdtNzZPmn9BS/7WI7BFFcFQ==}
     dev: true
 
   /@types/mdast@4.0.3:
@@ -6160,10 +6176,6 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       p-locate: 5.0.0
-
-  /lodash-es@4.17.21:
-    resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
-    dev: false
 
   /lodash.debounce@4.0.8:
     resolution: {integrity: sha512-FT1yDzDYEoYWhnSGnpE/4Kj1fLZkDFyqRb7fNt6FdYOSxlUWAtp42Eh6Wb0rGIv/m9Bgo7x4GhQbm5Ys4SG5ow==}

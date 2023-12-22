@@ -1,12 +1,12 @@
 import { type ReactNode, useMemo } from 'react';
-import { omit } from 'lodash-es';
+import { omit } from 'lodash';
 import type { StackOptions } from '../entities';
 import {
   type LayoutOptions,
   type StackConfig,
   assignStackOptions,
   mapLayoutKeys,
-} from '../entities/options.js';
+} from '../entities/options';
 import { ReactStackContext } from './entities';
 import { InternalElement } from './InternalElement';
 

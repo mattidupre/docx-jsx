@@ -1,10 +1,10 @@
 import { useContext, useMemo } from 'react';
-import { extendDefined } from '../utils/object.js';
+import { extendDefined } from '../utils/object';
 import {
   ReactEnvironmentContext,
   ReactDocumentContext,
   type ReactEnvironmentContextValue,
-} from './entities.js';
+} from './entities';
 
 type Environment = NonNullable<Required<ReactEnvironmentContextValue>>;
 

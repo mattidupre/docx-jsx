@@ -4,7 +4,7 @@ import {
   type KeyedObject,
   type MergedObjectValues,
   assignDefined,
-} from './object.js';
+} from './object';
 
 export type ToDefinedArray<T> = Simplify<
   T extends undefined

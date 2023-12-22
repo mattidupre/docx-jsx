@@ -1,9 +1,9 @@
-import { isObject, map } from 'lodash-es';
-import { toLowercase } from '../utils/string.js';
-import { assignDefined, mergeWithDefault } from '../utils/object.js';
-import type { UnitsNumber } from '../utils/units.js';
-import { pluckFromArray } from '../utils/array.js';
-import type { TagName } from './html.js';
+import { isObject, map } from 'lodash';
+import { toLowercase } from '../utils/string';
+import { assignDefined, mergeWithDefault } from '../utils/object';
+import type { UnitsNumber } from '../utils/units';
+import { pluckFromArray } from '../utils/array';
+import type { TagName } from './html';
 
 export const APP_NAME = 'Matti Docs';
 

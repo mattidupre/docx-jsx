@@ -8,7 +8,7 @@ import {
   useCallback,
 } from 'react';
 import { reactToDom, type ReactToDomOptions } from '../reactToDom';
-import { InternalEnvironmentProvider } from './InternalEnvironmentProvider.js';
+import { InternalEnvironmentProvider } from './InternalEnvironmentProvider';
 
 type PreviewHandle = {
   previewElRef: RefObject<HTMLDivElement>;

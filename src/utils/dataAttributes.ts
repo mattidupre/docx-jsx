@@ -1,5 +1,5 @@
 import type { JsonValue } from 'type-fest';
-import { kebabCase, transform, camelCase } from 'lodash-es';
+import { kebabCase, transform, camelCase } from 'lodash';
 
 type Attributes = Record<string, unknown>;
 

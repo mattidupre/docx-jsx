@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { kebabCase } from 'lodash-es';
+import { kebabCase } from 'lodash';
 
 export type SimpleCss = Record<
   string,

@@ -5,16 +5,16 @@ import {
   assignHtmlAttributes,
   type StyleSheetsValue,
 } from '../entities';
-import { Pager } from '../utils/pager.js';
-import { cssVarsToString } from '../utils/cssVars.js';
-import { assignDefined } from '../utils/object.js';
-import { PageTemplate } from './pageTemplate.js';
-import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument.js';
+import { Pager } from '../utils/pager';
+import { cssVarsToString } from '../utils/cssVars';
+import { assignDefined } from '../utils/object';
+import { PageTemplate } from './pageTemplate';
+import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument';
 import {
   createEnvironmentCss,
   optionsToCssVars,
   variantNameToClassName,
-} from './toCss.js';
+} from './toCss';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 

@@ -1,9 +1,9 @@
 import { useMemo, type ReactNode } from 'react';
 import { assignDocumentOptions, type DocumentOptions } from '../entities';
 import { createEnvironmentCss } from '../lib/toCss';
-import { ReactDocumentContext } from './entities.js';
-import { useEnvironment } from './useEnvironment.js';
-import { InternalElement } from './InternalElement.js';
+import { ReactDocumentContext } from './entities';
+import { useEnvironment } from './useEnvironment';
+import { InternalElement } from './InternalElement';
 import { useInjectStyleSheets } from './useInjectStyleSheets';
 
 export type DocumentProviderProps = DocumentOptions & {

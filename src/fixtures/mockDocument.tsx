@@ -7,7 +7,7 @@ import {
   PageCount,
   NoPageBreak,
   type DocumentProviderProps,
-} from '../reactComponents.js';
+} from '../reactComponents';
 
 const PageCounter = () => {
   return (

@@ -6,7 +6,7 @@ import type {
   VariantName,
 } from '../entities';
 import { InternalElement } from './InternalElement';
-import type { ExtendableProps } from './entities.js';
+import type { ExtendableProps } from './entities';
 
 export type TypographyProps = ExtendableProps &
   (

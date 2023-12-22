@@ -1,7 +1,7 @@
 import { it } from 'vitest';
-import { reactToDocx } from './reactToDocx.js';
-import { MockDocument } from './fixtures/mockDocument.js';
-import { writeTestFile } from './fixtures/writeTestFile.js';
+import { reactToDocx } from './reactToDocx';
+import { MockDocument } from './fixtures/mockDocument';
+import { writeTestFile } from './fixtures/writeTestFile';
 
 it('runs without error', async () => {
   const buffer = await reactToDocx(<MockDocument />);

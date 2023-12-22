@@ -1,9 +1,9 @@
 import { useMemo, type ReactNode, useContext } from 'react';
-import { extendDefined } from '../utils/object.js';
+import { extendDefined } from '../utils/object';
 import {
   ReactEnvironmentContext,
   type ReactEnvironmentContextValue,
-} from './entities.js';
+} from './entities';
 
 type ExecutionProviderProps = ReactEnvironmentContextValue & {
   children: ReactNode;

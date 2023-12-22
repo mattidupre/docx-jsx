@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 import { it } from 'vitest';
-import { reactToPdf } from './reactToPdf.js';
-import { MockDocument } from './fixtures/mockDocument.js';
-import { writeTestFile } from './fixtures/writeTestFile.js';
-import { PUPPETEER_OPTIONS } from './fixtures/puppeteerOptions.js';
+import { reactToPdf } from './reactToPdf';
+import { MockDocument } from './fixtures/mockDocument';
+import { writeTestFile } from './fixtures/writeTestFile';
+import { PUPPETEER_OPTIONS } from './fixtures/puppeteerOptions';
 
 const mockStyleSheets = await Promise.all(
   ['./fixtures/mockPages.css'].map((relativePath) =>

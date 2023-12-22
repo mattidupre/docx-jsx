@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { ReactNode } from 'react';
 import type { VariantsConfig } from '../entities';
-import { Typography } from './Typography.js';
-import { DocumentProvider } from './DocumentProvider.js';
+import { Typography } from './Typography';
+import { DocumentProvider } from './DocumentProvider';
 
 const meta: Meta<typeof Typography> = {
   component: Typography,

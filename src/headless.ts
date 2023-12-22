@@ -1,4 +1,4 @@
-import { htmlToDom } from './lib/htmlToDom.js';
+import { htmlToDom } from './lib/htmlToDom';
 
 // Bundled into one file to be passed to Puppeteer. Should not do anything
 // React-related.

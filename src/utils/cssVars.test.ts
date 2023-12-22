@@ -1,5 +1,5 @@
 import { expect, test, describe } from 'vitest';
-import { objectToCssVars } from './cssVars.js';
+import { objectToCssVars } from './cssVars';
 
 describe('passing undefined', () => {
   test('returns an empty object', () => {

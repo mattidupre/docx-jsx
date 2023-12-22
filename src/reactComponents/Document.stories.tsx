@@ -1,8 +1,8 @@
 import type { StoryObj } from '@storybook/react';
-import { MockDocument } from '../fixtures/mockDocument.js';
+import { MockDocument } from '../fixtures/mockDocument';
 // @ts-expect-error
 import mockStyleSheet from '../fixtures/mockPages.css?inline';
-import { DocumentPreview } from './DocumentPreview.js';
+import { DocumentPreview } from './DocumentPreview';
 
 const DocumentRoot = () => <MockDocument injectEnvironmentCss />;
 

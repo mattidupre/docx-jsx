@@ -4,30 +4,35 @@
   "version": "0.0.0",
   "license": "UNLICENSED",
   "files": [
-    "dist/",
+    "dist-esm/",
+    "dist-cjs/",
+    "dist-types/",
     "src/",
     "tsconfig.json"
   ],
   "exports": {
     ".": {
-      "module": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "module": "./dist-esm/index.js",
+      "default": "./dist-cjs/index.js",
+      "types": "./dist-types/index.d.ts"
     },
     "./*": {
-      "module": "./dist/*.js",
-      "types": "./dist/*.d.ts"
+      "module": "./dist-esm/*.js",
+      "default": "./dist-cjs/*.js",
+      "types": "./dist-types/*.d.ts"
     },
     "./package.json": {
       "default": "./package.json"
     }
   },
   "devDependencies": {
+    "@optimize-lodash/rollup-plugin": "^4.0.4",
     "@rollup/plugin-commonjs": "^25.0.7",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-typescript": "^11.1.5",
     "@types/hast": "^3.0.2",
-    "@types/lodash-es": "^4.17.11",
+    "@types/lodash": "^4.14.202",
     "@types/node": "^20.8.10",
     "@types/react": "~18.2.34",
     "@types/react-dom": "~18.2.14",
@@ -89,7 +94,7 @@
     "hast-util-from-html-isomorphic": "^2.0.0",
     "hast-util-to-dom": "^4.0.0",
     "hast-util-to-html": "^9.0.0",
-    "lodash-es": "^4.17.21",
+    "lodash": "^4.17.21",
     "nodemon": "^3.0.1",
     "pagedjs": "^0.4.3",
     "prop-types": "^15.8.1",
@@ -104,9 +109,8 @@
     "clean": "rm -rf dist/*",
     "build": "pnpm clean && pnpm build:all",
     "dev": "pnpm clean && nodemon --exec pnpm run build:all",
-    "build:all": "pnpm run \"/^build:(src|headless|types)$/\" && pnpm link:push",
-    "build:src": "tsc && tsc-alias",
-    "build:headless": "rollup -c",
+    "build:all": "pnpm run \"/^build:(src|types)$/\" && pnpm link:push",
+    "build:src": "rollup -c",
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
     "test": "vitest",
     "lint": "eslint ./src",

@@ -1,10 +1,10 @@
-import { intersection } from 'lodash-es';
+import { intersection } from 'lodash';
 import type { JsonObject } from 'type-fest';
 import {
   selectByDataAttributes,
   encodeDataAttributes,
   decodeDataAttributes,
-} from '../utils/dataAttributes.js';
+} from '../utils/dataAttributes';
 import {
   DEFAULT_PREFIX,
   type DocumentConfig,
@@ -16,8 +16,8 @@ import {
   type VariantName,
   type ContentOptions,
   type PrefixesConfig,
-} from './options.js';
-import type { TagName } from './html.js';
+} from './options';
+import type { TagName } from './html';
 
 type ConfigByElementType = {
   document: DocumentConfig;

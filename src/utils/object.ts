@@ -1,5 +1,5 @@
 import type { IfAny, PartialDeep } from 'type-fest';
-import { isPlainObject, merge } from 'lodash-es';
+import { isPlainObject, merge } from 'lodash';
 
 export type KeyedObject = Record<PropertyKey, unknown> & { length?: never };
 

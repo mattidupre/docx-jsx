@@ -17,10 +17,10 @@ import {
   type ICharacterStyleOptions,
   ExternalHyperlink,
 } from 'docx';
-import { pick, startCase } from 'lodash-es';
+import { pick, startCase } from 'lodash';
 import type { Color, VariantsConfig, ContentOptions } from '../entities';
-import { assignDefined } from '../utils/object.js';
-import { mapHtmlToDocument } from './mapHtmlToDocument.js';
+import { assignDefined } from '../utils/object';
+import { mapHtmlToDocument } from './mapHtmlToDocument';
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
 class Paragraph extends DocxParagraph {

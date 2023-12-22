@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement } from 'react';
-import { type HtmlToPdfOptions, htmlToPdf } from './lib/htmlToPdf.js';
-import { InternalEnvironmentProvider } from './reactComponents/InternalEnvironmentProvider.js';
+import { type HtmlToPdfOptions, htmlToPdf } from './lib/htmlToPdf';
+import { InternalEnvironmentProvider } from './reactComponents/InternalEnvironmentProvider';
 
 export type ReactToPdfOptions = HtmlToPdfOptions;
 

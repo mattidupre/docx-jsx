@@ -1,5 +1,5 @@
 import { type ReactNode, createElement, useMemo, useContext } from 'react';
-import { compact } from 'lodash-es';
+import { compact } from 'lodash';
 import { encodeElementData } from '../entities';
 import type {
   ContentOptions,
@@ -7,10 +7,10 @@ import type {
   TagName,
   VariantName,
 } from '../entities';
-import { optionsToCssVars, variantNameToClassName } from '../lib/toCss.js';
-import type { ExtendableProps } from './entities.js';
-import { ReactDocumentContext } from './entities.js';
-import { useEnvironment } from './useEnvironment.js';
+import { optionsToCssVars, variantNameToClassName } from '../lib/toCss';
+import type { ExtendableProps } from './entities';
+import { ReactDocumentContext } from './entities';
+import { useEnvironment } from './useEnvironment';
 
 type InternalElementProps = ExtendableProps & {
   preferFragment?: boolean;

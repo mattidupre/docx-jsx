@@ -5,8 +5,8 @@ import puppeteer, {
   type Page,
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
-import type { Headless } from '../headless.js';
-import type { DocumentDom } from './htmlToDom.js';
+import type { Headless } from '../headless';
+import type { DocumentDom } from './htmlToDom';
 
 let browserPromise: null | Promise<Browser>;
 

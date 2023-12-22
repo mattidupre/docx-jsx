@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement } from 'react';
-import { htmlToDom, type HtmlToDomOptions } from './lib/htmlToDom.js';
-import { InternalEnvironmentProvider } from './reactComponents/InternalEnvironmentProvider.js';
+import { htmlToDom, type HtmlToDomOptions } from './lib/htmlToDom';
+import { InternalEnvironmentProvider } from './reactComponents/InternalEnvironmentProvider';
 
 export type ReactToDomOptions = HtmlToDomOptions;
 

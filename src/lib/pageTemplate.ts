@@ -1,6 +1,6 @@
 import { selectDomElement } from '../entities';
 import type { PageSize, PageMargin, PrefixesConfig } from '../entities';
-import { mathUnits } from '../utils/units.js';
+import { mathUnits } from '../utils/units';
 
 type InnerNode = undefined | Node | NodeList;
 

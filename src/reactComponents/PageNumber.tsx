@@ -1,5 +1,5 @@
 import { useEnvironment } from './useEnvironment';
-import { InternalElement } from './InternalElement.js';
+import { InternalElement } from './InternalElement';
 
 export function PageNumber() {
   if (useEnvironment().documentType === 'web') {
