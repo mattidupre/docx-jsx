@@ -10,15 +10,17 @@
     "src/",
     "tsconfig.json"
   ],
+  "main": "./dist-esm/index.js",
+  "types": "./dist-types/index.d.ts",
   "exports": {
     ".": {
       "module": "./dist-esm/index.js",
-      "default": "./dist-cjs/index.js",
+      "require": "./dist-cjs/index.js",
       "types": "./dist-types/index.d.ts"
     },
     "./*": {
       "module": "./dist-esm/*.js",
-      "default": "./dist-cjs/*.js",
+      "require": "./dist-cjs/*.js",
       "types": "./dist-types/*.d.ts"
     },
     "./package.json": {

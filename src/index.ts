@@ -3,4 +3,5 @@ export type {
   Color,
   ContentOptions,
   TagName,
-} from './entities/index';
+  PrefixesConfig,
+} from './entities';

@@ -3,7 +3,9 @@ export type {
   Color,
   ContentOptions,
   TagName,
+  PrefixesConfig,
 } from './entities/index';
+export * from './reactComponents/createCss';
 export * from './reactComponents/DocumentProvider';
 export * from './reactComponents/NoPageBreak';
 export * from './reactComponents/PageCount';

@@ -50,7 +50,7 @@ export default defineConfig([
   {
     input: 'src/headless.ts',
     output: {
-      file: 'dist/headless.cjs',
+      dir: 'dist-cjs',
       sourcemap: true,
       format: 'iife',
     },

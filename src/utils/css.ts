@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { kebabCase } from 'lodash';
 
+// TODO: This is a bad idea since multiple matching rules will overwrite one another.
 export type SimpleCss = Record<
   string,
   {

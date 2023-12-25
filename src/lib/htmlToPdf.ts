@@ -6,9 +6,16 @@ import puppeteer, {
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
 import type { Headless } from '../headless';
+import { HEADLESS_PATH } from '../entities';
 import type { DocumentDom } from './htmlToDom';
 
 let browserPromise: null | Promise<Browser>;
+
+const resolve = import.meta?.url
+  ? createRequire(import.meta.url).resolve
+  : require.resolve;
+
+const ROOT_DIR = path.dirname(resolve('matti-docs/package.json'));
 
 // Close off Puppeteer to prevent lingering processes during dev.
 export const resetHtmlToPdf = async () => {
@@ -19,29 +26,20 @@ export const resetHtmlToPdf = async () => {
 };
 
 export type HtmlToPdfOptions = {
+  moduleDirectory?: string;
   styleSheets?: ReadonlyArray<string>;
   puppeteer?: PuppeteerLaunchOptions;
 };
 
 export const htmlToPdf = async (
   html: string,
-  { puppeteer: puppeteerOptions, ...options }: HtmlToPdfOptions,
+  {
+    puppeteer: puppeteerOptions,
+    moduleDirectory,
+    ...options
+  }: HtmlToPdfOptions,
 ) => {
-  let FRONTEND_PATH = '';
-  if (import.meta.url === undefined) {
-    // Netlify transpiles back to CJS.
-    // https://github.com/netlify/cli/issues/4601 This file is explicitly
-    // included by netlify.toml. TODO: Add to options, combined with
-    // puppeteerOptions. TODO: Infer from __dirname
-    FRONTEND_PATH = './.yalc/matti-docs/dist/headless.cjs';
-  } else {
-    FRONTEND_PATH = path.resolve(
-      path.dirname(
-        createRequire(import.meta.url).resolve('matti-docs/package.json'),
-      ),
-      './dist/headless.cjs',
-    );
-  }
+  const headlessPath = path.join(moduleDirectory ?? ROOT_DIR, HEADLESS_PATH);
 
   let page: undefined | Page = undefined;
   try {
@@ -55,7 +53,7 @@ export const htmlToPdf = async (
     const browser = await browserPromise;
     page = await browser.newPage();
     page.on('console', (msg) => console.log('Puppeteer:', msg.text()));
-    await page.addScriptTag({ path: FRONTEND_PATH });
+    await page.addScriptTag({ path: headlessPath });
     const pageSize = await page.evaluate(
       async (browserHtml, browserOptions) => {
         const headless = (window as any).headless as Headless;
