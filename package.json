@@ -6,6 +6,8 @@
   "files": [
     "dist/",
     "src/",
+    "bundler/",
+    "vite.config.*",
     "tsconfig.json"
   ],
   "exports": {
@@ -51,7 +53,8 @@
     "rollup-plugin-cleanup": "^3.2.1",
     "rollup-plugin-node-externals": "^6.1.2",
     "type-fest": "^4.6.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "vite": "^5.0.10"
   },
   "peerDependencies": {
     "@types/react": "18.x",
@@ -106,7 +109,7 @@
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
     "test": "vitest",
     "lint": "eslint ./src",
-    "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push --changed publish && rm -rf ./publish",
+    "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push --changed --pure publish && rm -rf ./publish",
     "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
   },
   "nodemonConfig": {
