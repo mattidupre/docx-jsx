@@ -4,18 +4,16 @@
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowJs": false,
+    "allowJs": true,
     "sourceMap": true,
     "strict": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "outDir": "./dist-types"
+    "outDir": "./dist"
   },
-  "tsc-alias": {
-    "resolveFullPaths": true
-  },
+  "declarationMap": true,
   "include": ["./src/**/*"]
 }

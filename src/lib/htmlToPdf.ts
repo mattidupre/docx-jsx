@@ -1,21 +1,15 @@
-import path from 'node:path';
-import { createRequire } from 'node:module';
+/* eslint-disable @typescript-eslint/consistent-type-imports */
 import puppeteer, {
   type Browser,
   type Page,
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
-import type { Headless } from '../headless';
-import { HEADLESS_PATH } from '../entities';
 import type { DocumentDom } from './htmlToDom';
+import htmlToDomCodeCjs from './htmlToDom?source';
+
+const htmlToDomCode = `(() => {const exports={};${htmlToDomCodeCjs};return exports;})()`;
 
 let browserPromise: null | Promise<Browser>;
-
-const resolve = import.meta?.url
-  ? createRequire(import.meta.url).resolve
-  : require.resolve;
-
-const ROOT_DIR = path.dirname(resolve('matti-docs/package.json'));
 
 // Close off Puppeteer to prevent lingering processes during dev.
 export const resetHtmlToPdf = async () => {
@@ -26,21 +20,14 @@ export const resetHtmlToPdf = async () => {
 };
 
 export type HtmlToPdfOptions = {
-  moduleDirectory?: string;
   styleSheets?: ReadonlyArray<string>;
   puppeteer?: PuppeteerLaunchOptions;
 };
 
 export const htmlToPdf = async (
   html: string,
-  {
-    puppeteer: puppeteerOptions,
-    moduleDirectory,
-    ...options
-  }: HtmlToPdfOptions,
+  { puppeteer: puppeteerOptions, ...options }: HtmlToPdfOptions,
 ) => {
-  const headlessPath = path.join(moduleDirectory ?? ROOT_DIR, HEADLESS_PATH);
-
   let page: undefined | Page = undefined;
   try {
     if (!browserPromise) {
@@ -52,19 +39,19 @@ export const htmlToPdf = async (
 
     const browser = await browserPromise;
     page = await browser.newPage();
+
+    await page.setRequestInterception(true);
+
     page.on('console', (msg) => console.log('Puppeteer:', msg.text()));
-    await page.addScriptTag({ path: headlessPath });
+
     const pageSize = await page.evaluate(
-      async (browserHtml, browserOptions) => {
-        const headless = (window as any).headless as Headless;
-        if (!headless) {
-          throw new Error('Headless script not injected into browser.');
-        }
+      async (browserHtml, browserOptions, browserCode) => {
+        const { htmlToDom } = eval(browserCode) as typeof import('./htmlToDom');
 
         let documentObj = {} as DocumentDom;
 
         document.body.appendChild(
-          await headless.htmlToDom(browserHtml, {
+          await htmlToDom(browserHtml, {
             ...browserOptions,
             onDocument: (doc) => {
               documentObj = doc;
@@ -76,6 +63,7 @@ export const htmlToPdf = async (
       },
       html,
       options,
+      htmlToDomCode,
     );
 
     return await page.pdf({

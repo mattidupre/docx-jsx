@@ -11,8 +11,6 @@ export const PACKAGE_NAME: Lowercase<string> = 'matti-docs';
 
 export const DEFAULT_PREFIX: Lowercase<string> = PACKAGE_NAME;
 
-export const HEADLESS_PATH = './dist-cjs/headless.js';
-
 export type StyleSheetsValue =
   | undefined
   | string
