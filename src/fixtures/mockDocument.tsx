@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { useMemo } from 'react';
 import {
   DocumentProvider,
   Stack,
@@ -7,13 +8,17 @@ import {
   PageCount,
   NoPageBreak,
   type DocumentProviderProps,
+  IfEnvironment,
 } from '../reactComponents';
+import { createMockVariantsConfig } from './mockVariantsConfig.js';
 
 const PageCounter = () => {
   return (
-    <span>
-      Page <PageNumber /> of <PageCount />
-    </span>
+    <IfEnvironment not documentType="web">
+      <span>
+        Page <PageNumber /> of <PageCount />
+      </span>
+    </IfEnvironment>
   );
 };
 
@@ -50,18 +55,17 @@ const mockPageTypes = (prefix: string) => {
   } as const;
 };
 
-export function MockDocument(props: Partial<DocumentProviderProps>) {
+export function MockDocument({
+  variants: variantsProp,
+  ...props
+}: Partial<DocumentProviderProps>) {
+  const variants = useMemo(
+    () => variantsProp || createMockVariantsConfig(),
+    [variantsProp],
+  );
+
   return (
-    <DocumentProvider
-      size={{ width: '8.5in', height: '11in' }}
-      variants={{
-        mockVariant: {
-          color: '#00ff00',
-          fontWeight: 'bold',
-        },
-      }}
-      {...props}
-    >
+    <DocumentProvider variants={variants} {...props}>
       <Stack
         innerPageClassName="preview__page"
         layouts={mockPageTypes('FIRST SECTION')}

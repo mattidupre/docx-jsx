@@ -6,12 +6,12 @@ import {
   type ReactEnvironmentContextValue,
 } from './entities';
 
-type Environment = NonNullable<Required<ReactEnvironmentContextValue>>;
+type Environment = Required<ReactEnvironmentContextValue>;
 
-const DEFAULT_ENVIRONMENT: Environment = {
+const DEFAULT_ENVIRONMENT = {
   documentType: 'web',
   isPreview: false,
-};
+} as const satisfies Environment;
 
 type UseEnvironmentOptions = {
   disableAssert?: boolean;
@@ -23,7 +23,7 @@ type UseEnvironmentOptions = {
  */
 export const useEnvironment = ({
   disableAssert = false,
-}: UseEnvironmentOptions = {}): Environment => {
+}: UseEnvironmentOptions = {}) => {
   const documentConfig = useContext(ReactDocumentContext);
   if (!documentConfig && !disableAssert) {
     throw new Error('Document Context not found.');

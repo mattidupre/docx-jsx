@@ -12,9 +12,7 @@ type ExecutionProviderProps = ReactEnvironmentContextValue & {
 const PROPERTIES = [
   'documentType',
   'isPreview',
-] as const satisfies ReadonlyArray<
-  keyof NonNullable<ReactEnvironmentContextValue>
->;
+] as const satisfies ReadonlyArray<keyof ReactEnvironmentContextValue>;
 
 const compareDefinedProperties = <T extends Record<string, unknown>>(
   valueA: T,
@@ -38,19 +36,20 @@ export function InternalEnvironmentProvider({
 
   const newContextValue = useMemo(
     () =>
-      extendDefined<NonNullable<ReactEnvironmentContextValue>>(
-        prevContextValue ?? {},
-        {
-          documentType,
-          isPreview,
-        },
-      ),
+      extendDefined(prevContextValue ?? ({} as ReactEnvironmentContextValue), {
+        documentType,
+        isPreview,
+      }),
     [documentType, isPreview, prevContextValue],
   );
 
   PROPERTIES.forEach((key) => {
     if (
-      !compareDefinedProperties(prevContextValue ?? {}, newContextValue, key)
+      !compareDefinedProperties(
+        prevContextValue ?? ({} as ReactEnvironmentContextValue),
+        newContextValue,
+        key,
+      )
     ) {
       throw new Error(`Do not override ${key}.`);
     }

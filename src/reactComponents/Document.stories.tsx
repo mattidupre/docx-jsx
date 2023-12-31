@@ -23,7 +23,7 @@ export const DocumentWeb: Story = {
   render: () => <Web />,
 };
 
-export const Preview: Story = {
+export const PdfPreview: Story = {
   render: () => (
     <DocumentPreview
       DocumentRoot={DocumentRoot}

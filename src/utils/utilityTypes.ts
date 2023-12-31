@@ -1,4 +1,12 @@
+import type { MutableRefObject, RefObject } from 'react';
 import type { IfNever, IfUnknown } from 'type-fest';
+
+export type AsMutableRef<T extends RefObject<any> | MutableRefObject<any>> =
+  T extends RefObject<infer V>
+    ? V
+    : T extends MutableRefObject<infer V>
+    ? V
+    : never;
 
 // /**
 //  * If value is ArrayLike<never>, convert to never.

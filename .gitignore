@@ -1,5 +1,6 @@
 # Dist
 dist*
+/publish/
 
 # Apple
 .DS_Store

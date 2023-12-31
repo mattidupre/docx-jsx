@@ -19,8 +19,8 @@ export type TypographyProps = ExtendableProps &
         ContentParagraphOptions)
   ) & { variant?: VariantName; children: ReactNode };
 
-// TODO: If not within a <Document> or if target is web: do not encode data set
-// CSS variables on element
+// TODO: If not within a <Document> or if target is web:
+// do not encode data set CSS variables on element
 
 export function Typography({
   as = 'span',
@@ -32,6 +32,7 @@ export function Typography({
 }: TypographyProps) {
   return (
     <InternalElement
+      disableInDocumentAssert
       tagName={as}
       elementType="htmltag"
       variant={variant}

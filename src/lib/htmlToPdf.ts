@@ -9,26 +9,19 @@ import htmlToDomCodeCjs from './htmlToDom?source';
 
 const htmlToDomCode = `(() => {const exports={};${htmlToDomCodeCjs};return exports;})()`;
 
-let browserPromise: null | Promise<Browser>;
-
-// Close off Puppeteer to prevent lingering processes during dev.
-export const resetHtmlToPdf = async () => {
-  if (browserPromise) {
-    const browser = await browserPromise;
-    await browser.close();
-  }
-};
+let browserPromise: undefined | Promise<Browser>;
 
 export type HtmlToPdfOptions = {
   styleSheets?: ReadonlyArray<string>;
   puppeteer?: PuppeteerLaunchOptions;
+  closeBrowser?: boolean;
 };
 
 export const htmlToPdf = async (
   html: string,
-  { puppeteer: puppeteerOptions, ...options }: HtmlToPdfOptions,
-) => {
-  let page: undefined | Page = undefined;
+  { puppeteer: puppeteerOptions, closeBrowser, ...options }: HtmlToPdfOptions,
+): Promise<Buffer> => {
+  let pagePromise: undefined | Promise<Page> = undefined;
   try {
     if (!browserPromise) {
       browserPromise = puppeteer.launch({
@@ -38,7 +31,7 @@ export const htmlToPdf = async (
     }
 
     const browser = await browserPromise;
-    page = await browser.newPage();
+    const page = await (pagePromise = browser.newPage());
 
     await page.setRequestInterception(true);
 
@@ -66,12 +59,23 @@ export const htmlToPdf = async (
       htmlToDomCode,
     );
 
-    return await page.pdf({
+    const result = await page.pdf({
       ...pageSize,
       printBackground: true,
       displayHeaderFooter: false,
     });
+
+    return result;
   } finally {
-    page?.close();
+    if (pagePromise) {
+      const page = await pagePromise;
+      await page?.close();
+    }
+    if (closeBrowser && browserPromise) {
+      const thisBrowserPromise = browserPromise;
+      browserPromise = undefined;
+      const browser = await thisBrowserPromise;
+      await browser?.close();
+    }
   }
 };

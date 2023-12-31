@@ -1,10 +1,9 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode, useContext } from 'react';
+import { omit } from 'lodash';
 import { assignDocumentOptions, type DocumentOptions } from '../entities';
-import { createEnvironmentCss } from '../lib/toCss';
-import { ReactDocumentContext } from './entities';
-import { useEnvironment } from './useEnvironment';
+import { ReactDocumentContext, ReactContentContext } from './entities';
 import { InternalElement } from './InternalElement';
-import { useInjectStyleSheets } from './useInjectStyleSheets';
+import { ContentProvider } from './ContentProvider';
 
 export type DocumentProviderProps = DocumentOptions & {
   injectEnvironmentCss?: boolean;
@@ -13,39 +12,39 @@ export type DocumentProviderProps = DocumentOptions & {
 
 export function DocumentProvider({
   injectEnvironmentCss,
+  variants,
+  prefixes,
   children,
-  ...props
 }: DocumentProviderProps) {
+  const prevDocumentOptions = (useContext(ReactContentContext) ??
+    {}) satisfies DocumentOptions;
+
   const documentOptions = useMemo(
-    () => assignDocumentOptions({}, props),
-    [props],
-  );
-  const { variants, prefixes } = documentOptions;
-
-  const { documentType } = useEnvironment({
-    disableAssert: true,
-  });
-
-  const environmentStyleSheets = useMemo(
     () =>
-      documentType === 'web' && injectEnvironmentCss
-        ? [createEnvironmentCss({ prefixes, variants })]
-        : [],
-    [documentType, injectEnvironmentCss, prefixes, variants],
+      assignDocumentOptions({}, { variants, prefixes }, prevDocumentOptions),
+    [variants, prefixes, prevDocumentOptions],
   );
 
-  useInjectStyleSheets(environmentStyleSheets);
+  const documentContextValue = useMemo(
+    () => omit(documentOptions, ['variants', 'prefixes']),
+    [documentOptions],
+  );
 
   return (
-    <ReactDocumentContext.Provider value={documentOptions}>
-      <InternalElement
-        preferFragment
-        tagName="div"
-        elementType="document"
-        elementOptions={documentOptions}
-      >
-        {children}
-      </InternalElement>
-    </ReactDocumentContext.Provider>
+    <ContentProvider
+      injectEnvironmentCss={injectEnvironmentCss}
+      {...documentOptions}
+    >
+      <ReactDocumentContext.Provider value={documentContextValue}>
+        <InternalElement
+          preferFragment
+          tagName="div"
+          elementType="document"
+          elementOptions={documentOptions}
+        >
+          {children}
+        </InternalElement>
+      </ReactDocumentContext.Provider>
+    </ContentProvider>
   );
 }

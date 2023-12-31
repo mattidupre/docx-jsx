@@ -24,6 +24,15 @@ export const toDefinedArray = <T>(value: T): ToDefinedArray<T> => {
   return [value] as ToDefinedArray<T>;
 };
 
+/**
+ * Like Array.join, but completely flattens and filters lengthy strings first.
+ */
+export const joinArrayStrings = (array: any, separator: string) =>
+  [array]
+    .flat(Infinity)
+    .filter((value) => typeof value === 'string' && value.length)
+    .join(separator);
+
 export type ArrayObjectValues<T extends ReadonlyArray<any>> =
   T extends ReadonlyArray<infer I>
     ? I extends KeyedObject

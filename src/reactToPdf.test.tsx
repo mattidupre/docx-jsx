@@ -18,5 +18,5 @@ it('runs without error', async () => {
     puppeteer: PUPPETEER_OPTIONS,
     styleSheets: mockStyleSheets,
   });
-  await writeTestFile('reactToPdf.pdf', buffer);
+  await writeTestFile('reactToPdf.pdf', buffer!);
 });

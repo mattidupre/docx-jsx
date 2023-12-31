@@ -12,7 +12,8 @@
     "strict": true,
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "types": ["vitest/importMeta"]
   },
   "declarationMap": true,
   "include": ["./src/**/*"]

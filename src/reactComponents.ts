@@ -6,7 +6,9 @@ export type {
   PrefixesConfig,
 } from './entities/index';
 export * from './reactComponents/createCss';
+export * from './reactComponents/ContentProvider';
 export * from './reactComponents/DocumentProvider';
+export * from './reactComponents/IfEnvironment';
 export * from './reactComponents/NoPageBreak';
 export * from './reactComponents/PageCount';
 export * from './reactComponents/PageNumber';

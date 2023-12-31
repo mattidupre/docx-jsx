@@ -1,4 +1,4 @@
-import { isObject, map } from 'lodash';
+import { isObject, map, merge } from 'lodash';
 import { toLowercase } from '../utils/string';
 import { assignDefined, mergeWithDefault } from '../utils/object';
 import type { UnitsNumber } from '../utils/units';
@@ -154,21 +154,21 @@ export type VariantName = string;
 
 export type VariantsConfig = Record<string, VariantConfig>;
 
-const DEFAULT_VARIANTS: VariantsConfig = {
-  document: {},
-  title: {},
-  heading1: {},
-  heading2: {},
-  heading3: {},
-  heading4: {},
-  heading5: {},
-  heading6: {},
-  strong: {},
-  listParagraph: {},
-  hyperlink: {},
-};
+const INTRINSIC_VARIANT_NAMES = [
+  'document',
+  'title',
+  'heading1',
+  'heading2',
+  'heading3',
+  'heading4',
+  'heading5',
+  'heading6',
+  'strong',
+  'listParagraph',
+  'hyperlink',
+] as const satisfies ReadonlyArray<keyof VariantsConfig>;
 
-export type IntrinsicVariantNames = keyof typeof DEFAULT_VARIANTS;
+export type IntrinsicVariantName = (typeof INTRINSIC_VARIANT_NAMES)[number];
 
 export const INTRINSIC_TAG_NAMES_BY_VARIANT = {
   heading1: 'h1',
@@ -177,12 +177,11 @@ export const INTRINSIC_TAG_NAMES_BY_VARIANT = {
   heading4: 'h4',
   heading5: 'h5',
   heading6: 'h6',
-} satisfies Partial<Record<IntrinsicVariantNames, TagName>>;
+} satisfies Partial<Record<IntrinsicVariantName, TagName>>;
 
-export const assignVariants = (
-  ...args: ReadonlyArray<undefined | VariantsConfig>
-): VariantsConfig =>
-  assignDefined(args[0] ?? {}, ...args.filter((v) => v !== undefined));
+export const assignVariants = <T extends VariantsConfig = VariantsConfig>(
+  ...args: ReadonlyArray<undefined | Partial<T>>
+): T => merge((args[0] ?? {}) as T, ...args.filter((v) => v !== undefined));
 
 export type DocumentOptions = {
   size?: PageSize;
@@ -201,11 +200,7 @@ export const assignDocumentOptions = (
 ): DocumentConfig =>
   assignDefined((args[0] ?? {}) as DocumentConfig, {
     size: mergeWithDefault(DEFAULT_PAGE_SIZE, ...pluckFromArray(args, 'size')),
-    variants: assignVariants(
-      args[0]?.variants,
-      DEFAULT_VARIANTS,
-      ...map(args, 'variants'),
-    ),
+    variants: assignVariants(args[0]?.variants, ...map(args, 'variants')),
     prefixes: assignPrefixesOptions(...pluckFromArray(args, 'prefixes')),
   });
 
@@ -234,6 +229,7 @@ export type ContentOptions = Partial<{
   fontWeight: 'bold';
   fontStyle: 'italic';
   fontSize: `${number}rem`;
+  fontFamily: string;
   color: Color;
   highlightColor: Color;
   textTransform: 'uppercase';
@@ -260,6 +256,7 @@ const TEXT_OPTIONS_KEYS = [
   'fontWeight',
   'fontStyle',
   'fontSize',
+  'fontFamily',
   'color',
   'highlightColor',
   'textTransform',

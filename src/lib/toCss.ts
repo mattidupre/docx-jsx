@@ -1,7 +1,14 @@
+import type { Entries } from 'type-fest';
+import { mapValues, kebabCase, mapKeys } from 'lodash';
 import { simpleCssToString } from '../utils/css';
 import type { SimpleCss } from '../utils/css';
 import { getValueOf } from '../utils/object';
-import { objectToCssVars, cssVarKey, cssVarProperty } from '../utils/cssVars';
+import {
+  objectToCssVars,
+  cssVarKey,
+  cssVarProperty,
+  cssProperty,
+} from '../utils/cssVars';
 import {
   INTRINSIC_TEXT_OPTIONS,
   INTRINSIC_TAG_NAMES_BY_VARIANT,
@@ -10,6 +17,7 @@ import {
   type VariantName,
   type ContentElementOptions,
 } from '../entities';
+import { joinArrayStrings } from '../utils/array';
 
 type BaseOptions = {
   prefixes: PrefixesConfig;
@@ -24,14 +32,51 @@ export const variantNameToClassName = <
 ): TVariantName extends undefined ? undefined | string : string =>
   variantName && `${prefixes.variantClassName}${variantName}`;
 
-export const optionsToCssVars = (
-  { prefixes }: Pick<BaseOptions, 'prefixes'>,
-  options: ContentElementOptions = {},
+export const createCssVarKey = (
+  {
+    prefixes,
+    variantName,
+  }: Pick<BaseOptions, 'prefixes'> & { variantName?: VariantName },
+  key: string,
 ) => {
-  return objectToCssVars(options, prefixes.cssVariable);
+  return `--${prefixes.cssVariable}${kebabCase(variantName)}-${kebabCase(key)}`;
 };
 
-export const optionsToStyle = <TKeys extends keyof ContentElementOptions>(
+export const optionsToCssVars = (
+  {
+    prefixes,
+    variantName,
+  }: Pick<BaseOptions, 'prefixes'> & { variantName?: VariantName },
+  options: ContentElementOptions = {},
+) => {
+  const parsedOptions = mapValues(options, (value, key) => {
+    const cssVarValue =
+      variantName && createCssVarKey({ prefixes, variantName }, key);
+    return cssProperty(cssVarValue, value);
+  });
+
+  return objectToCssVars(parsedOptions, {
+    prefix: prefixes.cssVariable,
+  });
+};
+
+export const variantsToCssVars = (
+  { prefixes }: Pick<BaseOptions, 'prefixes'>,
+  variants: Partial<VariantsConfig>,
+) => {
+  const cssVars: ReturnType<typeof optionsToCssVars> = {};
+  for (const variantName in variants) {
+    Object.assign(
+      cssVars,
+      mapKeys(variants[variantName], (value, key) =>
+        createCssVarKey({ prefixes, variantName }, key),
+      ),
+    );
+  }
+  return cssVars;
+};
+
+const optionsToStyle = <TKeys extends keyof ContentElementOptions>(
   { prefixes }: Pick<BaseOptions, 'prefixes'>,
   optionsKeys: ReadonlyArray<TKeys>,
   defaultValues: Partial<Pick<ContentElementOptions, TKeys>> = {},
@@ -74,6 +119,7 @@ const createIntrinsics = ({
         'fontWeight',
         'fontStyle',
         'fontSize',
+        'fontFamily',
         'textTransform',
         'textDecoration',
       ],
@@ -89,20 +135,31 @@ const createIntrinsics = ({
   ),
 });
 
-const createVariants = ({ prefixes, variants }: BaseOptions): SimpleCss =>
-  Object.fromEntries(
-    Object.entries(variants).map(([variantName, variant]) => {
-      let selector = `.${variantNameToClassName({ prefixes }, variantName)}`;
-      const intrinsicTagName = getValueOf(
-        variantName,
-        INTRINSIC_TAG_NAMES_BY_VARIANT,
-      );
-      if (intrinsicTagName) {
-        selector += `, ${intrinsicTagName}`;
-      }
-      return [[selector], optionsToCssVars({ prefixes }, variant)];
-    }),
+const createVariants = ({ prefixes, variants }: BaseOptions): SimpleCss => {
+  return Object.fromEntries(
+    Object.entries(variants).reduce((entries, [variantName, variantConfig]) => {
+      const variantSelectors = [
+        `.${variantNameToClassName({ prefixes }, variantName)}`,
+        getValueOf(variantName, INTRINSIC_TAG_NAMES_BY_VARIANT),
+      ];
+
+      entries.push([
+        joinArrayStrings(variantSelectors, ', '),
+        optionsToCssVars({ prefixes }, variantConfig),
+      ]);
+
+      entries.push([
+        joinArrayStrings(
+          [...variantSelectors, ...variantSelectors.map((s) => s && `${s} *`)],
+          ', ',
+        ),
+        optionsToCssVars({ prefixes, variantName }, variantConfig),
+      ]);
+
+      return entries;
+    }, [] as Entries<SimpleCss>),
   );
+};
 
 export const createEnvironmentSimpleCss = (
   options: BaseOptions,

@@ -5,7 +5,7 @@ import { ReactStackContext } from './entities';
 export const usePageMargins = (): PageMargin => {
   const stackConfig = useContext(ReactStackContext);
   if (!stackConfig) {
-    throw new Error('Cannot determine page margins outside stack.');
+    throw new Error('Cannot determine page margins outside stack');
   }
   return stackConfig.margin;
 };

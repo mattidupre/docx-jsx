@@ -1,10 +1,13 @@
 import { createContext, type CSSProperties } from 'react';
+import type { Except } from 'type-fest';
 import type {
   DocumentConfig,
   StackConfig,
   ContentOptions,
   VariantName,
+  VariantsConfig,
   DocumentType,
+  PrefixesConfig,
 } from '../entities';
 
 export type ExtendableProps = {
@@ -16,16 +19,34 @@ export type ContentProps = ContentOptions & {
   variant: VariantName;
 };
 
-export type ReactEnvironmentContextValue =
-  | undefined
-  | { documentType?: DocumentType; isPreview?: boolean };
+export type ReactContentContextValue<
+  T extends VariantsConfig = VariantsConfig,
+> = {
+  variants: T;
+  prefixes: PrefixesConfig;
+};
 
-export const ReactEnvironmentContext =
-  createContext<ReactEnvironmentContextValue>(undefined);
+export const ReactContentContext = createContext<
+  undefined | ReactContentContextValue
+>(undefined);
 
-export const ReactDocumentContext = createContext<undefined | DocumentConfig>(
-  undefined,
-);
+export type ReactEnvironmentContextValue = {
+  documentType: DocumentType;
+  isPreview?: boolean;
+};
+
+export const ReactEnvironmentContext = createContext<
+  undefined | ReactEnvironmentContextValue
+>(undefined);
+
+export type ReactDocumentContextValue = Except<
+  DocumentConfig,
+  'variants' | 'prefixes'
+>;
+
+export const ReactDocumentContext = createContext<
+  undefined | ReactDocumentContextValue
+>(undefined);
 
 export const ReactStackContext = createContext<undefined | StackConfig>(
   undefined,

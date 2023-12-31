@@ -3,9 +3,9 @@ import type { PageSize } from '../entities';
 import { ReactDocumentContext } from './entities';
 
 export const usePageSize = (): PageSize => {
-  const documentConfig = useContext(ReactDocumentContext);
-  if (!documentConfig) {
-    throw new Error('Cannot determine page size outside document.');
+  const documentContext = useContext(ReactDocumentContext);
+  if (!documentContext) {
+    throw new Error('Cannot determine page size outside document provider');
   }
-  return documentConfig.size;
+  return documentContext.size;
 };

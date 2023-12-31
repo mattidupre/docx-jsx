@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import { type PluginOption } from 'vite';
 import pluginSourceLoader from './bundler/pluginSourceLoader';
 import pluginNodeExternals from 'rollup-plugin-node-externals';
+import { optimizeLodashImports as pluginLodash } from '@optimize-lodash/rollup-plugin';
 
 export default defineConfig({
   build: {
@@ -20,9 +21,11 @@ export default defineConfig({
   plugins: [
     { ...pluginNodeExternals(), enforce: 'pre' } as PluginOption,
     pluginSourceLoader() as PluginOption,
+    pluginLodash(),
   ],
   test: {
-    include: ['./src/**.test.{ts,tsx}'],
+    include: ['./src/**/*.test.{js,jsx,ts,tsx}'],
+    // includeSource: ['./src/**/*.{js,jsx,ts,tsx}'],
     setupFiles: ['./testSetup.js'],
   },
 });

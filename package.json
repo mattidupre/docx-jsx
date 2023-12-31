@@ -12,7 +12,7 @@
   ],
   "exports": {
     "./*": {
-      "module": "./dist/*.js",
+      "import": "./dist/*.js",
       "require": "./dist/*.cjs",
       "types": "./dist/*.d.ts"
     },
@@ -109,7 +109,7 @@
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
     "test": "vitest",
     "lint": "eslint ./src",
-    "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push --changed --pure publish && rm -rf ./publish",
+    "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push publish && rm -rf ./publish",
     "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
   },
   "nodemonConfig": {
