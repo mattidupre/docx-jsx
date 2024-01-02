@@ -17,8 +17,13 @@ import {
   type ICharacterStyleOptions,
   ExternalHyperlink,
 } from 'docx';
-import { pick, startCase } from 'lodash';
-import type { Color, VariantsConfig, ContentOptions } from '../entities';
+import { mapValues, pick, startCase } from 'lodash';
+import type {
+  Color,
+  VariantsConfig,
+  ContentOptions,
+  ContentConfig,
+} from '../entities';
 import { assignDefined } from '../utils/object';
 import { mapHtmlToDocument } from './mapHtmlToDocument';
 
@@ -46,39 +51,49 @@ class Paragraph extends DocxParagraph {
 
 const parseColor = (color?: Color) => color && color.replace('#', '');
 
-const parseTextSize = (fontSize: ContentOptions['fontSize']) =>
+const parseTextSize = (fontSize: ContentConfig['fontSize']) =>
   fontSize !== undefined ? parseFloat(fontSize) * 22 : undefined;
 
-const parseContentOptions = ({
-  textAlign,
-  lineHeight,
-  fontSize,
-  color,
-  highlightColor,
-  fontWeight,
-  fontStyle,
-  textTransform,
-  textDecoration,
-  superScript,
-  subScript,
-}: ContentOptions = {}): IParagraphOptions & IRunOptions => ({
-  spacing: {
-    line: lineHeight && parseFloat(lineHeight) * 240,
-  },
-  alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
-  size: parseTextSize(fontSize),
-  color: color && color.replace('#', ''),
-  shading: highlightColor && {
-    fill: parseColor(highlightColor),
-  },
-  bold: fontWeight === 'bold',
-  italics: fontStyle === 'italic',
-  allCaps: textTransform === 'uppercase',
-  underline: textDecoration === 'underline' ? {} : undefined,
-  strike: textDecoration === 'line-through' ? true : undefined,
-  superScript,
-  subScript,
-});
+const parseContentConfig = (
+  contentOptions: ContentOptions = {},
+): IParagraphOptions & IRunOptions => {
+  const {
+    textAlign,
+    lineHeight,
+    fontSize,
+    color,
+    highlightColor,
+    fontWeight,
+    fontStyle,
+    textTransform,
+    textDecoration,
+    superScript,
+    subScript,
+  } = mapValues(contentOptions, (value) => {
+    if (Array.isArray(value)) {
+      return value[value.length - 1];
+    }
+    return value;
+  }) as ContentConfig;
+  return {
+    spacing: {
+      line: lineHeight && parseFloat(lineHeight) * 240,
+    },
+    alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
+    size: parseTextSize(fontSize),
+    color: color && color.replace('#', ''),
+    shading: highlightColor && {
+      fill: parseColor(highlightColor),
+    },
+    bold: fontWeight === 'bold',
+    italics: fontStyle === 'italic',
+    allCaps: textTransform === 'uppercase',
+    underline: textDecoration === 'underline' ? {} : undefined,
+    strike: textDecoration === 'line-through' ? true : undefined,
+    superScript,
+    subScript,
+  };
+};
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -110,7 +125,7 @@ const DOCX_TEXT_RUN_OPTIONS_KEYS = [
 ] as const satisfies ReadonlyArray<keyof IRunOptions>;
 
 const parseTextRunOptions = (contentOptions: ContentOptions): IRunOptions =>
-  pick(parseContentOptions(contentOptions), DOCX_TEXT_RUN_OPTIONS_KEYS);
+  pick(parseContentConfig(contentOptions), DOCX_TEXT_RUN_OPTIONS_KEYS);
 
 const DOCX_PARAGRAPH_OPTIONS_KEYS = [
   'spacing',
@@ -120,7 +135,7 @@ const DOCX_PARAGRAPH_OPTIONS_KEYS = [
 const parseParagraphOptions = (
   contentOptions: ContentOptions,
 ): IParagraphOptions =>
-  pick(parseContentOptions(contentOptions), DOCX_PARAGRAPH_OPTIONS_KEYS);
+  pick(parseContentConfig(contentOptions), DOCX_PARAGRAPH_OPTIONS_KEYS);
 
 const parseVariants = (variants: VariantsConfig): IStylesOptions => ({
   paragraphStyles: Object.entries(variants).map(

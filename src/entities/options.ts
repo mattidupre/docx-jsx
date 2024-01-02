@@ -220,9 +220,7 @@ export const assignStackOptions = (
   ...args: ReadonlyArray<undefined | StackOptions>
 ): StackConfig => mergeWithDefault({ margin: DEFAULT_PAGE_MARGIN }, ...args);
 
-// TODO: add false since undefined will not overwrite parent. TODO: Rename to
-// TypographyOptions.
-export type ContentOptions = Partial<{
+export type ContentConfig = Partial<{
   breakInside: 'avoid';
   textAlign: 'left' | 'center' | 'right' | 'justify';
   lineHeight: `${number}`;
@@ -237,6 +235,14 @@ export type ContentOptions = Partial<{
   superScript: boolean;
   subScript: boolean;
 }>;
+
+export type ContentOptions = {
+  [K in keyof ContentConfig]:
+    | undefined
+    // | false // TODO: Use to overwrite option? default / inherited?
+    | ContentConfig[K]
+    | [...ReadonlyArray<undefined | `--${string}`>, ContentConfig[K]];
+};
 
 export const assignContentOptions = (
   ...[args0, ...args]: ReadonlyArray<undefined | ContentOptions>

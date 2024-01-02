@@ -2,7 +2,7 @@ import type { VariantConfig, VariantsConfig } from 'src/entities';
 
 const MOCK_VARIANTS = {
   mockVariant: {
-    color: '#00ff00',
+    color: ['--mock-color', '#00ff00'],
     fontWeight: 'bold',
   },
   title: {

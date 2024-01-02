@@ -1,4 +1,6 @@
 {
+  "typescript.preferences.importModuleSpecifier": "relative",
+
   // https://github.com/microsoft/vscode-eslint/issues/1620
 
   "eslint.experimental.useFlatConfig": true,

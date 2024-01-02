@@ -16,6 +16,7 @@ import {
   type VariantsConfig,
   type VariantName,
   type ContentElementOptions,
+  type VariantConfig,
 } from '../entities';
 import { joinArrayStrings } from '../utils/array';
 
@@ -47,12 +48,15 @@ export const optionsToCssVars = (
     prefixes,
     variantName,
   }: Pick<BaseOptions, 'prefixes'> & { variantName?: VariantName },
-  options: ContentElementOptions = {},
+  options: VariantConfig = {},
 ) => {
   const parsedOptions = mapValues(options, (value, key) => {
     const cssVarValue =
       variantName && createCssVarKey({ prefixes, variantName }, key);
-    return cssProperty(cssVarValue, value);
+    return cssProperty(
+      cssVarValue,
+      ...(Array.isArray(value) ? value : [value]),
+    );
   });
 
   return objectToCssVars(parsedOptions, {

@@ -13,6 +13,9 @@ export type MergedObjectValues<T extends KeyedObject> = {
     : never;
 };
 
+export const isKeyedObject = (value: any): value is KeyedObject =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 export const assignDefined = <T extends KeyedObject>(
   value0: T,
   ...values: ReadonlyArray<undefined | Partial<T>>
@@ -76,3 +79,30 @@ export const getValueOf = <
     undefined | TValue[keyof TValue],
     TKey extends keyof TValue ? TValue[TKey] : undefined | TValue[keyof TValue]
   >;
+
+/**
+ * Returns an object with no nested plain object children.
+ * Other children (e.g., arrays, functions) are left as-is.
+ */
+export const joinNestedKeys = (
+  object: KeyedObject,
+  separator: string,
+): KeyedObject => {
+  const newObject: KeyedObject = {};
+  for (const key in object) {
+    const value = object[key];
+    if (typeof value === 'function' || !isKeyedObject(value)) {
+      newObject[key] = value;
+    } else {
+      const childObject = joinNestedKeys(value, separator);
+      for (const subKey in childObject) {
+        const parsedKey = `${key}${separator}${subKey}`;
+        if (parsedKey in object) {
+          throw new Error(`Key ${parsedKey} already exists in object`);
+        }
+        newObject[parsedKey] = childObject[subKey];
+      }
+    }
+  }
+  return newObject;
+};
