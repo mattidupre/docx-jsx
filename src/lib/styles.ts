@@ -8,7 +8,7 @@ import {
   type VariantName,
 } from '../entities';
 import { getValueOf } from '../utils/object';
-import { joinKebab } from '../utils/string';
+import { joinKebab, prefixKebab } from '../utils/string';
 import {
   type CssRulesArray,
   cssRulesArrayToString,
@@ -21,7 +21,7 @@ const TYPOGRAPHY_CSS_PROPERTIES = TYPOGRAPHY_CSS_KEYS.map(kebabCase);
 export const variantNameToClassName = (
   { prefixes }: { prefixes: PrefixesConfig },
   variantName: VariantName,
-) => joinKebab(prefixes.variantClassName, variantName);
+) => prefixKebab(prefixes.variantClassName, variantName);
 
 export const typographyOptionsToStyleVars = (
   options: {
@@ -43,7 +43,7 @@ export const variantsToStyleVars = (
     prefix: options.prefixes.cssVariable,
   });
 
-export const variantsToCssRules = (options: {
+export const createStyleArray = (options: {
   variants: Variants;
   prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
 }): CssRulesArray => {
@@ -101,6 +101,6 @@ export const variantsToCssRules = (options: {
   return rules;
 };
 
-export const variantsToCssString = (
-  ...args: Parameters<typeof variantsToCssRules>
-) => cssRulesArrayToString(variantsToCssRules(...args));
+export const createStyleString = (
+  ...args: Parameters<typeof createStyleArray>
+) => cssRulesArrayToString(createStyleArray(...args));

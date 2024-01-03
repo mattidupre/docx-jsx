@@ -13,7 +13,7 @@ import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument';
 import {
   variantNameToClassName,
   typographyOptionsToStyleVars,
-  variantsToCssString,
+  createStyleString,
 } from './styles';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
@@ -87,7 +87,7 @@ export const htmlToDom = async (
 
   const { size, stacks: stacksOption, prefixes } = documentObj;
 
-  const documentStyleCss = variantsToCssString(documentObj);
+  const documentStyleCss = createStyleString(documentObj);
 
   const styleSheets = await toCssStyleSheets(
     ...[...initialStyleSheetsOption, documentStyleCss, ...styleSheetsOption],

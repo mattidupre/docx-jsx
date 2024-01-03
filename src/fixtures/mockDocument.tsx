@@ -6,7 +6,7 @@ import {
   Typography,
   PageNumber,
   PageCount,
-  NoPageBreak,
+  PageBreakAvoid,
   type DocumentProviderProps,
   IfEnvironment,
 } from '../reactComponents';
@@ -172,7 +172,7 @@ export function MockDocument({
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
         </Typography>
-        <NoPageBreak>
+        <PageBreakAvoid>
           <h2>NoPageBreak</h2>
           <p>
             Call me Ishmael. Some years ago—never mind how long precisely—having
@@ -205,7 +205,7 @@ export function MockDocument({
             other, cherish very nearly the same feelings towards the ocean with
             me.
           </p>
-        </NoPageBreak>
+        </PageBreakAvoid>
       </Stack>
 
       <Stack

@@ -3,15 +3,15 @@ import {
   createMockPrefixesConfig,
   createMockVariantsConfig,
 } from '../fixtures';
-import { variantsToCssRules, variantsToCssString } from './styles';
+import { createStyleArray, createStyleString } from './styles';
 
 const createOptions = () => ({
   variants: createMockVariantsConfig(),
   prefixes: createMockPrefixesConfig(),
 });
 
-test('variantsToCssRules', () => {
-  const cssRules = variantsToCssRules(createOptions());
+test('createStyleArray', () => {
+  const cssRules = createStyleArray(createOptions());
   expect(cssRules).toMatchSnapshot();
 
   for (const rule of cssRules) {
@@ -19,7 +19,7 @@ test('variantsToCssRules', () => {
   }
 });
 
-test('variantsToCssString', () => {
-  const cssString = variantsToCssString(createOptions());
+test('createStyleString', () => {
+  const cssString = createStyleString(createOptions());
   console.log(cssString);
 });

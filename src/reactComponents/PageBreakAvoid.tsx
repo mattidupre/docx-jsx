@@ -5,7 +5,7 @@ type NoPageBreakProps = {
   children: ReactNode;
 };
 
-export function NoPageBreak({ children }: NoPageBreakProps) {
+export function PageBreakAvoid({ children }: NoPageBreakProps) {
   return (
     <InternalElement
       elementType="htmltag"

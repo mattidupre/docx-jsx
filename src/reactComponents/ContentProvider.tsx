@@ -5,7 +5,7 @@ import {
   assignVariants,
   type Variants,
 } from '../entities';
-import { variantsToCssString } from '../lib/styles';
+import { createStyleString } from '../lib/styles';
 import { ReactContentContext, type ReactContentContextValue } from './entities';
 import { useEnvironment } from './useEnvironment';
 import { useInjectStyleSheets } from './useInjectStyleSheets';
@@ -45,7 +45,7 @@ export function ContentProvider<T extends Variants = Variants>({
   const environmentStyleSheets = useMemo(
     () =>
       documentType === 'web' && injectEnvironmentCss
-        ? [variantsToCssString(contextValue)]
+        ? [createStyleString(contextValue)]
         : [],
     [contextValue, documentType, injectEnvironmentCss],
   );
