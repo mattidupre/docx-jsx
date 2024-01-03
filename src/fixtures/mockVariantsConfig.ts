@@ -1,6 +1,6 @@
-import type { VariantConfig, VariantsConfig } from 'src/entities';
+import type { Variants, TypographyOptions } from '../entities';
 
-const MOCK_VARIANTS = {
+const MOCK_VARIANTS: Variants = {
   mockVariant: {
     color: ['--mock-color', '#00ff00'],
     fontWeight: 'bold',
@@ -8,9 +8,12 @@ const MOCK_VARIANTS = {
   title: {
     color: '#0000ff',
   },
-} as const satisfies VariantsConfig;
+};
 
-export type MockVariants = Record<keyof typeof MOCK_VARIANTS, VariantConfig>;
+export type MockVariants = Record<
+  keyof typeof MOCK_VARIANTS,
+  TypographyOptions
+>;
 
 export type MockVariant = keyof MockVariants;
 

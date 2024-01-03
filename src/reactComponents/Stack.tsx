@@ -1,14 +1,10 @@
 import { type ReactNode, useMemo } from 'react';
 import { omit } from 'lodash';
-import type { StackOptions } from '../entities';
-import {
-  type LayoutOptions,
-  type StackConfig,
-  assignStackOptions,
-  mapLayoutKeys,
-} from '../entities/options';
+import { assignStackOptions, mapLayoutKeys } from '../entities';
+import type { StackOptions, LayoutOptions, StackConfig } from '../entities';
 import { ReactStackContext } from './entities';
 import { InternalElement } from './InternalElement';
+import { useEnvironment } from './useEnvironment';
 
 export type StackProps = StackOptions & {
   layouts: LayoutOptions<ReactNode>;
@@ -20,6 +16,8 @@ export function Stack({ children, layouts, ...options }: StackProps) {
     () => omit(assignStackOptions({}, options), ['layouts']) as StackConfig,
     [options],
   );
+
+  const { documentType } = useEnvironment();
 
   const contentElement = (
     <InternalElement
@@ -41,6 +39,11 @@ export function Stack({ children, layouts, ...options }: StackProps) {
     footer: [],
   };
   mapLayoutKeys((layoutType, elementType) => {
+    // Do not show headers or footers on web.
+    if (documentType === 'web') {
+      return;
+    }
+
     const element = layouts?.[layoutType]?.[elementType];
     if (element) {
       headerFooterElements[elementType].push(

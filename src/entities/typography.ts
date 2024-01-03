@@ -1,10 +1,10 @@
-import type { CSSProperties } from 'react';
-import { mapKeys, mapValues } from 'lodash';
-import { assignDefined, joinNestedKeys } from '../utils/object';
+import { mapValues } from 'lodash';
+import { assignDefined, mergeWithDefault } from '../utils/object';
+import { toDefinedArray } from '../utils/array';
 import type { TagName } from './html';
 import type { Color } from './options';
 
-type TypographyCssOptions = {
+type TypographyOptionsCssFlat = {
   breakInside: 'auto' | 'avoid';
   textAlign: 'left' | 'center' | 'right' | 'justify';
   lineHeight: `${number}`;
@@ -12,12 +12,12 @@ type TypographyCssOptions = {
   fontStyle: 'normal' | 'italic';
   fontSize: 'normal' | `${number}rem`;
   fontFamily: string;
-  color: Color;
+  color: Color | 'currentColor';
   textTransform: 'none' | 'uppercase';
   textDecoration: 'none' | 'underline' | 'line-through';
 };
 
-const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyCssOptions> = {
+const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyOptionsCssFlat> = {
   breakInside: 'auto',
   textAlign: 'left',
   lineHeight: '1',
@@ -34,29 +34,75 @@ export const TYPOGRAPHY_CSS_KEYS = Object.keys(
   DEFAULT_TYPOGRAPHY_CSS_OPTIONS,
 ) as ReadonlyArray<keyof typeof DEFAULT_TYPOGRAPHY_CSS_OPTIONS>;
 
-type TypographyCustomOptions = {
+export type TypographyCssKey = (typeof TYPOGRAPHY_CSS_KEYS)[number];
+
+type TypographyOptionsCustomFlat = {
   highlightColor: Color;
   superScript: boolean;
   subScript: boolean;
 };
 
-const DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS: Required<TypographyCustomOptions> = {
-  highlightColor: '#ffff00',
-  superScript: false, // TODO: Infer these in Docx based on parentTags.
-  subScript: false, // TODO: Infer these in Docx based on parentTags.
+const DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS: Required<TypographyOptionsCustomFlat> =
+  {
+    highlightColor: '#ffff00',
+    superScript: false, // TODO: Infer these in Docx based on parentTags.
+    subScript: false, // TODO: Infer these in Docx based on parentTags.
+  };
+
+export type TypographyOptionsFlat = TypographyOptionsCssFlat &
+  TypographyOptionsCustomFlat;
+
+type TypographyOptionsFromFlat<T extends TypographyOptionsFlat> = {
+  [K in keyof T]?:
+    | undefined
+    | T[K]
+    | [...ReadonlyArray<undefined | `--${string}`>, T[K]];
 };
 
 /**
  * Unified config based on CSS but that can be applied to other document types.
  */
-export type TypographyOptions = Partial<
-  TypographyCssOptions & TypographyCustomOptions
->;
+export type TypographyOptions =
+  TypographyOptionsFromFlat<TypographyOptionsFlat>;
+
+export const typographyOptionsToFlat = <TOptions extends TypographyOptions>(
+  options: TOptions,
+) =>
+  mapValues(options, (value) =>
+    toDefinedArray(value).pop(),
+  ) as TOptions extends TypographyOptionsFromFlat<infer T> ? T : never;
 
 export const DEFAULT_TYPOGRAPHY_OPTIONS: Required<TypographyOptions> = {
   ...DEFAULT_TYPOGRAPHY_CSS_OPTIONS,
   ...DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS,
 };
+
+/**
+ * Overwrites typography config values onto the first value.
+ */
+export const assignTypographyOptions = (
+  ...[args0, ...args]: ReadonlyArray<undefined | TypographyOptions>
+): TypographyOptions => assignDefined(args0 ?? {}, ...args);
+
+export const TYPOGRAPHY_TAG_NAMES = [
+  'p',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'a',
+  'b',
+  'strong',
+  'i',
+  'em',
+  's',
+  'u',
+  'sub',
+  'sup',
+  'span',
+] satisfies ReadonlyArray<TagName>;
 
 /**
  * Map certain HTML tags to their respective typography styles.
@@ -74,21 +120,22 @@ export const INTRINSIC_TYPOGRAPHY_OPTIONS = {
 
 export type VariantName = string;
 
-export type VariantValues = {
-  [K in keyof TypographyOptions]:
-    | undefined
-    | TypographyOptions[K]
-    | [...ReadonlyArray<undefined | `--${string}`>, TypographyOptions[K]];
+export type Variants = Record<VariantName, TypographyOptions>;
+
+export const DEFAULT_VARIANTS: Variants = {
+  title: { fontSize: '1rem' },
+  heading1: { fontSize: '1rem', lineHeight: '2' },
+  heading2: { fontSize: '1rem', lineHeight: '2' },
+  heading3: { fontSize: '1rem', lineHeight: '2' },
+  heading4: { fontSize: '1rem', lineHeight: '2' },
+  heading5: { fontSize: '1rem', lineHeight: '2' },
+  heading6: { fontSize: '1rem', lineHeight: '2' },
+  hyperlink: { color: 'currentColor' },
 };
 
-export type Variants = Record<VariantName, VariantValues>;
-
-/**
- * Overwrites all variant values onto the first variant value.
- */
-export const assignVariantValue = (
-  ...[args0, ...args]: ReadonlyArray<undefined | VariantValues>
-): VariantValues => assignDefined(args0 ?? {}, ...args);
+export const assignVariants = <T extends Variants>(
+  ...[args0, ...args]: ReadonlyArray<undefined | Partial<T>>
+) => mergeWithDefault<Variants>(DEFAULT_VARIANTS, args0 ?? {}, ...args) as T;
 
 export const INTRINSIC_VARIANT_TAG_NAMES = {
   // 'document': '*',
@@ -103,17 +150,3 @@ export const INTRINSIC_VARIANT_TAG_NAMES = {
   listParagraph: 'li',
   hyperlink: 'a',
 } as const satisfies Partial<Record<VariantName, TagName>>;
-
-// TODO: Move to htmlToDocx
-// /**
-//  * If any variant values are an array, grab the last (fallback) value.
-//  * This is not the same as the document defaults.
-//  * Allows variant values to be declared first as CSS variables, then fall back
-//  * to hard-coded values.
-//  */
-// export const variantValuesToDefaults = (variantValues: VariantValues) =>
-//   mapValues(variantValues, (typographyOption) =>
-//     Array.isArray(typographyOption)
-//       ? typographyOption[typographyOption.length - 1]
-//       : typographyOption,
-//   ) as TypographyOptions;

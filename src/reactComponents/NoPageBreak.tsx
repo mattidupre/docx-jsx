@@ -10,7 +10,7 @@ export function NoPageBreak({ children }: NoPageBreakProps) {
     <InternalElement
       elementType="htmltag"
       elementOptions={{}}
-      contentOptions={{ breakInside: 'avoid' }}
+      typography={{ breakInside: 'avoid' }}
       tagName="div"
     >
       {children}

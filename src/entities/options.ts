@@ -1,9 +1,9 @@
-import { isObject, map, merge } from 'lodash';
+import { isObject, map } from 'lodash';
 import { toLowercase } from '../utils/string';
 import { assignDefined, mergeWithDefault } from '../utils/object';
 import type { UnitsNumber } from '../utils/units';
 import { pluckFromArray } from '../utils/array';
-import type { TagName } from './html';
+import { type Variants, assignVariants } from './typography';
 
 export const APP_NAME = 'Matti Docs';
 
@@ -26,7 +26,7 @@ export type PrefixesOptions = string | Partial<PrefixesConfig>;
 
 const parsePrefixes = (prefixOptions?: PrefixesOptions): PrefixesConfig => {
   const defaultPrefix = toLowercase(
-    typeof prefixOptions === 'string' ? prefixOptions : `${DEFAULT_PREFIX}-`,
+    typeof prefixOptions === 'string' ? prefixOptions : DEFAULT_PREFIX,
   );
 
   const prefixOptionsObject: PrefixesOptions =
@@ -34,7 +34,7 @@ const parsePrefixes = (prefixOptions?: PrefixesOptions): PrefixesConfig => {
 
   return {
     variantClassName: toLowercase(
-      prefixOptionsObject.variantClassName ?? defaultPrefix + 'variant-',
+      prefixOptionsObject.variantClassName ?? defaultPrefix + '-variant',
     ),
     cssVariable: toLowercase(prefixOptionsObject.cssVariable ?? defaultPrefix),
   };
@@ -148,50 +148,15 @@ export const assignLayoutOptions = <TContent>(
     args0 ?? createDefaultLayoutConfig(),
   ) as LayoutConfig<TContent>;
 
-export type VariantConfig = ContentOptions;
-
-export type VariantName = string;
-
-export type VariantsConfig = Record<string, VariantConfig>;
-
-const INTRINSIC_VARIANT_NAMES = [
-  'document',
-  'title',
-  'heading1',
-  'heading2',
-  'heading3',
-  'heading4',
-  'heading5',
-  'heading6',
-  'strong',
-  'listParagraph',
-  'hyperlink',
-] as const satisfies ReadonlyArray<keyof VariantsConfig>;
-
-export type IntrinsicVariantName = (typeof INTRINSIC_VARIANT_NAMES)[number];
-
-export const INTRINSIC_TAG_NAMES_BY_VARIANT = {
-  heading1: 'h1',
-  heading2: 'h2',
-  heading3: 'h3',
-  heading4: 'h4',
-  heading5: 'h5',
-  heading6: 'h6',
-} satisfies Partial<Record<IntrinsicVariantName, TagName>>;
-
-export const assignVariants = <T extends VariantsConfig = VariantsConfig>(
-  ...args: ReadonlyArray<undefined | Partial<T>>
-): T => merge((args[0] ?? {}) as T, ...args.filter((v) => v !== undefined));
-
 export type DocumentOptions = {
   size?: PageSize;
-  variants?: VariantsConfig;
+  variants?: Variants;
   prefixes?: PrefixesOptions;
 };
 
 export type DocumentConfig = {
   size: PageSize;
-  variants: VariantsConfig;
+  variants: Variants;
   prefixes: PrefixesConfig;
 };
 
@@ -219,69 +184,3 @@ export type StackConfig = {
 export const assignStackOptions = (
   ...args: ReadonlyArray<undefined | StackOptions>
 ): StackConfig => mergeWithDefault({ margin: DEFAULT_PAGE_MARGIN }, ...args);
-
-export type ContentConfig = Partial<{
-  breakInside: 'avoid';
-  textAlign: 'left' | 'center' | 'right' | 'justify';
-  lineHeight: `${number}`;
-  fontWeight: 'bold';
-  fontStyle: 'italic';
-  fontSize: `${number}rem`;
-  fontFamily: string;
-  color: Color;
-  highlightColor: Color;
-  textTransform: 'uppercase';
-  textDecoration: 'underline' | 'line-through';
-  superScript: boolean;
-  subScript: boolean;
-}>;
-
-export type ContentOptions = {
-  [K in keyof ContentConfig]:
-    | undefined
-    // | false // TODO: Use to overwrite option? default / inherited?
-    | ContentConfig[K]
-    | [...ReadonlyArray<undefined | `--${string}`>, ContentConfig[K]];
-};
-
-export const assignContentOptions = (
-  ...[args0, ...args]: ReadonlyArray<undefined | ContentOptions>
-) => assignDefined(args0 ?? {}, ...args) as ContentOptions;
-
-export const PARAGRAPH_OPTIONS_KEYS = [
-  'textAlign',
-  'lineHeight',
-] as const satisfies ReadonlyArray<keyof ContentOptions>;
-
-export type ContentParagraphOptions = Pick<
-  ContentOptions,
-  (typeof PARAGRAPH_OPTIONS_KEYS)[number]
->;
-
-const TEXT_OPTIONS_KEYS = [
-  'fontWeight',
-  'fontStyle',
-  'fontSize',
-  'fontFamily',
-  'color',
-  'highlightColor',
-  'textTransform',
-  'textDecoration',
-  'superScript',
-  'subScript',
-] as const satisfies ReadonlyArray<keyof ContentOptions>;
-
-export type ContentTextOptions = Pick<
-  ContentOptions,
-  (typeof TEXT_OPTIONS_KEYS)[number]
->;
-
-export const INTRINSIC_TEXT_OPTIONS = {
-  b: { fontWeight: 'bold' },
-  strong: { fontWeight: 'bold' },
-  em: { fontStyle: 'italic' },
-  u: { textDecoration: 'underline' },
-  s: { textDecoration: 'line-through' },
-  sup: { superScript: true },
-  sub: { subScript: true },
-} as const satisfies Partial<Record<TagName, ContentTextOptions>>;

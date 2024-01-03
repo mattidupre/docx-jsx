@@ -3,9 +3,9 @@ import type { Except } from 'type-fest';
 import type {
   DocumentConfig,
   StackConfig,
-  ContentOptions,
+  TypographyOptions,
   VariantName,
-  VariantsConfig,
+  Variants,
   DocumentType,
   PrefixesConfig,
 } from '../entities';
@@ -15,13 +15,11 @@ export type ExtendableProps = {
   style?: CSSProperties;
 };
 
-export type ContentProps = ContentOptions & {
+export type ContentProps = TypographyOptions & {
   variant: VariantName;
 };
 
-export type ReactContentContextValue<
-  T extends VariantsConfig = VariantsConfig,
-> = {
+export type ReactContentContextValue<T extends Variants = Variants> = {
   variants: T;
   prefixes: PrefixesConfig;
 };

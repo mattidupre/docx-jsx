@@ -1,15 +1,17 @@
-import { type ReactNode, createElement, useMemo, useContext } from 'react';
+import { type ReactNode, createElement, useMemo } from 'react';
 import { compact } from 'lodash';
 import { encodeElementData } from '../entities';
 import type {
-  ContentOptions,
+  TypographyOptions,
   ElementData,
   TagName,
   VariantName,
 } from '../entities';
-import { optionsToCssVars, variantNameToClassName } from '../lib/toCss';
+import {
+  typographyOptionsToStyleVars,
+  variantNameToClassName,
+} from '../lib/styles';
 import type { ExtendableProps } from './entities';
-import { ReactDocumentContext } from './entities';
 import { useEnvironment } from './useEnvironment';
 import { usePrefixes } from './usePrefixes';
 
@@ -19,7 +21,7 @@ type InternalElementProps = ExtendableProps & {
   elementType: ElementData['elementType'];
   elementOptions: ElementData['elementOptions'];
   variant?: VariantName;
-  contentOptions?: ContentOptions;
+  typography?: TypographyOptions;
   children?: ReactNode;
   tagName: TagName;
 };
@@ -32,7 +34,7 @@ export function InternalElement({
   preferFragment,
   elementType,
   elementOptions,
-  contentOptions,
+  typography: contentOptions,
   variant,
   tagName,
   className: classNameProp,
@@ -51,7 +53,7 @@ export function InternalElement({
     () => ({
       ...(isWeb &&
         !isFragment &&
-        optionsToCssVars({ prefixes }, contentOptions)),
+        typographyOptionsToStyleVars({ prefixes }, contentOptions)),
     }),
     [contentOptions, isFragment, isWeb, prefixes],
   );
@@ -63,7 +65,7 @@ export function InternalElement({
   const baseAttributes = {
     className: compact([
       classNameProp,
-      variantNameToClassName({ prefixes }, variant),
+      variant && variantNameToClassName({ prefixes }, variant),
     ]),
     style: {
       ...optionsStyle,

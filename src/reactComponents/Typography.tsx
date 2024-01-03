@@ -1,23 +1,14 @@
 import type { ReactNode } from 'react';
-import type {
-  TagName,
-  ContentTextOptions,
-  ContentParagraphOptions,
-  VariantName,
-} from '../entities';
+import type { TagName, VariantName, TypographyOptions } from '../entities';
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities';
 
 export type TypographyProps = ExtendableProps &
-  (
-    | ({
-        as?: 'span';
-      } & ContentTextOptions)
-    | ({
-        as: Exclude<TagName, 'span'>;
-      } & ContentTextOptions &
-        ContentParagraphOptions)
-  ) & { variant?: VariantName; children: ReactNode };
+  TypographyOptions & {
+    as?: TagName;
+    variant?: VariantName;
+    children?: ReactNode;
+  };
 
 // TODO: If not within a <Document> or if target is web:
 // do not encode data set CSS variables on element
@@ -39,7 +30,7 @@ export function Typography({
       className={className}
       style={style}
       elementOptions={{}}
-      contentOptions={contentOptions}
+      typography={contentOptions}
     >
       {children}
     </InternalElement>

@@ -10,7 +10,7 @@ import {
   type DocumentProviderProps,
   IfEnvironment,
 } from '../reactComponents';
-import { createMockVariantsConfig } from './mockVariantsConfig.js';
+import { createMockVariantsConfig } from './mockVariantsConfig';
 
 const PageCounter = () => {
   return (

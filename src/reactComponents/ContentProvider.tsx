@@ -1,96 +1,23 @@
-import {
-  useContext,
-  type ReactNode,
-  useMemo,
-  useRef,
-  createElement,
-  type RefObject,
-  type MutableRefObject,
-} from 'react';
+import { useContext, type ReactNode, useMemo } from 'react';
 import { isEqual } from 'lodash';
-import type { SetRequired } from 'type-fest';
 import {
-  type TagName,
   assignPrefixesOptions,
   assignVariants,
-  type VariantsConfig,
+  type Variants,
 } from '../entities';
-import { createEnvironmentCss, variantsToCssVars } from '../lib/toCss';
+import { variantsToCssString } from '../lib/styles';
 import { ReactContentContext, type ReactContentContextValue } from './entities';
 import { useEnvironment } from './useEnvironment';
 import { useInjectStyleSheets } from './useInjectStyleSheets';
 
-export type ContentProviderHandle<T extends VariantsConfig> = RefObject<{
-  setVariants: (values: Partial<T> | { (prevVariants: T): Partial<T> }) => void;
-}>;
+export type ContentProviderProps<T extends Variants = Variants> = Partial<
+  ReactContentContextValue<T>
+> & {
+  injectEnvironmentCss?: boolean;
+  children: ReactNode;
+};
 
-export type ContentProviderProps<T extends VariantsConfig = VariantsConfig> =
-  Partial<ReactContentContextValue<T>> & {
-    injectEnvironmentCss?: boolean;
-    children: ReactNode;
-  } & (
-      | { as?: undefined; handle?: undefined }
-      | {
-          as: TagName;
-          handle?: ContentProviderHandle<T>;
-        }
-    );
-
-// TODO: Add handle to context so it can be used from a hook.
-
-function ContentProviderContainer<T extends VariantsConfig>({
-  variants,
-  prefixes,
-  as,
-  handle,
-  children,
-}: SetRequired<ContentProviderProps<T>, 'variants' | 'prefixes'>) {
-  const elementRef = useRef<HTMLElement>();
-  const prevVariantsRef = useRef((variants ?? {}) as Partial<T>);
-
-  if (handle) {
-    if (!handle.current) {
-      (handle as MutableRefObject<unknown>).current = {};
-    }
-
-    handle.current!.setVariants = (variantsArgument) => {
-      if (!elementRef.current) {
-        throw new Error('Element not mounted');
-      }
-
-      if (!variants || !elementRef.current) {
-        return;
-      }
-
-      // TODO: Error if newVariants does not match variants.
-
-      const newVariants =
-        typeof variantsArgument === 'function'
-          ? variantsArgument(
-              assignVariants<T>(variants, prevVariantsRef.current),
-            )
-          : variantsArgument ?? {};
-
-      const newCssVars = variantsToCssVars({ prefixes }, newVariants);
-
-      for (const prop in newCssVars)
-        elementRef.current!.style.setProperty(
-          prop,
-          newCssVars[prop as keyof typeof newCssVars],
-        );
-
-      prevVariantsRef.current = newVariants;
-    };
-  }
-
-  if (as) {
-    return createElement(as, { ref: elementRef }, children);
-  }
-
-  return <>{children}</>;
-}
-
-export function ContentProvider<T extends VariantsConfig = VariantsConfig>({
+export function ContentProvider<T extends Variants = Variants>({
   children,
   ...props
 }: ContentProviderProps<T>) {
@@ -118,7 +45,7 @@ export function ContentProvider<T extends VariantsConfig = VariantsConfig>({
   const environmentStyleSheets = useMemo(
     () =>
       documentType === 'web' && injectEnvironmentCss
-        ? [createEnvironmentCss(contextValue)]
+        ? [variantsToCssString(contextValue)]
         : [],
     [contextValue, documentType, injectEnvironmentCss],
   );
@@ -127,13 +54,7 @@ export function ContentProvider<T extends VariantsConfig = VariantsConfig>({
 
   return (
     <ReactContentContext.Provider value={contextValue}>
-      <ContentProviderContainer<T>
-        {...props}
-        variants={contextValue.variants as T}
-        prefixes={contextValue.prefixes}
-      >
-        {children}
-      </ContentProviderContainer>
+      {children}
     </ReactContentContext.Provider>
   );
 }

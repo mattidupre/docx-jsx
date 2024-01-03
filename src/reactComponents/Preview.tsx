@@ -2,18 +2,18 @@ import { type ReactNode, memo, useMemo, type ReactElement } from 'react';
 import type { HtmlToDomOptions } from '../lib/htmlToDom';
 import { usePreview } from './usePreview';
 
-type DocumentPreviewProps = HtmlToDomOptions & {
+type PreviewProps = HtmlToDomOptions & {
   Loading?: () => ReactNode;
   DocumentRoot: () => ReactElement;
 };
 
-export const DocumentPreview = memo(function DocumentPreview({
+export const Preview = memo(function PReview({
   initialStyleSheets: initialStyleSheetsProp,
   styleSheets: styleSheetsProp,
   onDocument,
   Loading,
   DocumentRoot,
-}: DocumentPreviewProps) {
+}: PreviewProps) {
   const initialStyleSheets = useMemo(
     () => initialStyleSheetsProp,
     // eslint-disable-next-line react-hooks/exhaustive-deps

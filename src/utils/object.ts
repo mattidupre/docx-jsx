@@ -1,5 +1,5 @@
 import type { IfAny, PartialDeep } from 'type-fest';
-import { isPlainObject, merge } from 'lodash';
+import { merge } from 'lodash';
 
 export type KeyedObject = Record<PropertyKey, unknown> & { length?: never };
 
@@ -48,13 +48,18 @@ export const mergeWithDefault = <T>(
   return merge(targetValue ?? {}, defaultValue, targetValueCloned, ...values);
 };
 
-export const mapAssign = <TOut extends Record<string, unknown>, TIn = unknown>(
-  values: ReadonlyArray<TIn>,
-  callback: (value: TIn) => TOut,
-): TOut => {
-  const target = (isPlainObject(values[0]) ? values[0] : {}) as TOut;
-  return assignDefined(target, ...values.map((value) => callback(value)));
-};
+// export const mapAssign = <TOut extends KeyedObject, TIn = unknown>(
+//   values: ReadonlyArray<TIn>,
+//   callback: (value: TIn) => TOut,
+// ): TOut => {
+//   const target = (isKeyedObject(values[0]) ? values[0] : {}) as TOut;
+//   return assignDefined(
+//     target,
+//     ...values.map((value) =>
+//       isKeyedObject(value) ? callback(value) : undefined,
+//     ),
+//   );
+// };
 
 /**
  * Gets Fixes TypeScripts stubborn index errors.
@@ -68,11 +73,11 @@ export const isKeyOf = <TValue extends KeyedObject>(
  * Fixes TypeScripts stubborn index errors.
  */
 export const getValueOf = <
-  TKey extends PropertyKey,
   TValue extends KeyedObject,
+  TKey extends PropertyKey,
 >(
-  key: TKey,
   value: TValue,
+  key: TKey,
 ) =>
   value[key as keyof TValue] as IfAny<
     TKey,

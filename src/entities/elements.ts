@@ -9,15 +9,12 @@ import {
   DEFAULT_PREFIX,
   type DocumentConfig,
   type LayoutType,
-  type ContentParagraphOptions,
-  type ContentTextOptions,
   type StackConfig,
   type LayoutConfig,
-  type VariantName,
-  type ContentOptions,
   type PrefixesConfig,
 } from './options';
 import type { TagName } from './html';
+import type { TypographyOptions, VariantName } from './typography';
 
 type ConfigByElementType = {
   document: DocumentConfig;
@@ -25,9 +22,7 @@ type ConfigByElementType = {
   header: { layoutType: LayoutType };
   content: Record<string, never>;
   footer: { layoutType: LayoutType };
-  htmltag: ContentOptions & {
-    paragraph?: ContentParagraphOptions;
-    text?: ContentTextOptions;
+  htmltag: TypographyOptions & {
     variant?: VariantName;
   };
   pagenumber: Record<string, never>;
@@ -62,12 +57,12 @@ export type ElementData<
   ? {
       elementType: TElementType;
       elementOptions: ConfigByElementType[TElementType];
-      contentOptions: ContentOptions;
+      contentOptions: TypographyOptions; // TODO: Rename to typography
       variant: undefined | VariantName;
     }
   : never;
 
-export type ContentElementOptions = ContentOptions;
+export type ContentElementOptions = TypographyOptions; // TODO: Rename to typography
 
 export const encodeElementData = ({
   elementType,

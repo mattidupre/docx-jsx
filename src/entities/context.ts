@@ -7,15 +7,18 @@ import {
   type StackConfig,
   assignDocumentOptions,
   assignStackOptions,
-  type VariantName,
-  assignContentOptions,
-  type ContentOptions,
 } from './options';
+import {
+  type TypographyOptions,
+  assignTypographyOptions,
+  type VariantName,
+} from './typography';
 
 type ElementsContextOptions = {
   document?: DocumentOptions;
   stack?: StackOptions;
-  contentOptions?: ContentOptions;
+  // TODO: Rename to TypographyOptions
+  contentOptions?: TypographyOptions;
   list?: { level: number };
   variant?: VariantName;
 };
@@ -23,7 +26,7 @@ type ElementsContextOptions = {
 export type ElementsContext = {
   document: DocumentConfig;
   stack: StackConfig;
-  contentOptions: ContentOptions;
+  contentOptions: TypographyOptions;
   list: { level: number };
   variant: undefined | VariantName;
 };
@@ -52,7 +55,7 @@ export const assignElementsContext = (
     stack: assignStackOptions(...pluckContext('stack', ...args)),
     list: mergeWithDefault({ level: -1 }, ...pluckContext('list', ...args)),
     variant: compact(pluckContext('variant', ...args)).at(-1),
-    contentOptions: assignContentOptions(
+    contentOptions: assignTypographyOptions(
       ...pluckContext('contentOptions', ...args),
     ),
   } satisfies ElementsContext);

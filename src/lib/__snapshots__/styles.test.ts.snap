@@ -1,0 +1,41 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`variantsToCssRules 1`] = `
+[
+  [
+    "*",
+    {
+      "break-inside": "var(--mock-variable-break-inside, revert)",
+      "color": "var(--mock-variable-color, revert)",
+      "font-family": "var(--mock-variable-font-family, revert)",
+      "font-size": "var(--mock-variable-font-size, revert)",
+      "font-style": "var(--mock-variable-font-style, revert)",
+      "font-weight": "var(--mock-variable-font-weight, revert)",
+      "line-height": "var(--mock-variable-line-height, revert)",
+      "text-align": "var(--mock-variable-text-align, revert)",
+      "text-decoration": "var(--mock-variable-text-decoration, revert)",
+      "text-transform": "var(--mock-variable-text-transform, revert)",
+    },
+  ],
+  [
+    ":where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl)",
+    {
+      "marginBottom": 0,
+      "marginTop": 0,
+    },
+  ],
+  [
+    ":where(.mock-class-name-mock-variant)",
+    {
+      "--mock-variable-color": "var(--mock-color, #00ff00)",
+      "--mock-variable-font-weight": "bold",
+    },
+  ],
+  [
+    ":where(.mock-class-name-title), :where(h1)",
+    {
+      "--mock-variable-color": "#0000ff",
+    },
+  ],
+]
+`;

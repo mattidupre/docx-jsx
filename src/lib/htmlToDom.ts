@@ -6,15 +6,15 @@ import {
   type StyleSheetsValue,
 } from '../entities';
 import { Pager } from '../utils/pager';
-import { cssVarsToString } from '../utils/cssVars';
+import { styleObjectToString, toCssStyleSheets } from '../utils/css';
 import { assignDefined } from '../utils/object';
 import { PageTemplate } from './pageTemplate';
 import { mapHtmlToDocument, type HtmlNode } from './mapHtmlToDocument';
 import {
-  createEnvironmentCss,
-  optionsToCssVars,
   variantNameToClassName,
-} from './toCss';
+  typographyOptionsToStyleVars,
+  variantsToCssString,
+} from './styles';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
@@ -38,8 +38,10 @@ const objToDom = (node: HtmlNode) => {
     const { prefixes } = elementsContext.document!;
 
     const attributes = assignHtmlAttributes({}, properties, {
-      class: variantNameToClassName({ prefixes }, variant),
-      style: cssVarsToString(optionsToCssVars({ prefixes }, contentOptions)),
+      class: variant && variantNameToClassName({ prefixes }, variant),
+      style: styleObjectToString(
+        typographyOptionsToStyleVars({ prefixes }, contentOptions),
+      ),
     });
 
     const element = document.createElement(tagName);
@@ -83,30 +85,13 @@ export const htmlToDom = async (
 
   onDocument?.(documentObj);
 
-  const documentStyleCss = createEnvironmentCss(documentObj);
-
   const { size, stacks: stacksOption, prefixes } = documentObj;
 
-  // TODO: Abstract into utils with an injectStyleSheets method.
-  const styleSheets = await Promise.all([
-    ...[
-      ...initialStyleSheetsOption,
-      documentStyleCss,
-      ...styleSheetsOption,
-    ].flatMap((style) => {
-      if (style === undefined) {
-        return [];
-      }
-      if (typeof style === 'string') {
-        const styleSheet = new CSSStyleSheet();
-        return styleSheet.replace(style);
-      }
-      if (style instanceof CSSStyleSheet) {
-        return style;
-      }
-      throw new TypeError('Invalid stylesheet.');
-    }),
-  ]);
+  const documentStyleCss = variantsToCssString(documentObj);
+
+  const styleSheets = await toCssStyleSheets(
+    ...[...initialStyleSheetsOption, documentStyleCss, ...styleSheetsOption],
+  );
 
   // const perf = performance.now();
 

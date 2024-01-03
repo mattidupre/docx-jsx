@@ -17,17 +17,21 @@ import {
   type ICharacterStyleOptions,
   ExternalHyperlink,
 } from 'docx';
-import { mapValues, pick, startCase } from 'lodash';
-import type {
-  Color,
-  VariantsConfig,
-  ContentOptions,
-  ContentConfig,
+import { pick, startCase } from 'lodash';
+import {
+  type Color,
+  type Variants,
+  type TypographyOptions,
+  type TypographyOptionsFlat,
+  typographyOptionsToFlat,
 } from '../entities';
 import { assignDefined } from '../utils/object';
 import { mapHtmlToDocument } from './mapHtmlToDocument';
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
+/**
+ * Override paragraph class so options can be changed after instantiation.
+ */
 class Paragraph extends DocxParagraph {
   public [PARAGRAPH_OPTIONS_KEY]: IParagraphOptions;
 
@@ -51,11 +55,11 @@ class Paragraph extends DocxParagraph {
 
 const parseColor = (color?: Color) => color && color.replace('#', '');
 
-const parseTextSize = (fontSize: ContentConfig['fontSize']) =>
+const parseTextSize = (fontSize: TypographyOptionsFlat['fontSize']) =>
   fontSize !== undefined ? parseFloat(fontSize) * 22 : undefined;
 
-const parseContentConfig = (
-  contentOptions: ContentOptions = {},
+const parseTypographyOptions = (
+  typographyOptions: TypographyOptions = {},
 ): IParagraphOptions & IRunOptions => {
   const {
     textAlign,
@@ -69,19 +73,15 @@ const parseContentConfig = (
     textDecoration,
     superScript,
     subScript,
-  } = mapValues(contentOptions, (value) => {
-    if (Array.isArray(value)) {
-      return value[value.length - 1];
-    }
-    return value;
-  }) as ContentConfig;
+  } = typographyOptionsToFlat(typographyOptions);
   return {
     spacing: {
       line: lineHeight && parseFloat(lineHeight) * 240,
     },
     alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
     size: parseTextSize(fontSize),
-    color: color && color.replace('#', ''),
+    color:
+      color && (color === 'currentColor' ? undefined : color.replace('#', '')),
     shading: highlightColor && {
       fill: parseColor(highlightColor),
     },
@@ -124,8 +124,8 @@ const DOCX_TEXT_RUN_OPTIONS_KEYS = [
   'subScript',
 ] as const satisfies ReadonlyArray<keyof IRunOptions>;
 
-const parseTextRunOptions = (contentOptions: ContentOptions): IRunOptions =>
-  pick(parseContentConfig(contentOptions), DOCX_TEXT_RUN_OPTIONS_KEYS);
+const parseTextRunOptions = (contentOptions: TypographyOptions): IRunOptions =>
+  pick(parseTypographyOptions(contentOptions), DOCX_TEXT_RUN_OPTIONS_KEYS);
 
 const DOCX_PARAGRAPH_OPTIONS_KEYS = [
   'spacing',
@@ -133,11 +133,11 @@ const DOCX_PARAGRAPH_OPTIONS_KEYS = [
 ] as const satisfies ReadonlyArray<keyof IParagraphOptions>;
 
 const parseParagraphOptions = (
-  contentOptions: ContentOptions,
+  contentOptions: TypographyOptions,
 ): IParagraphOptions =>
-  pick(parseContentConfig(contentOptions), DOCX_PARAGRAPH_OPTIONS_KEYS);
+  pick(parseTypographyOptions(contentOptions), DOCX_PARAGRAPH_OPTIONS_KEYS);
 
-const parseVariants = (variants: VariantsConfig): IStylesOptions => ({
+const parseVariants = (variants: Variants): IStylesOptions => ({
   paragraphStyles: Object.entries(variants).map(
     ([variantName, variant]) =>
       ({

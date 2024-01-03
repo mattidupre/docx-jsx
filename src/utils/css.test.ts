@@ -1,35 +1,41 @@
 import { expect, test, describe } from 'vitest';
-import { objectToCssVars, cssVarProperty } from './cssVars';
+import { toVarDeclaration, objectToVarValues } from './css';
 
-describe('cssVarProperty', () => {
-  test('passing a single key', () => {
-    expect(cssVarProperty('--one')).toEqual('var(--one)');
+describe('toVarDeclaration', () => {
+  test('passing a single variable', () => {
+    expect(toVarDeclaration('--one')).toEqual('var(--one)');
   });
-  test('passing a single with default', () => {
-    expect(cssVarProperty('--one', 'value')).toEqual('var(--one, value)');
+  test('passing a single non-variable', () => {
+    expect(toVarDeclaration('red')).toEqual('red');
   });
-  test('passing multiple keys', () => {
-    expect(cssVarProperty(['--one', '--two', '--three'])).toEqual(
+  test('passing variable keys ending with a variable', () => {
+    expect(toVarDeclaration(['--one', '--two', '--three'])).toEqual(
       'var(--one, var(--two, var(--three)))',
     );
   });
-  test('passing multiple keys with default', () => {
-    expect(cssVarProperty(['--one', '--two', '--three'], 'default')).toEqual(
-      'var(--one, var(--two, var(--three, default)))',
+  test('passing variable keys ending with a non-variable', () => {
+    expect(toVarDeclaration(['--one', '--two', 'red'])).toEqual(
+      'var(--one, var(--two, red))',
     );
+  });
+  test('passing non-variable keys ending with a non-variable', () => {
+    expect(() => toVarDeclaration(['red', 'white', 'blue'])).toThrow();
+  });
+  test('passing non-variable keys ending with a variable', () => {
+    expect(() => toVarDeclaration(['red', 'white', '--three'])).toThrow();
   });
 });
 
-describe('objectToCssVars', () => {
+describe('objectToVarValues', () => {
   describe('passing undefined', () => {
     test('returns an empty object', () => {
-      expect(objectToCssVars(undefined)).toEqual({});
+      expect(objectToVarValues(undefined)).toEqual({});
     });
   });
 
   describe('passing empty object', () => {
     test('returns an empty object', () => {
-      expect(objectToCssVars({})).toEqual({});
+      expect(objectToVarValues({})).toEqual({});
     });
   });
 
@@ -37,7 +43,7 @@ describe('objectToCssVars', () => {
     describe('without prefix', () => {
       test('returns an object of vars', () => {
         expect(
-          objectToCssVars({
+          objectToVarValues({
             one: 'alpha',
             two: 'beta',
             three: 'gamma',
@@ -53,7 +59,7 @@ describe('objectToCssVars', () => {
     describe('with prefix', () => {
       test('returns an object of vars', () => {
         expect(
-          objectToCssVars(
+          objectToVarValues(
             {
               one: 'alpha',
               two: 'beta',
@@ -62,9 +68,9 @@ describe('objectToCssVars', () => {
             { prefix: 'CamelCase' },
           ),
         ).toEqual({
-          '--camel-case-one': 'alpha',
-          '--camel-case-two': 'beta',
-          '--camel-case-three': 'gamma',
+          '--CamelCase-one': 'alpha',
+          '--CamelCase-two': 'beta',
+          '--CamelCase-three': 'gamma',
         });
       });
     });
@@ -74,7 +80,7 @@ describe('objectToCssVars', () => {
     describe('without prefix', () => {
       test('returns an object of vars', () => {
         expect(
-          objectToCssVars({
+          objectToVarValues({
             one: 'alpha',
             two: 'beta',
             three: {
@@ -94,7 +100,7 @@ describe('objectToCssVars', () => {
     describe('with prefix', () => {
       test('returns an object of vars', () => {
         expect(
-          objectToCssVars(
+          objectToVarValues(
             {
               one: 'alpha',
               two: 'beta',
@@ -106,10 +112,10 @@ describe('objectToCssVars', () => {
             { prefix: 'CamelCase' },
           ),
         ).toEqual({
-          '--camel-case-one': 'alpha',
-          '--camel-case-two': 'beta',
-          '--camel-case-three-four': 'delta',
-          '--camel-case-three-five': 'epsilon',
+          '--CamelCase-one': 'alpha',
+          '--CamelCase-two': 'beta',
+          '--CamelCase-three-four': 'delta',
+          '--CamelCase-three-five': 'epsilon',
         });
       });
     });

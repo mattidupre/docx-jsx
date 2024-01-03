@@ -98,7 +98,10 @@ export const pluckFromArray = <
 /**
  * Fixes TypeScripts stubborn index errors.
  */
-export const isValueInArray = (array: ReadonlyArray<any>, value: any) => {
+export const isValueInArray = <TValue>(
+  value: any,
+  array: ReadonlyArray<TValue>,
+): value is TValue => {
   return array.includes(value);
 };
 

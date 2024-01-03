@@ -1,34 +1,43 @@
 import type { StoryObj } from '@storybook/react';
 import { MockDocument } from '../fixtures/mockDocument';
-// @ts-expect-error
-import mockStyleSheet from '../fixtures/mockPages.css?inline';
-import { DocumentPreview } from './DocumentPreview';
+import { Preview } from './Preview';
 
 const DocumentRoot = () => <MockDocument injectEnvironmentCss />;
 
-const styleSheets: Array<string> = [mockStyleSheet];
+const styleSheetString = `
+@media screen {
+  .page {
+    margin: 0.5in;
+    box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.25);
+    margin-left: auto;
+    margin-right: auto;
+    background-color: white;
+  }
+}
+`;
 
 const meta = {
-  title: 'Mock Document',
+  title: 'React Components/Document',
 };
 
 export default meta;
+
 type Story = StoryObj;
 
 function Web() {
   return <DocumentRoot />;
 }
 
-export const DocumentWeb: Story = {
+export const WebDocument: Story = {
   render: () => <Web />,
 };
 
-export const PdfPreview: Story = {
+export const PreviewDocument: Story = {
   render: () => (
-    <DocumentPreview
+    <Preview
       DocumentRoot={DocumentRoot}
       Loading={() => <h1>Loading</h1>}
-      styleSheets={styleSheets}
+      styleSheets={[styleSheetString]}
     />
   ),
 };

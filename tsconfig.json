@@ -1,20 +1,17 @@
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "target": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "esModuleInterop": true,
     "skipLibCheck": true,
     "allowJs": true,
     "sourceMap": true,
     "strict": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "jsx": "react-jsx",
     "baseUrl": ".",
-    "outDir": "./dist",
-    "types": ["vitest/importMeta"]
+    "outDir": "./dist"
   },
-  "declarationMap": true,
   "include": ["./src/**/*"]
 }

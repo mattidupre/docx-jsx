@@ -1,11 +1,11 @@
 export type {
-  VariantsConfig,
+  Variants,
+  VariantName,
   Color,
-  ContentOptions,
+  TypographyOptions,
   TagName,
   PrefixesConfig,
-} from './entities/index';
-export * from './reactComponents/createCss';
+} from './entities';
 export * from './reactComponents/ContentProvider';
 export * from './reactComponents/DocumentProvider';
 export * from './reactComponents/IfEnvironment';
@@ -18,4 +18,4 @@ export * from './reactComponents/usePageMargins';
 export * from './reactComponents/usePageSize';
 export * from './reactComponents/usePreview';
 export * from './reactComponents/useEnvironment';
-export * from './reactComponents/DocumentPreview';
+export * from './reactComponents/Preview';

@@ -14,8 +14,8 @@ import {
   type StackElement,
   type ElementsContext,
   assignElementsContext,
-  INTRINSIC_TEXT_OPTIONS,
-  assignContentOptions,
+  INTRINSIC_TYPOGRAPHY_OPTIONS,
+  assignTypographyOptions,
 } from '../entities';
 import { mapHtml, type MapElement } from '../utils/mapHtml/mapHtml';
 import { getValueOf } from '../utils/object';
@@ -172,7 +172,7 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Content must be a child of content root.');
         }
 
-        if (isValueInArray(PARAGRAPH_TAG_NAMES, tagName)) {
+        if (isValueInArray(tagName, PARAGRAPH_TAG_NAMES)) {
           if (isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES)) {
             throw new TypeError(
               'Paragraph-ish tags (e.g., p, h1, li) cannot be nested inside one another.',
@@ -181,9 +181,9 @@ export const mapHtmlToDocument = <TContent>(
         }
 
         assignElementsContext(elementsContext, elementData.elementOptions, {
-          contentOptions: assignContentOptions(
+          contentOptions: assignTypographyOptions(
             {},
-            getValueOf(tagName, INTRINSIC_TEXT_OPTIONS),
+            getValueOf(INTRINSIC_TYPOGRAPHY_OPTIONS, tagName),
             elementData.contentOptions,
           ),
           variant: elementData.variant,
