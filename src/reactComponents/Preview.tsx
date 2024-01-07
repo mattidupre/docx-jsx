@@ -1,5 +1,5 @@
 import { type ReactNode, memo, useMemo, type ReactElement } from 'react';
-import type { HtmlToDomOptions } from '../lib/htmlToDom';
+import type { HtmlToDomOptions } from '../lib/dom';
 import { usePreview } from './usePreview';
 
 type PreviewProps = HtmlToDomOptions & {
@@ -7,7 +7,7 @@ type PreviewProps = HtmlToDomOptions & {
   DocumentRoot: () => ReactElement;
 };
 
-export const Preview = memo(function PReview({
+export const Preview = memo(function Preview({
   initialStyleSheets: initialStyleSheetsProp,
   styleSheets: styleSheetsProp,
   onDocument,

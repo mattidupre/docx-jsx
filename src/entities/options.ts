@@ -15,6 +15,7 @@ export type StyleSheetsValue =
   | undefined
   | string
   | CSSStyleSheet
+  | URL
   | HTMLStyleElement;
 
 export type PrefixesConfig = {

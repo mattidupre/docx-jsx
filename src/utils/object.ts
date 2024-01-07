@@ -1,5 +1,5 @@
-import type { IfAny, PartialDeep } from 'type-fest';
-import { merge } from 'lodash';
+import type { IfAny, PartialDeep, Primitive } from 'type-fest';
+import { mapValues, merge, omitBy } from 'lodash';
 
 export type KeyedObject = Record<PropertyKey, unknown> & { length?: never };
 
@@ -15,6 +15,11 @@ export type MergedObjectValues<T extends KeyedObject> = {
 
 export const isKeyedObject = (value: any): value is KeyedObject =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
+
+export const objectValuesDefined = <T extends KeyedObject>(value: T) =>
+  omitBy(value, (v) => v === undefined) as {
+    [K in keyof T]: Exclude<T[K], undefined>;
+  };
 
 export const assignDefined = <T extends KeyedObject>(
   value0: T,
@@ -74,7 +79,7 @@ export const isKeyOf = <TValue extends KeyedObject>(
  */
 export const getValueOf = <
   TValue extends KeyedObject,
-  TKey extends PropertyKey,
+  TKey extends undefined | PropertyKey,
 >(
   value: TValue,
   key: TKey,
@@ -111,3 +116,17 @@ export const joinNestedKeys = (
   }
   return newObject;
 };
+
+/**
+ * If value is a keyed object return value[key], otherwise return value.
+ */
+export const getSubOrSelf = <
+  TKey extends string,
+  TValue extends Primitive | Partial<Record<TKey, unknown>>,
+>(
+  key: TKey,
+  value: TValue,
+) =>
+  (isKeyedObject(value) ? value[key] : value) as TValue extends KeyedObject
+    ? TValue[TKey]
+    : TValue;

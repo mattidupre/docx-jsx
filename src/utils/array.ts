@@ -6,8 +6,9 @@ import {
   assignDefined,
 } from './object';
 
+// TODO: ToDefinedArray<undefined | Array<string>> produces Array<undefined>
 export type ToDefinedArray<T> = Simplify<
-  T extends undefined
+  undefined extends T
     ? Array<unknown>
     : T extends ReadonlyArray<infer I>
     ? Array<Exclude<I, undefined>>
@@ -30,7 +31,11 @@ export const toDefinedArray = <T>(value: T): ToDefinedArray<T> => {
 export const joinArrayStrings = (array: any, separator: string) =>
   [array]
     .flat(Infinity)
-    .filter((value) => typeof value === 'string' && value.length)
+    .filter(
+      (value) =>
+        typeof value === 'number' ||
+        (typeof value === 'string' && value.length),
+    )
     .join(separator);
 
 export type ArrayObjectValues<T extends ReadonlyArray<any>> =
@@ -70,7 +75,9 @@ export const pickFromArray = <
         if (value === undefined) {
           return target;
         }
-        return assignDefined(target, { [key]: value[key] } as TValue);
+        return assignDefined(target, {
+          [key as keyof TValue]: value[key as keyof TValue],
+        } as TValue);
       },
       Object.fromEntries(keysArray.map((k) => [k, undefined])) as TValue,
     ),
@@ -114,3 +121,13 @@ export const isAnyValuesInArray = (
   array: ReadonlyArray<any>,
   ...values: ReadonlyArray<any>
 ) => values.some((value) => array.includes(value));
+
+export const indexesOf = (array: ReadonlyArray<any>, value: any) => {
+  const indexes = [];
+  for (let i = 0; i < array.length; i += 1) {
+    if (array[i] === value) {
+      indexes.push(i);
+    }
+  }
+  return indexes;
+};

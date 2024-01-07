@@ -1,12 +1,21 @@
 import type { Variants, TypographyOptions } from '../entities';
 
 const MOCK_VARIANTS: Variants = {
-  mockVariant: {
-    color: ['--mock-color', '#00ff00'],
+  heading1: {
+    fontFamily: 'Merriweather',
+    color: '#ff00ff',
+    fontSize: '2rem',
     fontWeight: 'bold',
+    fontStyle: 'italic',
   },
-  title: {
-    color: '#0000ff',
+  hyperlink: {
+    color: '#ff00ff',
+  },
+  mockVariant: {
+    fontFamily: 'Merriweather',
+    fontSize: '2rem',
+    color: ['--mock-color', '#00ffff'],
+    fontWeight: 'bold',
   },
 };
 

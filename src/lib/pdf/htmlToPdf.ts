@@ -4,8 +4,8 @@ import puppeteer, {
   type Page,
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
-import type { DocumentDom } from './htmlToDom';
-import htmlToDomCodeCjs from './htmlToDom?source';
+import type { DocumentDom } from '../dom';
+import htmlToDomCodeCjs from '../dom?source';
 
 const htmlToDomCode = `(() => {const exports={};${htmlToDomCodeCjs};return exports;})()`;
 
@@ -39,7 +39,7 @@ export const htmlToPdf = async (
 
     const pageSize = await page.evaluate(
       async (browserHtml, browserOptions, browserCode) => {
-        const { htmlToDom } = eval(browserCode) as typeof import('./htmlToDom');
+        const { htmlToDom } = eval(browserCode) as typeof import('../dom');
 
         let documentObj = {} as DocumentDom;
 

@@ -125,16 +125,21 @@ export const toCssStyleSheets = (...values: ReadonlyArray<any>) =>
     transform(
       values,
       async (styleSheets, value) => {
-        if (typeof value === 'string') {
-          const styleSheet = new CSSStyleSheet();
-          styleSheets.push(styleSheet.replace(value));
+        if (!value) {
           return;
         }
         if (value instanceof CSSStyleSheet) {
           styleSheets.push(value);
           return;
         }
-        if (!value) {
+        let valueString = value;
+        if (value instanceof URL) {
+          valueString = await (await fetch(value)).text();
+          console.log('url stylesheet', valueString);
+        }
+        if (typeof valueString === 'string') {
+          const styleSheet = new CSSStyleSheet();
+          styleSheets.push(styleSheet.replace(valueString));
           return;
         }
         throw new TypeError('Invalid stylesheet value');

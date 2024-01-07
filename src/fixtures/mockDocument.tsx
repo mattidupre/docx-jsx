@@ -208,7 +208,7 @@ export function MockDocument({
         </PageBreakAvoid>
       </Stack>
 
-      <Stack
+      {/* <Stack
         innerPageClassName="preview__page"
         layouts={mockPageTypes('SECOND SECTION')}
         margin={{
@@ -217,7 +217,7 @@ export function MockDocument({
         }}
       >
         <LongText />
-      </Stack>
+      </Stack> */}
     </DocumentProvider>
   );
 }

@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`variantsToCssRules 1`] = `
+exports[`createStyleArray 1`] = `
 [
   [
     "*",
@@ -25,17 +25,51 @@ exports[`variantsToCssRules 1`] = `
     },
   ],
   [
-    ":where(.mock-class-name-mock-variant)",
+    ":where(.mock-class-name-heading-1), :where(h1)",
     {
-      "--mock-variable-color": "var(--mock-color, #00ff00)",
-      "--mock-variable-font-weight": "bold",
+      "--mock-variable-color": "#0000ff",
+      "--mock-variable-font-family": "Merriweather",
+      "--mock-variable-font-size": "2rem",
     },
   ],
   [
-    ":where(.mock-class-name-title), :where(h1)",
+    ":where(.mock-class-name-mock-variant)",
     {
-      "--mock-variable-color": "#0000ff",
+      "--mock-variable-color": "var(--mock-color, #00ffff)",
+      "--mock-variable-font-family": "Merriweather",
+      "--mock-variable-font-size": "2rem",
+      "--mock-variable-font-weight": "bold",
     },
   ],
 ]
+`;
+
+exports[`createStyleString 1`] = `
+"* {
+  break-inside: var(--mock-variable-break-inside, revert);
+  text-align: var(--mock-variable-text-align, revert);
+  line-height: var(--mock-variable-line-height, revert);
+  font-weight: var(--mock-variable-font-weight, revert);
+  font-style: var(--mock-variable-font-style, revert);
+  font-size: var(--mock-variable-font-size, revert);
+  font-family: var(--mock-variable-font-family, revert);
+  color: var(--mock-variable-color, revert);
+  text-transform: var(--mock-variable-text-transform, revert);
+  text-decoration: var(--mock-variable-text-decoration, revert);
+}
+:where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+:where(.mock-class-name-heading-1), :where(h1) {
+  --mock-variable-font-size: 2rem;
+  --mock-variable-font-family: Merriweather;
+  --mock-variable-color: #0000ff;
+}
+:where(.mock-class-name-mock-variant) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 2rem;
+  --mock-variable-font-family: Merriweather;
+  --mock-variable-color: var(--mock-color, #00ffff);
+}"
 `;

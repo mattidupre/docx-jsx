@@ -1,6 +1,7 @@
 import { mapValues } from 'lodash';
 import { assignDefined, mergeWithDefault } from '../utils/object';
 import { toDefinedArray } from '../utils/array';
+import type { FontFamily } from './fonts';
 import type { TagName } from './html';
 import type { Color } from './options';
 
@@ -11,7 +12,7 @@ type TypographyOptionsCssFlat = {
   fontWeight: 'normal' | 'bold';
   fontStyle: 'normal' | 'italic';
   fontSize: 'normal' | `${number}rem`;
-  fontFamily: string;
+  fontFamily: FontFamily;
   color: Color | 'currentColor';
   textTransform: 'none' | 'uppercase';
   textDecoration: 'none' | 'underline' | 'line-through';
@@ -42,21 +43,18 @@ type TypographyOptionsCustomFlat = {
   subScript: boolean;
 };
 
-const DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS: Required<TypographyOptionsCustomFlat> =
-  {
-    highlightColor: '#ffff00',
-    superScript: false, // TODO: Infer these in Docx based on parentTags.
-    subScript: false, // TODO: Infer these in Docx based on parentTags.
-  };
+// const DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS: Required<TypographyOptionsCustomFlat> =
+//   {
+//     highlightColor: '#ffff00',
+//     superScript: false, // TODO: Infer these in Docx based on parentTags.
+//     subScript: false, // TODO: Infer these in Docx based on parentTags.
+//   };
 
 export type TypographyOptionsFlat = TypographyOptionsCssFlat &
   TypographyOptionsCustomFlat;
 
 type TypographyOptionsFromFlat<T extends TypographyOptionsFlat> = {
-  [K in keyof T]?:
-    | undefined
-    | T[K]
-    | [...ReadonlyArray<undefined | `--${string}`>, T[K]];
+  [K in keyof T]?: undefined | T[K] | [...ReadonlyArray<undefined | string>];
 };
 
 /**
@@ -72,10 +70,10 @@ export const typographyOptionsToFlat = <TOptions extends TypographyOptions>(
     toDefinedArray(value).pop(),
   ) as TOptions extends TypographyOptionsFromFlat<infer T> ? T : never;
 
-export const DEFAULT_TYPOGRAPHY_OPTIONS: Required<TypographyOptions> = {
-  ...DEFAULT_TYPOGRAPHY_CSS_OPTIONS,
-  ...DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS,
-};
+// export const DEFAULT_TYPOGRAPHY_OPTIONS: Required<TypographyOptions> = {
+//   ...DEFAULT_TYPOGRAPHY_CSS_OPTIONS,
+//   ...DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS,
+// };
 
 /**
  * Overwrites typography config values onto the first value.
@@ -123,14 +121,14 @@ export type VariantName = string;
 export type Variants = Record<VariantName, TypographyOptions>;
 
 export const DEFAULT_VARIANTS: Variants = {
-  title: { fontSize: '1rem' },
-  heading1: { fontSize: '1rem', lineHeight: '2' },
-  heading2: { fontSize: '1rem', lineHeight: '2' },
-  heading3: { fontSize: '1rem', lineHeight: '2' },
-  heading4: { fontSize: '1rem', lineHeight: '2' },
-  heading5: { fontSize: '1rem', lineHeight: '2' },
-  heading6: { fontSize: '1rem', lineHeight: '2' },
-  hyperlink: { color: 'currentColor' },
+  // title: { fontSize: '3rem' },
+  // heading1: { fontSize: '1rem', lineHeight: '2' },
+  // heading2: { fontSize: '1rem', lineHeight: '2' },
+  // heading3: { fontSize: '1rem', lineHeight: '2' },
+  // heading4: { fontSize: '1rem', lineHeight: '2' },
+  // heading5: { fontSize: '1rem', lineHeight: '2' },
+  // heading6: { fontSize: '1rem', lineHeight: '2' },
+  // hyperlink: { color: 'currentColor' },
 };
 
 export const assignVariants = <T extends Variants>(
