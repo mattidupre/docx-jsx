@@ -17,8 +17,6 @@ import {
   objectToVarValues,
 } from '../utils/css';
 
-const TYPOGRAPHY_CSS_PROPERTIES = TYPOGRAPHY_CSS_KEYS.map(kebabCase);
-
 export const variantNameToClassName = (
   { prefixes }: { prefixes: PrefixesConfig },
   variantName: VariantName,
@@ -44,6 +42,26 @@ export const variantsToStyleVars = (
     prefix: options.prefixes.cssVariable,
   });
 
+const createPrefixedVar = (
+  options: {
+    prefixes: Pick<PrefixesConfig, 'cssVariable'>;
+  },
+  value: string | number,
+  defaultValue?: string | number,
+) =>
+  `var(--${joinKebab(options.prefixes.cssVariable, String(value))}${
+    defaultValue !== undefined ? `, ${defaultValue}` : ''
+  })`;
+
+const DEFAULT_VARS: CssRuleDeclarations = {
+  fontSize: '1rem',
+  borderWidth: 0,
+  borderTopWidth: 0,
+  borderRightWidth: 0,
+  borderBottomWidth: 0,
+  borderLeftWidth: 0,
+};
+
 export const createStyleArray = (options: {
   variants?: Variants;
   prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
@@ -58,26 +76,34 @@ export const createStyleArray = (options: {
 
   rules.push([
     '*',
-    TYPOGRAPHY_CSS_PROPERTIES.reduce(
-      (declarations, property) => ({
-        ...declarations,
-        [property]: `var(--${joinKebab(
-          prefixes.cssVariable,
-          property,
-        )}, revert)`,
-      }),
-      {} as CssRuleDeclarations,
+    TYPOGRAPHY_CSS_KEYS.reduce(
+      (declarations, property) => {
+        if (property === 'marginBottom') {
+          return declarations;
+        }
+        return {
+          ...declarations,
+          [kebabCase(property)]: createPrefixedVar(
+            options,
+            property,
+            DEFAULT_VARS[property] ?? 'revert',
+          ),
+        };
+      },
+      {
+        borderWidth: 0,
+        borderStyle: 'solid',
+      } as CssRuleDeclarations,
     ),
   ]);
 
-  // TODO: Handle with typography options.
   rules.push([
     `:where(${['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'dl'].join(
       ', ',
     )})`,
     {
-      marginTop: 0,
-      marginBottom: 0,
+      marginTop: createPrefixedVar(options, 'marginTop', 0),
+      marginBottom: createPrefixedVar(options, 'marginBottom', 0),
     },
   ]);
 

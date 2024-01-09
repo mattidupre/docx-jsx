@@ -5,7 +5,6 @@ import {
   BorderStyle,
   LineRuleType,
 } from 'docx';
-import { clamp } from 'lodash';
 import {
   type Color,
   type TypographyOptions,
@@ -31,6 +30,20 @@ const DOCX_TEXT_ALIGN = {
 } as const;
 
 type Units = UnitsPx | UnitsRem;
+
+const clamp = (value: number, min: number, max: number) => {
+  if (value < min) {
+    console.warn(`Expected value greater than ${min}, received ${value}`);
+    return min;
+  }
+
+  if (value > max) {
+    console.warn(`Expected value less than ${max}, received ${value}`);
+    return max;
+  }
+
+  return value;
+};
 
 const toPt = (value: Units): number => {
   const float = Number.parseFloat(value);
@@ -58,8 +71,11 @@ const parseFontSize = (fontSize: TypographyOptionsFlat['fontSize']) =>
   fontSize &&
   (fontSize === 'normal' ? undefined : Math.round(toPt(fontSize) * 2));
 
-const parseBorderWidth = (borderWidth: undefined | UnitsRem | UnitsPx) =>
+const parseBorderWidth = (borderWidth: undefined | Units) =>
   borderWidth && Math.round(clamp(toPt(borderWidth), 0, 12) * 8);
+
+const parseBorderSpace = (padding: undefined | Units) =>
+  padding && Math.round(clamp(toPt(padding), 0, 31));
 
 export const parseTextRunOptions = (
   fonts: FontsConfig,
@@ -119,16 +135,12 @@ export const parseParagraphOptions = (
     textIndent,
   } = typographyOptionsToFlat(typographyOptions ?? {});
 
-  if (marginBottom) {
-    console.log(toTwip(marginBottom));
-  }
-
   return objectValuesDefined({
     border: {
       bottom: borderBottomWidth && {
         color: parseColor(borderBottomColor),
         style: BorderStyle.SINGLE,
-        space: parseBorderWidth(paddingBottom),
+        space: parseBorderSpace(paddingBottom),
         size: parseBorderWidth(borderBottomWidth),
       },
     },

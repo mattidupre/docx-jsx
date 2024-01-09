@@ -8,13 +8,13 @@ import {
 import { Pager } from '../../utils/pager';
 import { styleObjectToString, toCssStyleSheets } from '../../utils/css';
 import { assignDefined } from '../../utils/object';
-import { PageTemplate } from './pageTemplate';
 import { mapHtmlToDocument, type HtmlNode } from '../mapHtmlToDocument';
 import {
   variantNameToClassName,
   typographyOptionsToStyleVars,
   createStyleString,
 } from '../styles';
+import { PageTemplate } from './pageTemplate';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
