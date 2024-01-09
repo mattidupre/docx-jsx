@@ -10,18 +10,29 @@ import {
   type IParagraphOptions,
   type ISectionOptions,
   ExternalHyperlink,
+  HeadingLevel,
 } from 'docx';
 import { assignDefined } from '../../utils/object';
 import { mapHtmlToDocument } from '../mapHtmlToDocument';
-import type { FontsOptions } from '../../entities';
+import type { FontsConfig } from '../../entities';
 import {
   parseTextRunOptions,
   parseParagraphOptions,
-  DOCX_HEADING,
+} from './typographyOptionsToDocx';
+import {
   parseVariants,
   variantNameToCharacterStyleId,
   variantNameToParagraphStyleId,
-} from './entities';
+} from './variantsToDocx';
+
+const DOCX_HEADING = {
+  h1: HeadingLevel.HEADING_1,
+  h2: HeadingLevel.HEADING_2,
+  h3: HeadingLevel.HEADING_3,
+  h4: HeadingLevel.HEADING_4,
+  h5: HeadingLevel.HEADING_5,
+  h6: HeadingLevel.HEADING_6,
+} as const;
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
 /**
@@ -48,7 +59,7 @@ class Paragraph extends DocxParagraph {
   }
 }
 
-export type HtmlToDocxOptions = { fonts: FontsOptions };
+export type HtmlToDocxOptions = { fonts: FontsConfig };
 
 export const htmlToDocx = async (
   html: string,

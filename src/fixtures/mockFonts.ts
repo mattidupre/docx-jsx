@@ -1,8 +1,8 @@
-import type { FontsOptions } from '../entities';
+import type { FontsConfig } from '../entities';
 
 // https://meowni.ca/font-style-matcher/
 
-export const mockFonts: FontsOptions = {
+export const mockFonts: FontsConfig = {
   Merriweather: {
     fontFaces: [
       {

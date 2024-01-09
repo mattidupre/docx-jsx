@@ -6,7 +6,7 @@ import {
   type PrefixesConfig,
   type TypographyOptions,
   type VariantName,
-  type FontsOptions,
+  type FontsConfig,
 } from '../entities';
 import { getValueOf } from '../utils/object';
 import { joinKebab, prefixKebab } from '../utils/string';
@@ -47,9 +47,9 @@ export const variantsToStyleVars = (
 export const createStyleArray = (options: {
   variants?: Variants;
   prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
-  fonts?: FontsOptions;
+  fonts?: FontsConfig;
 }): CssRulesArray => {
-  const { prefixes, variants = {}, fonts = {} } = options;
+  const { prefixes, variants = {}, fonts = [] } = options;
 
   // TODO: Add @font-face rules.
 

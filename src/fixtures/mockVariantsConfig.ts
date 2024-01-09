@@ -11,11 +11,27 @@ const MOCK_VARIANTS: Variants = {
   hyperlink: {
     color: '#ff00ff',
   },
-  mockVariant: {
+  mockParagraphVariant: {
     fontFamily: 'Merriweather',
     fontSize: '2rem',
     color: ['--mock-color', '#00ffff'],
     fontWeight: 'bold',
+    paddingBottom: '8px',
+    borderBottomColor: '#ffff00',
+    borderBottomWidth: '8px',
+  },
+  mockTextVariant: {
+    fontFamily: 'Merriweather',
+    fontSize: '2rem',
+    color: ['--mock-color', '#00ffff'],
+    fontWeight: 'bold',
+    borderBottomColor: '#ffff00',
+    borderBottomWidth: '8px',
+  },
+  mockContentVariant: {
+    marginBottom: '1rem',
+    lineHeight: '1.5rem',
+    textIndent: '1rem',
   },
 };
 

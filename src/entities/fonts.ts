@@ -65,10 +65,10 @@ export type Font = {
   fontFaces: ReadonlyArray<FontFace>;
 };
 
-export type FontsOptions = Record<FontFamily, Font>;
+export type FontsConfig = Record<FontFamily, Font>;
 
 export const getFontFace = (
-  { fonts, documentType }: { fonts: FontsOptions; documentType: DocumentType },
+  { fonts, documentType }: { fonts: FontsConfig; documentType: DocumentType },
   options: Pick<TypographyOptions, 'fontFamily' | 'fontWeight' | 'fontStyle'>,
 ): undefined | SetRequired<FontFace, 'src'> => {
   const {

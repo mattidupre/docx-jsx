@@ -93,9 +93,16 @@ export function MockDocument({
           <li>Unordered List Item Depth 1</li>
         </ul>
 
+        <Typography as="p" variant="mockParagraphVariant">
+          mockParagraphVariant Paragraph
+        </Typography>
+
         <p>
-          <Typography variant="mockVariant">MockVariant Text</Typography>
+          <Typography variant="mockTextVariant">
+            mockTextVariant Text
+          </Typography>
         </p>
+
         <p>
           <a href="https://www.google.com">Link Text</a>
         </p>
@@ -146,14 +153,17 @@ export function MockDocument({
         <p>
           <Typography textTransform="uppercase">Uppercase Text</Typography>
         </p>
+        <Typography as="p" borderBottomColor="#ffff00" borderBottomWidth="4px">
+          Text With Underline
+        </Typography>
         <div
           dangerouslySetInnerHTML={{
             __html: '<p>dangerouslySetInnerHTML Content</p>',
           }}
         />
 
-        <Typography as="p" lineHeight="2">
-          Double Line Height: Circumambulate the city of a dreamy Sabbath
+        <Typography as="p" lineHeight="2rem">
+          2rem line height: Circumambulate the city of a dreamy Sabbath
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
         </Typography>
@@ -208,7 +218,7 @@ export function MockDocument({
         </PageBreakAvoid>
       </Stack>
 
-      {/* <Stack
+      <Stack
         innerPageClassName="preview__page"
         layouts={mockPageTypes('SECOND SECTION')}
         margin={{
@@ -217,7 +227,7 @@ export function MockDocument({
         }}
       >
         <LongText />
-      </Stack> */}
+      </Stack>
     </DocumentProvider>
   );
 }
@@ -226,7 +236,7 @@ export const createMockHtml = () => renderToStaticMarkup(<MockDocument />);
 
 function LongText() {
   return (
-    <div>
+    <Typography as="div" variant="mockContentVariant">
       {`CHAPTER 1. Loomings.
 
 Call me Ishmael. Some years ago—never mind how long precisely—having
@@ -430,6 +440,6 @@ all, one grand hooded phantom, like a snow hill in the air.`
         .map((text, index) => (
           <p key={`static_${index}`}>{text}</p>
         ))}
-    </div>
+    </Typography>
   );
 }

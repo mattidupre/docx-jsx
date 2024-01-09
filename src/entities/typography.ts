@@ -4,24 +4,30 @@ import { toDefinedArray } from '../utils/array';
 import type { FontFamily } from './fonts';
 import type { TagName } from './html';
 import type { Color } from './options';
+import type { UnitsPx, UnitsRem } from './units';
 
 type TypographyOptionsCssFlat = {
   breakInside: 'auto' | 'avoid';
   textAlign: 'left' | 'center' | 'right' | 'justify';
-  lineHeight: `${number}`;
+  lineHeight: UnitsRem;
   fontWeight: 'normal' | 'bold';
   fontStyle: 'normal' | 'italic';
-  fontSize: 'normal' | `${number}rem`;
+  fontSize: 'normal' | UnitsRem;
   fontFamily: FontFamily;
   color: Color | 'currentColor';
   textTransform: 'none' | 'uppercase';
   textDecoration: 'none' | 'underline' | 'line-through';
+  textIndent: UnitsPx | UnitsRem;
+  marginBottom: UnitsPx | UnitsRem;
+  paddingBottom: UnitsPx | UnitsRem;
+  borderBottomWidth: UnitsPx | UnitsRem;
+  borderBottomColor: Color | 'currentColor';
 };
 
 const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyOptionsCssFlat> = {
   breakInside: 'auto',
   textAlign: 'left',
-  lineHeight: '1',
+  lineHeight: '1.5rem',
   fontWeight: 'normal',
   fontStyle: 'normal',
   fontSize: 'normal',
@@ -29,6 +35,11 @@ const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyOptionsCssFlat> = {
   color: '#000000',
   textTransform: 'none',
   textDecoration: 'none',
+  textIndent: '0px',
+  marginBottom: '0px',
+  paddingBottom: '0px',
+  borderBottomWidth: '0px',
+  borderBottomColor: 'currentColor',
 };
 
 export const TYPOGRAPHY_CSS_KEYS = Object.keys(

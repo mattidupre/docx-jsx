@@ -5,6 +5,8 @@ exports[`createStyleArray 1`] = `
   [
     "*",
     {
+      "border-bottom-color": "var(--mock-variable-border-bottom-color, revert)",
+      "border-bottom-width": "var(--mock-variable-border-bottom-width, revert)",
       "break-inside": "var(--mock-variable-break-inside, revert)",
       "color": "var(--mock-variable-color, revert)",
       "font-family": "var(--mock-variable-font-family, revert)",
@@ -12,8 +14,11 @@ exports[`createStyleArray 1`] = `
       "font-style": "var(--mock-variable-font-style, revert)",
       "font-weight": "var(--mock-variable-font-weight, revert)",
       "line-height": "var(--mock-variable-line-height, revert)",
+      "margin-bottom": "var(--mock-variable-margin-bottom, revert)",
+      "padding-bottom": "var(--mock-variable-padding-bottom, revert)",
       "text-align": "var(--mock-variable-text-align, revert)",
       "text-decoration": "var(--mock-variable-text-decoration, revert)",
+      "text-indent": "var(--mock-variable-text-indent, revert)",
       "text-transform": "var(--mock-variable-text-transform, revert)",
     },
   ],
@@ -27,18 +32,48 @@ exports[`createStyleArray 1`] = `
   [
     ":where(.mock-class-name-heading-1), :where(h1)",
     {
-      "--mock-variable-color": "#0000ff",
+      "--mock-variable-color": "#ff00ff",
       "--mock-variable-font-family": "Merriweather",
       "--mock-variable-font-size": "2rem",
+      "--mock-variable-font-style": "italic",
+      "--mock-variable-font-weight": "bold",
     },
   ],
   [
-    ":where(.mock-class-name-mock-variant)",
+    ":where(.mock-class-name-hyperlink), :where(a)",
     {
+      "--mock-variable-color": "#ff00ff",
+    },
+  ],
+  [
+    ":where(.mock-class-name-mock-paragraph-variant)",
+    {
+      "--mock-variable-border-bottom-color": "#ffff00",
+      "--mock-variable-border-bottom-width": "8px",
       "--mock-variable-color": "var(--mock-color, #00ffff)",
       "--mock-variable-font-family": "Merriweather",
       "--mock-variable-font-size": "2rem",
       "--mock-variable-font-weight": "bold",
+      "--mock-variable-padding-bottom": "8px",
+    },
+  ],
+  [
+    ":where(.mock-class-name-mock-text-variant)",
+    {
+      "--mock-variable-border-bottom-color": "#ffff00",
+      "--mock-variable-border-bottom-width": "8px",
+      "--mock-variable-color": "var(--mock-color, #00ffff)",
+      "--mock-variable-font-family": "Merriweather",
+      "--mock-variable-font-size": "2rem",
+      "--mock-variable-font-weight": "bold",
+    },
+  ],
+  [
+    ":where(.mock-class-name-mock-content-variant)",
+    {
+      "--mock-variable-line-height": "1.5rem",
+      "--mock-variable-margin-bottom": "1rem",
+      "--mock-variable-text-indent": "1rem",
     },
   ],
 ]
@@ -56,20 +91,46 @@ exports[`createStyleString 1`] = `
   color: var(--mock-variable-color, revert);
   text-transform: var(--mock-variable-text-transform, revert);
   text-decoration: var(--mock-variable-text-decoration, revert);
+  text-indent: var(--mock-variable-text-indent, revert);
+  margin-bottom: var(--mock-variable-margin-bottom, revert);
+  padding-bottom: var(--mock-variable-padding-bottom, revert);
+  border-bottom-width: var(--mock-variable-border-bottom-width, revert);
+  border-bottom-color: var(--mock-variable-border-bottom-color, revert);
 }
 :where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl) {
   margin-top: 0;
   margin-bottom: 0;
 }
 :where(.mock-class-name-heading-1), :where(h1) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-style: italic;
   --mock-variable-font-size: 2rem;
   --mock-variable-font-family: Merriweather;
-  --mock-variable-color: #0000ff;
+  --mock-variable-color: #ff00ff;
 }
-:where(.mock-class-name-mock-variant) {
+:where(.mock-class-name-hyperlink), :where(a) {
+  --mock-variable-color: #ff00ff;
+}
+:where(.mock-class-name-mock-paragraph-variant) {
   --mock-variable-font-weight: bold;
   --mock-variable-font-size: 2rem;
   --mock-variable-font-family: Merriweather;
   --mock-variable-color: var(--mock-color, #00ffff);
+  --mock-variable-padding-bottom: 8px;
+  --mock-variable-border-bottom-width: 8px;
+  --mock-variable-border-bottom-color: #ffff00;
+}
+:where(.mock-class-name-mock-text-variant) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 2rem;
+  --mock-variable-font-family: Merriweather;
+  --mock-variable-color: var(--mock-color, #00ffff);
+  --mock-variable-border-bottom-width: 8px;
+  --mock-variable-border-bottom-color: #ffff00;
+}
+:where(.mock-class-name-mock-content-variant) {
+  --mock-variable-line-height: 1.5rem;
+  --mock-variable-text-indent: 1rem;
+  --mock-variable-margin-bottom: 1rem;
 }"
 `;
