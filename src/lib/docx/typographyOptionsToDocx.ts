@@ -4,8 +4,6 @@ import {
   type IRunPropertiesOptions,
   BorderStyle,
   LineRuleType,
-  TabStopType,
-  type TabStopDefinition,
 } from 'docx';
 import {
   type Color,

@@ -11,6 +11,10 @@ import {
   type ISectionOptions,
   ExternalHyperlink,
   HeadingLevel,
+  PositionalTab,
+  PositionalTabAlignment,
+  PositionalTabRelativeTo,
+  PositionalTabLeader,
 } from 'docx';
 import { assignDefined } from '../../utils/object';
 import { mapHtmlToDocument } from '../mapHtmlToDocument';
@@ -112,6 +116,23 @@ export const htmlToDocx = async (
           ...parseTextRunOptions(fonts, contentOptions),
           style: variantNameToCharacterStyleId(elementsContext.variant),
           children: [PageNumber.TOTAL_PAGES],
+        });
+      }
+
+      if (element.elementType === 'typographysplit') {
+        const [leftChild, rightChild] = node.children as ParagraphChild[];
+        return new Paragraph({
+          ...parseParagraphOptions(fonts, contentOptions),
+          style: variantNameToParagraphStyleId(elementsContext.variant),
+          children: [
+            leftChild,
+            new PositionalTab({
+              alignment: PositionalTabAlignment.RIGHT,
+              relativeTo: PositionalTabRelativeTo.MARGIN,
+              leader: PositionalTabLeader.NONE,
+            }),
+            rightChild,
+          ],
         });
       }
 

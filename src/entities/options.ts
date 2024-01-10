@@ -19,6 +19,7 @@ export type StyleSheetsValue =
   | HTMLStyleElement;
 
 export type PrefixesConfig = {
+  elementClassName: Lowercase<string>;
   variantClassName: Lowercase<string>;
   cssVariable: Lowercase<string>;
 };
@@ -34,6 +35,9 @@ const parsePrefixes = (prefixOptions?: PrefixesOptions): PrefixesConfig => {
     typeof prefixOptions === 'object' ? prefixOptions : {};
 
   return {
+    elementClassName: toLowercase(
+      prefixOptionsObject.elementClassName ?? defaultPrefix + '-element',
+    ),
     variantClassName: toLowercase(
       prefixOptionsObject.variantClassName ?? defaultPrefix + '-variant',
     ),

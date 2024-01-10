@@ -25,6 +25,7 @@ const CONTENT_ELEMENT_TYPES = [
   'htmltag',
   'pagecount',
   'pagenumber',
+  'typographysplit',
 ] as const satisfies ReadonlyArray<ElementType>;
 
 const CONTENT_ROOT_TYPES = [
@@ -290,9 +291,12 @@ export const mapHtmlToDocument = <TContent>(
       }
 
       if (isElementOfType(elementData, CONTENT_ELEMENT_TYPES)) {
-        // if (isChildOfTagName(parentTagNames, 'li')) { console.log('HERE:
-        //   Remove paragraph elements'); // Paragraph-ish children of li are
-        //   ignored. return children; }
+        if (isElementOfType(elementData, 'typographysplit')) {
+          if (children.length !== 2) {
+            throw new Error('Expected exactly two children.');
+          }
+        }
+
         return parseNode({ ...childContext, type: 'element', children });
       }
 

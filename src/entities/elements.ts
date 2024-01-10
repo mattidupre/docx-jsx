@@ -27,6 +27,7 @@ type ConfigByElementType = {
   };
   pagenumber: Record<string, never>;
   pagecount: Record<string, never>;
+  typographysplit: Record<string, never>;
 };
 
 export type ElementType = keyof ConfigByElementType;

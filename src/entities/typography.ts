@@ -1,5 +1,5 @@
 import { mapValues, merge } from 'lodash';
-import { assignDefined, mergeWithDefault } from '../utils/object';
+import { assignDefined } from '../utils/object';
 import { toDefinedArray } from '../utils/array';
 import type { FontFamily } from './fonts';
 import type { TagName } from './html';

@@ -4,6 +4,7 @@ import {
   DocumentProvider,
   Stack,
   Typography,
+  TypographySplit,
   PageNumber,
   PageCount,
   PageBreakAvoid,
@@ -122,6 +123,9 @@ export function MockDocument({
           <em>{'<em>'} Text</em>
         </p>
         <p>
+          <i>{'<i>'} Text</i>
+        </p>
+        <p>
           <Typography textDecoration="underline">Underlined Text</Typography>
         </p>
         <p>
@@ -176,6 +180,23 @@ export function MockDocument({
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
         </Typography>
+
+        <TypographySplit left={<b>Left Text</b>} right={<em>Right Text</em>} />
+        <TypographySplit
+          left={
+            <>
+              Circumambulate the city of a dreamy Sabbath afternoon. Go from
+              Corlears Hook to Coenties Slip, and from thence, by Whitehall,
+              northward.
+            </>
+          }
+          right={
+            <>
+              But look! here come more crowds, pacing straight for the water,
+              and seemingly bound for a dive.
+            </>
+          }
+        />
 
         <Typography as="p" textAlign="left">
           Left Paragraph

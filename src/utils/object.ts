@@ -1,5 +1,5 @@
 import type { IfAny, PartialDeep, Primitive } from 'type-fest';
-import { mapValues, merge, omitBy } from 'lodash';
+import { merge, omitBy } from 'lodash';
 
 export type KeyedObject = Record<PropertyKey, unknown> & { length?: never };
 

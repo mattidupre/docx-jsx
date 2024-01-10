@@ -1,4 +1,4 @@
-import { kebabCase, map, mapValues, pick } from 'lodash';
+import { kebabCase, mapValues, pick } from 'lodash';
 import {
   TYPOGRAPHY_CSS_KEYS,
   type Variants,
@@ -18,8 +18,13 @@ import {
   objectToVarValues,
 } from '../utils/css';
 
+// export const elementTypeToClassName = (
+//   { prefixes }: { prefixes: Pick<PrefixesConfig, 'elementClassName'> },
+//   elementType: ElementType,
+// ) => prefixKebab(prefixes.elementClassName, elementType);
+
 export const variantNameToClassName = (
-  { prefixes }: { prefixes: PrefixesConfig },
+  { prefixes }: { prefixes: Pick<PrefixesConfig, 'variantClassName'> },
   variantName: VariantName,
 ) => prefixKebab(prefixes.variantClassName, variantName);
 
@@ -101,6 +106,33 @@ export const createStyleArray = (options: {
       }, {} as CssRuleDeclarations),
     },
   ]);
+
+  rules.push(
+    [
+      ':where(b, strong)',
+      {
+        fontWeight: 'bold',
+      },
+    ],
+    [
+      ':where(em, i)',
+      {
+        fontStyle: 'italic',
+      },
+    ],
+    [
+      ':where(u)',
+      {
+        textDecoration: 'underline',
+      },
+    ],
+    [
+      ':where(s)',
+      {
+        textDecoration: 'line-through',
+      },
+    ],
+  );
 
   rules.push(
     [

@@ -62,11 +62,13 @@ export function InternalElement({
     return children;
   }
 
+  const classNames = compact([
+    classNameProp,
+    variant && variantNameToClassName({ prefixes }, variant),
+  ]);
+
   const baseAttributes = {
-    className: compact([
-      classNameProp,
-      variant && variantNameToClassName({ prefixes }, variant),
-    ]),
+    className: classNames.length > 0 ? classNames : undefined,
     style: {
       ...optionsStyle,
       ...styleProp,
