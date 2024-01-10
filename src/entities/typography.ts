@@ -1,4 +1,4 @@
-import { mapValues } from 'lodash';
+import { mapValues, merge } from 'lodash';
 import { assignDefined, mergeWithDefault } from '../utils/object';
 import { toDefinedArray } from '../utils/array';
 import type { FontFamily } from './fonts';
@@ -23,6 +23,7 @@ type TypographyOptionsCssFlat = {
   paddingBottom: UnitsPx | UnitsRem;
   borderBottomWidth: UnitsPx | UnitsRem;
   borderBottomColor: Color | 'currentColor';
+  marginLeft: UnitsPx | UnitsRem;
 };
 
 const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyOptionsCssFlat> = {
@@ -42,6 +43,7 @@ const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyOptionsCssFlat> = {
   paddingBottom: '0px',
   borderBottomWidth: '0px',
   borderBottomColor: 'currentColor',
+  marginLeft: '0px',
 };
 
 export const TYPOGRAPHY_CSS_KEYS = Object.keys(
@@ -95,26 +97,6 @@ export const assignTypographyOptions = (
   ...[args0, ...args]: ReadonlyArray<undefined | TypographyOptions>
 ): TypographyOptions => assignDefined(args0 ?? {}, ...args);
 
-export const TYPOGRAPHY_TAG_NAMES = [
-  'p',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'a',
-  'b',
-  'strong',
-  'i',
-  'em',
-  's',
-  'u',
-  'sub',
-  'sup',
-  'span',
-] satisfies ReadonlyArray<TagName>;
-
 /**
  * Map certain HTML tags to their respective typography styles.
  * Creates consistency between HTML and Docx.
@@ -133,20 +115,9 @@ export type VariantName = string;
 
 export type Variants = Record<VariantName, TypographyOptions>;
 
-export const DEFAULT_VARIANTS: Variants = {
-  // title: { fontSize: '3rem' },
-  // heading1: { fontSize: '1rem', lineHeight: '2' },
-  // heading2: { fontSize: '1rem', lineHeight: '2' },
-  // heading3: { fontSize: '1rem', lineHeight: '2' },
-  // heading4: { fontSize: '1rem', lineHeight: '2' },
-  // heading5: { fontSize: '1rem', lineHeight: '2' },
-  // heading6: { fontSize: '1rem', lineHeight: '2' },
-  // hyperlink: { color: 'currentColor' },
-};
-
 export const assignVariants = <T extends Variants>(
   ...[args0, ...args]: ReadonlyArray<undefined | Partial<T>>
-) => mergeWithDefault<Variants>(DEFAULT_VARIANTS, args0 ?? {}, ...args) as T;
+) => merge(args0 ?? {}, ...args) as T;
 
 export const INTRINSIC_VARIANT_TAG_NAMES = {
   // 'document': '*',

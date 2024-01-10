@@ -24,10 +24,18 @@ exports[`createStyleArray 1`] = `
     },
   ],
   [
-    ":where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl)",
+    ":where(p, h1, h2, h3, h4, h5, h6, li)",
     {
+      "display": "flow-root",
       "marginBottom": "var(--mock-variable-margin-bottom, 0)",
+      "marginLeft": "var(--mock-variable-margin-left, 0)",
       "marginTop": "var(--mock-variable-margin-top, 0)",
+    },
+  ],
+  [
+    ":where(li)",
+    {
+      "display": "list-item",
     },
   ],
   [
@@ -97,9 +105,14 @@ exports[`createStyleString 1`] = `
   border-bottom-width: var(--mock-variable-border-bottom-width, 0);
   border-bottom-color: var(--mock-variable-border-bottom-color, unset);
 }
-:where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl) {
+:where(p, h1, h2, h3, h4, h5, h6, li) {
   margin-top: var(--mock-variable-margin-top, 0);
   margin-bottom: var(--mock-variable-margin-bottom, 0);
+  margin-left: var(--mock-variable-margin-left, 0);
+  display: flow-root;
+}
+:where(li) {
+  display: list-item;
 }
 :where(.mock-class-name-heading-1), :where(h1) {
   --mock-variable-font-weight: bold;

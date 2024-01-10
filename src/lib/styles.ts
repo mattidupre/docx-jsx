@@ -1,4 +1,4 @@
-import { kebabCase, pick } from 'lodash';
+import { kebabCase, map, mapValues, pick } from 'lodash';
 import {
   TYPOGRAPHY_CSS_KEYS,
   type Variants,
@@ -7,6 +7,7 @@ import {
   type TypographyOptions,
   type VariantName,
   type FontsConfig,
+  PARAGRAPH_TAG_NAMES,
 } from '../entities';
 import { getValueOf } from '../utils/object';
 import { joinKebab, prefixKebab } from '../utils/string';
@@ -62,6 +63,12 @@ const DEFAULT_VARS: CssRuleDeclarations = {
   borderLeftWidth: 0,
 };
 
+const DIRECT_PARAGRAPH_STYLES = {
+  marginTop: 0,
+  marginBottom: 0,
+  marginLeft: 0,
+} as const satisfies Partial<Record<keyof TypographyOptions, unknown>>;
+
 export const createStyleArray = (options: {
   variants?: Variants;
   prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
@@ -76,9 +83,11 @@ export const createStyleArray = (options: {
 
   rules.push([
     '*',
-    TYPOGRAPHY_CSS_KEYS.reduce(
-      (declarations, property) => {
-        if (property === 'marginTop' || property === 'marginBottom') {
+    {
+      borderWidth: 0,
+      borderStyle: 'solid',
+      ...TYPOGRAPHY_CSS_KEYS.reduce((declarations, property) => {
+        if (property in DIRECT_PARAGRAPH_STYLES) {
           return declarations;
         }
         return {
@@ -89,23 +98,27 @@ export const createStyleArray = (options: {
             DEFAULT_VARS[property] ?? 'unset',
           ),
         };
-      },
-      {
-        borderWidth: 0,
-        borderStyle: 'solid',
-      } as CssRuleDeclarations,
-    ),
-  ]);
-
-  rules.push([
-    `:where(${['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol', 'dl'].join(
-      ', ',
-    )})`,
-    {
-      marginTop: createPrefixedVar(options, 'marginTop', 0),
-      marginBottom: createPrefixedVar(options, 'marginBottom', 0),
+      }, {} as CssRuleDeclarations),
     },
   ]);
+
+  rules.push(
+    [
+      `:where(${PARAGRAPH_TAG_NAMES.join(', ')})`,
+      {
+        ...mapValues(DIRECT_PARAGRAPH_STYLES, (value, key) =>
+          createPrefixedVar(options, key, value),
+        ),
+        display: 'flow-root', // Prevents margin collapse
+      },
+    ],
+    [
+      `:where(li)`,
+      {
+        display: 'list-item', // Fixes flow-root
+      },
+    ],
+  );
 
   // Variant vars are attached to variant class names .[prefix]-[variant-name]
   for (const variantName in variants) {

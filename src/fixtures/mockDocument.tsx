@@ -159,6 +159,9 @@ export function MockDocument({
         <Typography as="p" marginTop="2rem">
           Margin Top
         </Typography>
+        <Typography as="p" marginLeft="2rem">
+          Margin Left
+        </Typography>
         <Typography as="p" marginBottom="2rem">
           Margin Bottom
         </Typography>

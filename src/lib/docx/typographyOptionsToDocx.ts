@@ -4,6 +4,8 @@ import {
   type IRunPropertiesOptions,
   BorderStyle,
   LineRuleType,
+  TabStopType,
+  type TabStopDefinition,
 } from 'docx';
 import {
   type Color,
@@ -130,6 +132,7 @@ export const parseParagraphOptions = (
     highlightColor,
     marginTop,
     marginBottom,
+    marginLeft,
     paddingBottom,
     borderBottomColor,
     borderBottomWidth,
@@ -153,6 +156,7 @@ export const parseParagraphOptions = (
     },
     indent: {
       firstLine: textIndent && toTwip(textIndent),
+      left: marginLeft && toTwip(marginLeft),
     },
     alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
     shading: highlightColor && {
