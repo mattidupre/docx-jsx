@@ -78,7 +78,7 @@ export const createStyleArray = (options: {
     '*',
     TYPOGRAPHY_CSS_KEYS.reduce(
       (declarations, property) => {
-        if (property === 'marginBottom') {
+        if (property === 'marginTop' || property === 'marginBottom') {
           return declarations;
         }
         return {
@@ -86,7 +86,7 @@ export const createStyleArray = (options: {
           [kebabCase(property)]: createPrefixedVar(
             options,
             property,
-            DEFAULT_VARS[property] ?? 'revert',
+            DEFAULT_VARS[property] ?? 'unset',
           ),
         };
       },

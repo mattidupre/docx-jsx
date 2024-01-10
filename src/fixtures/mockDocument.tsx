@@ -156,6 +156,12 @@ export function MockDocument({
         <Typography as="p" borderBottomColor="#ffff00" borderBottomWidth="4px">
           Text With Underline
         </Typography>
+        <Typography as="p" marginTop="2rem">
+          Margin Top
+        </Typography>
+        <Typography as="p" marginBottom="2rem">
+          Margin Bottom
+        </Typography>
         <div
           dangerouslySetInnerHTML={{
             __html: '<p>dangerouslySetInnerHTML Content</p>',

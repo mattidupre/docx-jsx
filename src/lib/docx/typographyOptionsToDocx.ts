@@ -128,6 +128,7 @@ export const parseParagraphOptions = (
     textAlign,
     lineHeight,
     highlightColor,
+    marginTop,
     marginBottom,
     paddingBottom,
     borderBottomColor,
@@ -145,6 +146,7 @@ export const parseParagraphOptions = (
       },
     },
     spacing: {
+      before: marginTop && toTwip(marginTop),
       after: marginBottom && toTwip(marginBottom),
       line: lineHeight && parseFloat(lineHeight) * 240,
       lineRule: LineRuleType.EXACT,

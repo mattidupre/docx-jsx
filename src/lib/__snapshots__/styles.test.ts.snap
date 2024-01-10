@@ -5,28 +5,29 @@ exports[`createStyleArray 1`] = `
   [
     "*",
     {
-      "border-bottom-color": "var(--mock-variable-border-bottom-color, revert)",
-      "border-bottom-width": "var(--mock-variable-border-bottom-width, revert)",
-      "break-inside": "var(--mock-variable-break-inside, revert)",
-      "color": "var(--mock-variable-color, revert)",
-      "font-family": "var(--mock-variable-font-family, revert)",
-      "font-size": "var(--mock-variable-font-size, revert)",
-      "font-style": "var(--mock-variable-font-style, revert)",
-      "font-weight": "var(--mock-variable-font-weight, revert)",
-      "line-height": "var(--mock-variable-line-height, revert)",
-      "margin-bottom": "var(--mock-variable-margin-bottom, revert)",
-      "padding-bottom": "var(--mock-variable-padding-bottom, revert)",
-      "text-align": "var(--mock-variable-text-align, revert)",
-      "text-decoration": "var(--mock-variable-text-decoration, revert)",
-      "text-indent": "var(--mock-variable-text-indent, revert)",
-      "text-transform": "var(--mock-variable-text-transform, revert)",
+      "border-bottom-color": "var(--mock-variable-border-bottom-color, unset)",
+      "border-bottom-width": "var(--mock-variable-border-bottom-width, 0)",
+      "borderStyle": "solid",
+      "borderWidth": 0,
+      "break-inside": "var(--mock-variable-break-inside, unset)",
+      "color": "var(--mock-variable-color, unset)",
+      "font-family": "var(--mock-variable-font-family, unset)",
+      "font-size": "var(--mock-variable-font-size, 1rem)",
+      "font-style": "var(--mock-variable-font-style, unset)",
+      "font-weight": "var(--mock-variable-font-weight, unset)",
+      "line-height": "var(--mock-variable-line-height, unset)",
+      "padding-bottom": "var(--mock-variable-padding-bottom, unset)",
+      "text-align": "var(--mock-variable-text-align, unset)",
+      "text-decoration": "var(--mock-variable-text-decoration, unset)",
+      "text-indent": "var(--mock-variable-text-indent, unset)",
+      "text-transform": "var(--mock-variable-text-transform, unset)",
     },
   ],
   [
     ":where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl)",
     {
-      "marginBottom": 0,
-      "marginTop": 0,
+      "marginBottom": "var(--mock-variable-margin-bottom, 0)",
+      "marginTop": "var(--mock-variable-margin-top, 0)",
     },
   ],
   [
@@ -49,22 +50,20 @@ exports[`createStyleArray 1`] = `
     ":where(.mock-class-name-mock-paragraph-variant)",
     {
       "--mock-variable-border-bottom-color": "#ffff00",
-      "--mock-variable-border-bottom-width": "8px",
-      "--mock-variable-color": "var(--mock-color, #00ffff)",
+      "--mock-variable-border-bottom-width": "0.25rem",
+      "--mock-variable-color": "var(--mock-color, #00dddd)",
       "--mock-variable-font-family": "Merriweather",
-      "--mock-variable-font-size": "2rem",
+      "--mock-variable-font-size": "1.25rem",
       "--mock-variable-font-weight": "bold",
-      "--mock-variable-padding-bottom": "8px",
+      "--mock-variable-padding-bottom": "0.25rem",
     },
   ],
   [
     ":where(.mock-class-name-mock-text-variant)",
     {
-      "--mock-variable-border-bottom-color": "#ffff00",
-      "--mock-variable-border-bottom-width": "8px",
-      "--mock-variable-color": "var(--mock-color, #00ffff)",
+      "--mock-variable-color": "var(--mock-color, #00dddd)",
       "--mock-variable-font-family": "Merriweather",
-      "--mock-variable-font-size": "2rem",
+      "--mock-variable-font-size": "1.25rem",
       "--mock-variable-font-weight": "bold",
     },
   ],
@@ -81,25 +80,26 @@ exports[`createStyleArray 1`] = `
 
 exports[`createStyleString 1`] = `
 "* {
-  break-inside: var(--mock-variable-break-inside, revert);
-  text-align: var(--mock-variable-text-align, revert);
-  line-height: var(--mock-variable-line-height, revert);
-  font-weight: var(--mock-variable-font-weight, revert);
-  font-style: var(--mock-variable-font-style, revert);
-  font-size: var(--mock-variable-font-size, revert);
-  font-family: var(--mock-variable-font-family, revert);
-  color: var(--mock-variable-color, revert);
-  text-transform: var(--mock-variable-text-transform, revert);
-  text-decoration: var(--mock-variable-text-decoration, revert);
-  text-indent: var(--mock-variable-text-indent, revert);
-  margin-bottom: var(--mock-variable-margin-bottom, revert);
-  padding-bottom: var(--mock-variable-padding-bottom, revert);
-  border-bottom-width: var(--mock-variable-border-bottom-width, revert);
-  border-bottom-color: var(--mock-variable-border-bottom-color, revert);
+  border-width: 0;
+  border-style: solid;
+  break-inside: var(--mock-variable-break-inside, unset);
+  text-align: var(--mock-variable-text-align, unset);
+  line-height: var(--mock-variable-line-height, unset);
+  font-weight: var(--mock-variable-font-weight, unset);
+  font-style: var(--mock-variable-font-style, unset);
+  font-size: var(--mock-variable-font-size, 1rem);
+  font-family: var(--mock-variable-font-family, unset);
+  color: var(--mock-variable-color, unset);
+  text-transform: var(--mock-variable-text-transform, unset);
+  text-decoration: var(--mock-variable-text-decoration, unset);
+  text-indent: var(--mock-variable-text-indent, unset);
+  padding-bottom: var(--mock-variable-padding-bottom, unset);
+  border-bottom-width: var(--mock-variable-border-bottom-width, 0);
+  border-bottom-color: var(--mock-variable-border-bottom-color, unset);
 }
 :where(h1, h2, h3, h4, h5, h6, p, ul, ol, dl) {
-  margin-top: 0;
-  margin-bottom: 0;
+  margin-top: var(--mock-variable-margin-top, 0);
+  margin-bottom: var(--mock-variable-margin-bottom, 0);
 }
 :where(.mock-class-name-heading-1), :where(h1) {
   --mock-variable-font-weight: bold;
@@ -113,20 +113,18 @@ exports[`createStyleString 1`] = `
 }
 :where(.mock-class-name-mock-paragraph-variant) {
   --mock-variable-font-weight: bold;
-  --mock-variable-font-size: 2rem;
+  --mock-variable-font-size: 1.25rem;
   --mock-variable-font-family: Merriweather;
-  --mock-variable-color: var(--mock-color, #00ffff);
-  --mock-variable-padding-bottom: 8px;
-  --mock-variable-border-bottom-width: 8px;
+  --mock-variable-color: var(--mock-color, #00dddd);
+  --mock-variable-padding-bottom: 0.25rem;
+  --mock-variable-border-bottom-width: 0.25rem;
   --mock-variable-border-bottom-color: #ffff00;
 }
 :where(.mock-class-name-mock-text-variant) {
   --mock-variable-font-weight: bold;
-  --mock-variable-font-size: 2rem;
+  --mock-variable-font-size: 1.25rem;
   --mock-variable-font-family: Merriweather;
-  --mock-variable-color: var(--mock-color, #00ffff);
-  --mock-variable-border-bottom-width: 8px;
-  --mock-variable-border-bottom-color: #ffff00;
+  --mock-variable-color: var(--mock-color, #00dddd);
 }
 :where(.mock-class-name-mock-content-variant) {
   --mock-variable-line-height: 1.5rem;

@@ -2,7 +2,6 @@ import {
   type LayoutType,
   LAYOUT_TYPES,
   type DocumentElement,
-  assignHtmlAttributes,
   type StyleSheetsValue,
 } from '../../entities';
 import { Pager } from '../../utils/pager';
@@ -15,6 +14,7 @@ import {
   createStyleString,
 } from '../styles';
 import { PageTemplate } from './pageTemplate';
+import { extendHtmlAttributes } from './extendHtmlAttributes';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
 
@@ -37,7 +37,7 @@ const objToDom = (node: HtmlNode) => {
 
     const { prefixes } = elementsContext.document!;
 
-    const attributes = assignHtmlAttributes({}, properties, {
+    const attributes = extendHtmlAttributes(properties, {
       class: variant && variantNameToClassName({ prefixes }, variant),
       style: styleObjectToString(
         typographyOptionsToStyleVars({ prefixes }, contentOptions),

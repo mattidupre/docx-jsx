@@ -18,6 +18,7 @@ type TypographyOptionsCssFlat = {
   textTransform: 'none' | 'uppercase';
   textDecoration: 'none' | 'underline' | 'line-through';
   textIndent: UnitsPx | UnitsRem;
+  marginTop: UnitsPx | UnitsRem;
   marginBottom: UnitsPx | UnitsRem;
   paddingBottom: UnitsPx | UnitsRem;
   borderBottomWidth: UnitsPx | UnitsRem;
@@ -36,6 +37,7 @@ const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyOptionsCssFlat> = {
   textTransform: 'none',
   textDecoration: 'none',
   textIndent: '0px',
+  marginTop: '0px',
   marginBottom: '0px',
   paddingBottom: '0px',
   borderBottomWidth: '0px',
