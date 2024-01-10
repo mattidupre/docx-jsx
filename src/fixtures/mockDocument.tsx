@@ -4,7 +4,7 @@ import {
   DocumentProvider,
   Stack,
   Typography,
-  TypographySplit,
+  Split,
   PageNumber,
   PageCount,
   PageBreakAvoid,
@@ -83,7 +83,6 @@ export function MockDocument({
         <h4>Heading 4</h4>
         <h5>Heading 5</h5>
         <h6>Heading 6</h6>
-
         <ul>
           <li>Unordered List Item Depth 1</li>
           <li>Unordered List Item Depth 1</li>
@@ -93,17 +92,14 @@ export function MockDocument({
           </ul>
           <li>Unordered List Item Depth 1</li>
         </ul>
-
         <Typography as="p" variant="mockParagraphVariant">
           mockParagraphVariant Paragraph
         </Typography>
-
         <p>
           <Typography variant="mockTextVariant">
             mockTextVariant Text
           </Typography>
         </p>
-
         <p>
           <a href="https://www.google.com">Link Text</a>
         </p>
@@ -140,6 +136,11 @@ export function MockDocument({
           <s>{'<s>'} Text</s>
         </p>
         <p>
+          {'<br />'}Inside a block of paragraph text...
+          <br />
+          ...continued.
+        </p>
+        <p>
           <Typography fontSize="2rem">Size 2rem Text</Typography>
         </p>
         <p>
@@ -174,15 +175,14 @@ export function MockDocument({
             __html: '<p>dangerouslySetInnerHTML Content</p>',
           }}
         />
-
         <Typography as="p" lineHeight="2rem">
           2rem line height: Circumambulate the city of a dreamy Sabbath
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
         </Typography>
-
-        <TypographySplit left={<b>Left Text</b>} right={<em>Right Text</em>} />
-        <TypographySplit
+        <Split left={<b>Left Text</b>} right={<em>Right Text</em>} />
+        <p />
+        <Split
           left={
             <>
               Circumambulate the city of a dreamy Sabbath afternoon. Go from
@@ -197,7 +197,6 @@ export function MockDocument({
             </>
           }
         />
-
         <Typography as="p" textAlign="left">
           Left Paragraph
         </Typography>

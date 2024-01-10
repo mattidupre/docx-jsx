@@ -25,7 +25,7 @@ const CONTENT_ELEMENT_TYPES = [
   'htmltag',
   'pagecount',
   'pagenumber',
-  'typographysplit',
+  'split',
 ] as const satisfies ReadonlyArray<ElementType>;
 
 const CONTENT_ROOT_TYPES = [
@@ -173,12 +173,26 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Content must be a child of content root.');
         }
 
+        const isChildOfParagraph = isChildOfTagName(
+          parentTagNames,
+          PARAGRAPH_TAG_NAMES,
+        );
+
+        if (tagName === 'br') {
+          if (!isChildOfParagraph) {
+            return parentContext!;
+          }
+        }
+
         if (isValueInArray(tagName, PARAGRAPH_TAG_NAMES)) {
-          if (isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES)) {
+          if (isChildOfParagraph) {
             throw new TypeError(
               'Paragraph-ish tags (e.g., p, h1, li) cannot be nested inside one another.',
             );
           }
+          assignElementsContext(elementsContext, {
+            isInsideParagraph: true,
+          });
         }
 
         assignElementsContext(elementsContext, elementData.elementOptions, {
@@ -291,7 +305,7 @@ export const mapHtmlToDocument = <TContent>(
       }
 
       if (isElementOfType(elementData, CONTENT_ELEMENT_TYPES)) {
-        if (isElementOfType(elementData, 'typographysplit')) {
+        if (isElementOfType(elementData, 'split')) {
           if (children.length !== 2) {
             throw new Error('Expected exactly two children.');
           }

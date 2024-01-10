@@ -11,10 +11,13 @@ import {
   type ISectionOptions,
   ExternalHyperlink,
   HeadingLevel,
-  PositionalTab,
-  PositionalTabAlignment,
-  PositionalTabRelativeTo,
-  PositionalTabLeader,
+  Table,
+  TableRow,
+  TableCell,
+  BorderStyle,
+  AlignmentType,
+  type ITableBordersOptions,
+  WidthType,
 } from 'docx';
 import { assignDefined } from '../../utils/object';
 import { mapHtmlToDocument } from '../mapHtmlToDocument';
@@ -28,6 +31,7 @@ import {
   variantNameToCharacterStyleId,
   variantNameToParagraphStyleId,
 } from './variantsToDocx';
+import { toTwip } from './entities';
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -37,6 +41,15 @@ const DOCX_HEADING = {
   h5: HeadingLevel.HEADING_5,
   h6: HeadingLevel.HEADING_6,
 } as const;
+
+const TABLE_BORDERS_RESET: ITableBordersOptions = {
+  top: { style: BorderStyle.NONE },
+  right: { style: BorderStyle.NONE },
+  bottom: { style: BorderStyle.NONE },
+  left: { style: BorderStyle.NONE },
+  insideHorizontal: { style: BorderStyle.NONE },
+  insideVertical: { style: BorderStyle.NONE },
+};
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
 /**
@@ -119,21 +132,64 @@ export const htmlToDocx = async (
         });
       }
 
-      if (element.elementType === 'typographysplit') {
+      if (element.elementType === 'split') {
         const [leftChild, rightChild] = node.children as ParagraphChild[];
-        return new Paragraph({
+        const paragraphOptions = {
           ...parseParagraphOptions(fonts, contentOptions),
           style: variantNameToParagraphStyleId(elementsContext.variant),
-          children: [
-            leftChild,
-            new PositionalTab({
-              alignment: PositionalTabAlignment.RIGHT,
-              relativeTo: PositionalTabRelativeTo.MARGIN,
-              leader: PositionalTabLeader.NONE,
+        };
+        return new Table({
+          borders: TABLE_BORDERS_RESET,
+          width: {
+            size: 100,
+            type: WidthType.PERCENTAGE,
+          },
+          rows: [
+            new TableRow({
+              // cantSplit: true,
+              children: [
+                new TableCell({
+                  margins: {
+                    right: toTwip('0.0625rem'),
+                  },
+                  borders: TABLE_BORDERS_RESET,
+                  children: [
+                    new Paragraph({
+                      ...paragraphOptions,
+                      children: [leftChild],
+                    }),
+                  ],
+                }),
+                new TableCell({
+                  margins: {
+                    left: toTwip('0.0625rem'),
+                  },
+                  borders: TABLE_BORDERS_RESET,
+                  children: [
+                    new Paragraph({
+                      ...paragraphOptions,
+                      alignment: AlignmentType.RIGHT,
+                      children: [rightChild],
+                    }),
+                  ],
+                }),
+              ],
             }),
-            rightChild,
           ],
         });
+        // return new Paragraph({
+        //   ...parseParagraphOptions(fonts, contentOptions),
+        //   style: variantNameToParagraphStyleId(elementsContext.variant),
+        //   children: [
+        //     leftChild,
+        //     new PositionalTab({
+        //       alignment: PositionalTabAlignment.RIGHT,
+        //       relativeTo: PositionalTabRelativeTo.MARGIN,
+        //       leader: PositionalTabLeader.NONE,
+        //     }),
+        //     rightChild,
+        //   ],
+        // });
       }
 
       if (node.tagName === 'li') {
@@ -145,6 +201,10 @@ export const htmlToDocx = async (
           style: variantNameToParagraphStyleId(elementsContext.variant),
           children: node.children as ParagraphChild[],
         });
+      }
+
+      if (node.tagName === 'br') {
+        return new TextRun({ break: 1 });
       }
 
       if (node.tagName === 'p') {

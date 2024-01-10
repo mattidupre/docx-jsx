@@ -2,6 +2,7 @@
 //* IMPORTANT: Keep these in sync with base styles.
 export type TagName = keyof Pick<
   JSX.IntrinsicElements,
+  | 'br'
   | 'div'
   | 'p'
   | 'h1'

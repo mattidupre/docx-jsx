@@ -13,14 +13,9 @@ import {
   getFontFace,
   type FontsConfig,
   type FontFace,
-  type UnitsPx,
-  type UnitsRem,
 } from '../../entities';
 import { objectValuesDefined } from '../../utils/object';
-
-const REM_SIZE_PX = 12;
-
-const PT_PER_PX = 3 / 4;
+import { type DocxUnits, toPt, toTwip } from './entities';
 
 const DOCX_TEXT_ALIGN = {
   left: AlignmentType.LEFT,
@@ -28,8 +23,6 @@ const DOCX_TEXT_ALIGN = {
   right: AlignmentType.RIGHT,
   justify: AlignmentType.JUSTIFIED,
 } as const;
-
-type Units = UnitsPx | UnitsRem;
 
 const clamp = (value: number, min: number, max: number) => {
   if (value < min) {
@@ -45,21 +38,6 @@ const clamp = (value: number, min: number, max: number) => {
   return value;
 };
 
-const toPt = (value: Units): number => {
-  const float = Number.parseFloat(value);
-  if (!isNaN(float)) {
-    if (value.endsWith('rem')) {
-      return float * REM_SIZE_PX * PT_PER_PX;
-    }
-    if (value.endsWith('px')) {
-      return float * PT_PER_PX;
-    }
-  }
-  throw new TypeError(`Expected value to be px or rem, received ${value}`);
-};
-
-const toTwip = (value: Units): number => toPt(value) * 20;
-
 const parseColor = (color: undefined | 'currentColor' | Color) =>
   color && (color === 'currentColor' ? undefined : color.replace('#', ''));
 
@@ -71,10 +49,10 @@ const parseFontSize = (fontSize: TypographyOptionsFlat['fontSize']) =>
   fontSize &&
   (fontSize === 'normal' ? undefined : Math.round(toPt(fontSize) * 2));
 
-const parseBorderWidth = (borderWidth: undefined | Units) =>
+const parseBorderWidth = (borderWidth: undefined | DocxUnits) =>
   borderWidth && Math.round(clamp(toPt(borderWidth), 0, 12) * 8);
 
-const parseBorderSpace = (padding: undefined | Units) =>
+const parseBorderSpace = (padding: undefined | DocxUnits) =>
   padding && Math.round(clamp(toPt(padding), 0, 31));
 
 export const parseTextRunOptions = (

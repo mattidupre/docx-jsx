@@ -77,9 +77,9 @@ const DIRECT_PARAGRAPH_STYLES = {
 export const createStyleArray = (options: {
   variants?: Variants;
   prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
-  fonts?: FontsConfig;
+  // fonts?: FontsConfig;
 }): CssRulesArray => {
-  const { prefixes, variants = {}, fonts = [] } = options;
+  const { prefixes, variants = {} } = options;
 
   // TODO: Add @font-face rules.
 

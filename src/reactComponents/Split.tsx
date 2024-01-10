@@ -3,7 +3,7 @@ import type { VariantName, TypographyOptions } from '../entities';
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities';
 
-export type TypographySplitProps = ExtendableProps &
+export type SplitProps = ExtendableProps &
   TypographyOptions & {
     as?: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
     variant?: VariantName;
@@ -14,7 +14,7 @@ export type TypographySplitProps = ExtendableProps &
 // TODO: If not within a <Document> or if target is web:
 // do not encode data set CSS variables on element
 
-export function TypographySplit({
+export function Split({
   as = 'p',
   variant,
   className,
@@ -22,18 +22,18 @@ export function TypographySplit({
   left,
   right,
   ...contentOptions
-}: TypographySplitProps) {
+}: SplitProps) {
   return (
     <InternalElement
       disableInDocumentAssert
       tagName={as}
-      elementType="typographysplit"
+      elementType="split"
       variant={variant}
       className={className}
       style={{
         ...style,
         display: 'flex',
-        flexWrap: 'wrap',
+        columnGap: '0.0625rem',
         justifyContent: 'space-between',
       }}
       elementOptions={{}}
