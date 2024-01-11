@@ -2,10 +2,11 @@ import type { ReactNode } from 'react';
 import type { VariantName, TypographyOptions, TagName } from '../entities';
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities';
+import { Typography } from './Typography';
 
 export type SplitProps = ExtendableProps &
   TypographyOptions & {
-    as?: TagName;
+    as?: 'div';
     variant?: VariantName;
     left: ReactNode;
     right: ReactNode;
@@ -41,7 +42,9 @@ export function Split({
       typography={contentOptions}
     >
       <div>{left}</div>
-      <div style={{ textAlign: 'right' }}>{right}</div>
+      <Typography as="div" textAlign="right">
+        {right}
+      </Typography>
     </InternalElement>
   );
 }
