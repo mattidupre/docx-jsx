@@ -5,6 +5,8 @@ type NoPageBreakProps = {
   children: ReactNode;
 };
 
+// TODO: Accept class name
+
 export function PageBreakAvoid({ children }: NoPageBreakProps) {
   return (
     <InternalElement

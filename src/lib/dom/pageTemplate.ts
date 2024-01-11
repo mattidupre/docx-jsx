@@ -311,6 +311,7 @@ export class PageTemplate {
     }
 
     .${PageTemplate.headerClassName} {
+      width: calc(100% - var(--page-margin-left) - var(--page-margin-right));
       position: absolute;
       top: var(--page-margin-header);
     }
@@ -328,6 +329,7 @@ export class PageTemplate {
     }
 
     .${PageTemplate.footerClassName} {
+      width: calc(100% - var(--page-margin-left) - var(--page-margin-right));
       position: absolute;
       bottom: var(--page-margin-footer);
     }

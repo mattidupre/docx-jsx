@@ -1,12 +1,10 @@
-import {
-  type LayoutType,
-  LAYOUT_TYPES,
-  type DocumentElement,
-  type StyleSheetsValue,
+import type {
+  LayoutType,
+  DocumentElement,
+  StyleSheetsValue,
 } from '../../entities';
 import { Pager } from '../../utils/pager';
 import { styleObjectToString, toCssStyleSheets } from '../../utils/css';
-import { assignDefined } from '../../utils/object';
 import { mapHtmlToDocument, type HtmlNode } from '../mapHtmlToDocument';
 import {
   variantNameToClassName,
@@ -85,7 +83,7 @@ export const htmlToDom = async (
 
   onDocument?.(documentObj);
 
-  const { size, stacks: stacksOption, prefixes } = documentObj;
+  const { size, stacks: stacksOptions, prefixes } = documentObj;
 
   const documentStyleCss = createStyleString(documentObj);
 
@@ -104,83 +102,123 @@ export const htmlToDom = async (
   renderEl.style.zIndex = '-9999';
   document.body.appendChild(renderEl);
 
-  let allTemplatesPromise: Promise<Array<PageTemplate>> = Promise.resolve([]);
+  const prefix = `prefix-${Math.random()}`.replace('.', '');
+  const stackIndexAttribute = `data-${prefix}-stack-index`;
 
-  stacksOption.forEach(
-    ({ layouts, margin, content, innerPageClassName, outerPageClassName }) => {
-      if (!content) {
-        return;
+  const stackTemplates: Array<Partial<Record<LayoutType, PageTemplate>>> = [];
+  const mergedStacksEl = stacksOptions.reduce(
+    (stacksFragment, { content, continuous }, stackIndex) => {
+      stackTemplates[stackIndex] = {};
+      const stackEl = document.createElement('div');
+      stackEl.setAttribute(stackIndexAttribute, String(stackIndex));
+      if (stackIndex > 0 && !continuous) {
+        stackEl.setAttribute('data-break-before', 'page');
       }
+      stackEl.appendChild(content);
+      stacksFragment.appendChild(stackEl);
+      return stacksFragment;
+    },
+    document.createDocumentFragment(),
+  );
 
-      allTemplatesPromise = allTemplatesPromise.then(async (allTemplates) => {
-        const pageNumberStack = allTemplates.length;
+  // renderEl.appendChild(mergedStacksEl);
 
-        const templates = LAYOUT_TYPES.reduce(
-          (target, layoutType) =>
-            assignDefined(target, {
-              [layoutType]: new PageTemplate({
-                prefixes,
-                size,
-                margin,
-                header: layouts[layoutType]?.header,
-                footer: layouts[layoutType]?.footer,
-                styles: styleSheets,
-                outerClassName: outerPageClassName,
-                innerClassName: innerPageClassName,
-              }),
-            }),
-          {} as Record<LayoutType, PageTemplate>,
-        );
+  const pager = new Pager({ styles: styleSheets });
 
-        const pager = new Pager({ styles: styleSheets });
+  const extendedTemplates: Array<PageTemplate> = [];
+  {
+    let isFirst = true;
+    let stackIndex = 0;
+    const unextendedTemplates: Array<PageTemplate> = [];
+    await pager.toPages({
+      content: mergedStacksEl,
+      onPageStart: ({ pageIndex, setPageVars }) => {
+        const {
+          margin,
+          layouts,
+          innerPageClassName,
+          outerPageClassName,
+          continuous,
+        } = stacksOptions[stackIndex];
 
-        await pager.toPages({
-          content: content,
-          onContentChunked: ({ index, setPageVars }) => {
-            const pageNumber = pageNumberStack + index;
-            const layoutType: LayoutType =
-              pageNumber === 0 ? 'first' : 'subsequent';
-            const template = templates[layoutType];
-            renderEl.appendChild(template.element);
-            const { width, height } = template.contentSize;
+        const layoutType: LayoutType =
+          isFirst && !continuous ? 'first' : 'subsequent';
 
-            setPageVars({
-              // PagerJS doesn't like 0 margins so use 0.5in margins
-              // temporarily.
-              width: `calc(${width} + 1in)`,
-              height: `calc(${height} + 1in)`,
-              marginTop: '0.5in',
-              marginRight: '0.5in',
-              marginBottom: '0.5in',
-              marginLeft: '0.5in',
+        let template = stackTemplates[stackIndex][layoutType];
+
+        if (!template) {
+          template = stackTemplates[stackIndex][layoutType] ??=
+            new PageTemplate({
+              prefixes,
+              size,
+              margin,
+              header: layouts[layoutType]?.header,
+              footer: layouts[layoutType]?.footer,
+              styles: styleSheets,
+              outerClassName: outerPageClassName,
+              innerClassName: innerPageClassName,
             });
-          },
-          onPageRendered: ({ index, contentElement }) => {
-            const pageNumber = pageNumberStack + index;
-            const layoutType: LayoutType =
-              pageNumber === 0 ? 'first' : 'subsequent';
 
-            // Note that contentElement is NOT cloned. It will be detached from
-            // pager.
-            allTemplates.push(
-              templates[layoutType].extend({
-                content: contentElement.firstChild!.childNodes,
-              }),
-            );
-          },
+          // TODO: Do this in PageTemplate constructor.
+          renderEl.appendChild(template.element);
+
+          stackTemplates[stackIndex][layoutType] = template;
+        }
+
+        const { width, height } = template.contentSize;
+
+        setPageVars({
+          // PagerJS doesn't like 0 margins so use 0.5in margins
+          // temporarily.
+          width: `calc(${width} + 1in)`,
+          height: `calc(${height} + 1in)`,
+          marginTop: '0.5in',
+          marginRight: '0.5in',
+          marginBottom: '0.5in',
+          marginLeft: '0.5in',
         });
 
-        return allTemplates;
-      });
-    },
-  );
+        unextendedTemplates[pageIndex] = template;
+      },
+      onPageBreak: ({ breakElement }) => {
+        const element =
+          breakElement instanceof HTMLElement
+            ? breakElement
+            : breakElement.parentElement!;
+        if (element.hasAttribute(stackIndexAttribute)) {
+          isFirst = true;
+          stackIndex = Number.parseInt(
+            element.getAttribute(stackIndexAttribute)!,
+            10,
+          );
+        } else {
+          isFirst = false;
+          stackIndex = Number.parseInt(
+            element
+              .closest(`[${stackIndexAttribute}]`)!
+              .getAttribute(stackIndexAttribute)!,
+            10,
+          );
+        }
+      },
+      onPageRendered: ({ pageIndex, contentElement }) => {
+        // Note that contentElement is NOT cloned. It will be detached from
+        // pager.
+        extendedTemplates.push(
+          unextendedTemplates[pageIndex].extend({
+            content: contentElement.querySelectorAll(
+              `[${stackIndexAttribute}] > *`,
+            ),
+          }),
+        );
+      },
+    });
+  }
 
   const pagesEl = document.createElement('div');
 
-  const allTemplates = await allTemplatesPromise;
-
-  const pageCount = allTemplates.length;
-  allTemplates.forEach((template, pageIndex) => {
+  const pageCount = extendedTemplates.length;
+  extendedTemplates.forEach((template, pageIndex) => {
     template.replaceCounters({
       pageNumber: pageIndex + 1,
       pageCount,

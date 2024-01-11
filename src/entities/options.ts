@@ -178,14 +178,17 @@ export type StackOptions = {
   innerPageClassName?: string;
   outerPageClassName?: string;
   margin?: Partial<PageMargin>;
+  continuous?: boolean;
 };
 
 export type StackConfig = {
   innerPageClassName?: string;
   outerPageClassName?: string;
   margin: PageMargin;
+  continuous: boolean;
 };
 
 export const assignStackOptions = (
   ...args: ReadonlyArray<undefined | StackOptions>
-): StackConfig => mergeWithDefault({ margin: DEFAULT_PAGE_MARGIN }, ...args);
+): StackConfig =>
+  mergeWithDefault({ margin: DEFAULT_PAGE_MARGIN, continuous: false }, ...args);

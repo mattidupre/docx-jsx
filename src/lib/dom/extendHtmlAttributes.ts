@@ -47,7 +47,10 @@ export const extendHtmlAttributes = (
   }
 
   if (targetStyles.length > 0) {
-    targetAttributes.style = targetStyles.flat(Infinity).join(' ');
+    targetAttributes.style = targetStyles
+      .flat(Infinity)
+      .map((style) => style && (style.endsWith(';') ? style : `${style};`))
+      .join(' ');
   }
 
   return targetAttributes;

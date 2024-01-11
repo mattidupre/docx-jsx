@@ -71,8 +71,8 @@ export function MockDocument({
         innerPageClassName="preview__page"
         layouts={mockPageTypes('FIRST SECTION')}
         margin={{
-          top: '2in',
-          header: '1in',
+          top: '1in',
+          header: '0.5in',
           bottom: '1in',
         }}
       >
@@ -180,21 +180,21 @@ export function MockDocument({
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
         </Typography>
-        <Split left={<b>Left Text</b>} right={<em>Right Text</em>} />
+        <Split left={<p>Left Text</p>} right={<p>Right Text</p>} />
         <p />
         <Split
           left={
-            <>
+            <p>
               Circumambulate the city of a dreamy Sabbath afternoon. Go from
               Corlears Hook to Coenties Slip, and from thence, by Whitehall,
               northward.
-            </>
+            </p>
           }
           right={
-            <>
+            <p>
               But look! here come more crowds, pacing straight for the water,
               and seemingly bound for a dive.
-            </>
+            </p>
           }
         />
         <Typography as="p" textAlign="left">
@@ -245,6 +245,18 @@ export function MockDocument({
             me.
           </p>
         </PageBreakAvoid>
+      </Stack>
+
+      <Stack
+        continuous
+        innerPageClassName="preview__page"
+        layouts={{ first: {}, subsequent: {} }}
+        margin={{
+          top: '1in',
+          header: '0.25in',
+        }}
+      >
+        <h1>Continuous stack</h1>
       </Stack>
 
       <Stack

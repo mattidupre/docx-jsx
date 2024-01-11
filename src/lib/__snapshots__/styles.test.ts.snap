@@ -24,6 +24,30 @@ exports[`createStyleArray 1`] = `
     },
   ],
   [
+    ":where(b, strong)",
+    {
+      "fontWeight": "bold",
+    },
+  ],
+  [
+    ":where(em, i)",
+    {
+      "fontStyle": "italic",
+    },
+  ],
+  [
+    ":where(u)",
+    {
+      "textDecoration": "underline",
+    },
+  ],
+  [
+    ":where(s)",
+    {
+      "textDecoration": "line-through",
+    },
+  ],
+  [
     ":where(p, h1, h2, h3, h4, h5, h6, li)",
     {
       "display": "flow-root",
@@ -104,6 +128,18 @@ exports[`createStyleString 1`] = `
   padding-bottom: var(--mock-variable-padding-bottom, unset);
   border-bottom-width: var(--mock-variable-border-bottom-width, 0);
   border-bottom-color: var(--mock-variable-border-bottom-color, unset);
+}
+:where(b, strong) {
+  font-weight: bold;
+}
+:where(em, i) {
+  font-style: italic;
+}
+:where(u) {
+  text-decoration: underline;
+}
+:where(s) {
+  text-decoration: line-through;
 }
 :where(p, h1, h2, h3, h4, h5, h6, li) {
   margin-top: var(--mock-variable-margin-top, 0);

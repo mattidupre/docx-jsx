@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
-import type { VariantName, TypographyOptions } from '../entities';
+import type { VariantName, TypographyOptions, TagName } from '../entities';
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities';
 
 export type SplitProps = ExtendableProps &
   TypographyOptions & {
-    as?: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+    as?: TagName;
     variant?: VariantName;
     left: ReactNode;
     right: ReactNode;
@@ -15,7 +15,7 @@ export type SplitProps = ExtendableProps &
 // do not encode data set CSS variables on element
 
 export function Split({
-  as = 'p',
+  as = 'div',
   variant,
   className,
   style,
@@ -32,6 +32,7 @@ export function Split({
       className={className}
       style={{
         ...style,
+        width: '100%',
         display: 'flex',
         columnGap: '0.0625rem',
         justifyContent: 'space-between',
@@ -39,8 +40,8 @@ export function Split({
       elementOptions={{}}
       typography={contentOptions}
     >
-      <span>{left}</span>
-      <span style={{ textAlign: 'right' }}>{right}</span>
+      <div>{left}</div>
+      <div style={{ textAlign: 'right' }}>{right}</div>
     </InternalElement>
   );
 }

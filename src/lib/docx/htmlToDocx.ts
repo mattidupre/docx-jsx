@@ -18,6 +18,7 @@ import {
   AlignmentType,
   type ITableBordersOptions,
   WidthType,
+  SectionType,
 } from 'docx';
 import { assignDefined } from '../../utils/object';
 import { mapHtmlToDocument } from '../mapHtmlToDocument';
@@ -133,11 +134,7 @@ export const htmlToDocx = async (
       }
 
       if (element.elementType === 'split') {
-        const [leftChild, rightChild] = node.children as ParagraphChild[];
-        const paragraphOptions = {
-          ...parseParagraphOptions(fonts, contentOptions),
-          style: variantNameToParagraphStyleId(elementsContext.variant),
-        };
+        const [leftChild, rightChild] = node.children as Paragraph[];
         return new Table({
           borders: TABLE_BORDERS_RESET,
           width: {
@@ -146,32 +143,21 @@ export const htmlToDocx = async (
           },
           rows: [
             new TableRow({
-              // cantSplit: true,
+              cantSplit: true,
               children: [
                 new TableCell({
                   margins: {
                     right: toTwip('0.0625rem'),
                   },
                   borders: TABLE_BORDERS_RESET,
-                  children: [
-                    new Paragraph({
-                      ...paragraphOptions,
-                      children: [leftChild],
-                    }),
-                  ],
+                  children: [leftChild],
                 }),
                 new TableCell({
                   margins: {
                     left: toTwip('0.0625rem'),
                   },
                   borders: TABLE_BORDERS_RESET,
-                  children: [
-                    new Paragraph({
-                      ...paragraphOptions,
-                      alignment: AlignmentType.RIGHT,
-                      children: [rightChild],
-                    }),
-                  ],
+                  children: [rightChild],
                 }),
               ],
             }),
@@ -256,26 +242,29 @@ export const htmlToDocx = async (
 
   const { size } = mappedDocument;
 
-  const sections = mappedDocument.stacks.map(({ layouts, margin, content }) => {
-    return {
-      properties: {
-        titlePage: true,
-        page: {
-          margin,
-          size: size,
+  const sections = mappedDocument.stacks.map(
+    ({ layouts, margin, content, continuous }, index) => {
+      return {
+        properties: {
+          titlePage: true,
+          type: index > 0 && continuous ? SectionType.CONTINUOUS : undefined,
+          page: {
+            margin,
+            size: size,
+          },
         },
-      },
-      headers: {
-        first: layouts.first.header as Header,
-        default: layouts.subsequent.header as Header,
-      },
-      footers: {
-        first: layouts.first.footer as Footer,
-        default: layouts.subsequent.footer as Footer,
-      },
-      children: content as ISectionOptions['children'],
-    } satisfies ISectionOptions;
-  });
+        headers: {
+          first: layouts.first.header as Header,
+          default: layouts.subsequent.header as Header,
+        },
+        footers: {
+          first: layouts.first.footer as Footer,
+          default: layouts.subsequent.footer as Footer,
+        },
+        children: content as ISectionOptions['children'],
+      } satisfies ISectionOptions;
+    },
+  );
 
   const styles = parseVariants(fonts, mappedDocument.variants);
 

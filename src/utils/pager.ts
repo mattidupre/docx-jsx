@@ -6,16 +6,20 @@ export type PageVars = Partial<
 
 export type PageVarsOptions = { preservePageTypes?: boolean };
 
-export type OnContentChunked = (context: {
-  Page: unknown;
-  index: number;
+export type OnPageStart = (context: {
+  pageIndex: number;
   setPageVars: (vars: PageVars) => void;
+}) => void;
+
+export type OnPageBreak = (context: {
+  breakElement: HTMLElement | Text;
+  pageIndex: number;
 }) => void;
 
 export type OnPageRendered = (context: {
   pageElement: HTMLElement;
   contentElement: HTMLElement;
-  index: number;
+  pageIndex: number;
 }) => void;
 
 export type OnPagesRendered = (context: { pagesElement: HTMLElement }) => void;
@@ -28,7 +32,8 @@ export type PagerOptions = {
 export type ToPagesOptions = {
   content: Node;
   vars?: PageVars;
-  onContentChunked?: OnContentChunked;
+  onPageStart?: OnPageStart;
+  onPageBreak?: OnPageBreak;
   onPageRendered?: OnPageRendered;
   onPagesRendered?: OnPagesRendered;
 };
@@ -82,7 +87,8 @@ export class Pager {
   async toPages({
     content,
     vars,
-    onContentChunked,
+    onPageStart,
+    onPageBreak,
     onPageRendered,
     onPagesRendered,
   }: ToPagesOptions) {
@@ -102,23 +108,40 @@ export class Pager {
     // Defining chunker on each call seems to save time over defining it once.
     const chunker = new Chunker();
 
-    let index = 0;
-    chunker.on('page', (Page) => {
-      onContentChunked?.({
-        Page,
-        index,
-        setPageVars: (vars) => {
-          Pager.applyVarsToElement(vars, Page.element);
-        },
+    {
+      let currentPageIndex = 0;
+      chunker.hooks.beforePageLayout.register((page) => {
+        onPageStart?.({
+          pageIndex: currentPageIndex,
+          setPageVars: (vars) => {
+            Pager.applyVarsToElement(vars, page.element);
+          },
+        });
+        currentPageIndex += 1;
       });
-      index += 1;
-    });
+    }
+
+    // chunker.hooks.onBreakToken.register((breakToken, overflow, BreakToken) => {
+    //   console.log('onBreakToken');
+    // });
+
+    {
+      let currentPageIndex = 0;
+      chunker.hooks.afterPageLayout.register((pageEl, page, breakToken) => {
+        if (breakToken?.node !== undefined) {
+          onPageBreak?.({
+            breakElement: breakToken.node,
+            pageIndex: currentPageIndex,
+          });
+        }
+      });
+    }
 
     await chunker.flow(content, chunkerElement);
 
     chunkerElement
       .querySelectorAll('.pagedjs_page')
-      .forEach((pageElement, index) => {
+      .forEach((pageElement, pageIndex) => {
         const pagedContentElement = pageElement.querySelector(
           '.pagedjs_page_content',
         ) as HTMLElement;
@@ -127,13 +150,15 @@ export class Pager {
         onPageRendered?.({
           pageElement: pageElement as HTMLElement,
           contentElement,
-          index,
+          pageIndex,
         });
       });
 
     onPagesRendered?.({
       pagesElement: chunkerElement.firstElementChild as HTMLElement,
     });
+
+    chunker.destroy();
 
     hostElement.remove();
   }
