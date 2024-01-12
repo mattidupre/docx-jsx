@@ -17,7 +17,7 @@ export function Stack({ children, layouts, ...options }: StackProps) {
     [options],
   );
 
-  const { documentType } = useEnvironment();
+  const { documentType } = useEnvironment({ disableAssert: true });
 
   const contentElement = (
     <InternalElement

@@ -6,7 +6,6 @@ import {
   LineRuleType,
 } from 'docx';
 import {
-  type Color,
   type TypographyOptions,
   type TypographyOptionsFlat,
   typographyOptionsToFlat,
@@ -16,6 +15,9 @@ import {
 } from '../../entities';
 import { objectValuesDefined } from '../../utils/object';
 import { type DocxUnits, toPt, toTwip } from './entities';
+import { toDocxColor } from './toDocxColor';
+
+// TODO: Create function to check that value is not --foo or var().
 
 const DOCX_TEXT_ALIGN = {
   left: AlignmentType.LEFT,
@@ -23,6 +25,16 @@ const DOCX_TEXT_ALIGN = {
   right: AlignmentType.RIGHT,
   justify: AlignmentType.JUSTIFIED,
 } as const;
+
+const ifTruthy = <TValue, TValueIn>(
+  valueIn: TValueIn,
+  value: TValue | { (value: TValueIn): TValue },
+) =>
+  (valueIn
+    ? typeof value === 'function'
+      ? (value as { (v: any): any })(valueIn)
+      : value
+    : undefined) as undefined | Exclude<TValue, false | 0 | '' | null>;
 
 const clamp = (value: number, min: number, max: number) => {
   if (value < min) {
@@ -37,9 +49,6 @@ const clamp = (value: number, min: number, max: number) => {
 
   return value;
 };
-
-const parseColor = (color: undefined | 'currentColor' | Color) =>
-  color && (color === 'currentColor' ? undefined : color.replace('#', ''));
 
 // For now only support default docx font names
 const parseFontFace = (fontFace: undefined | FontFace): undefined | string =>
@@ -80,19 +89,21 @@ export const parseTextRunOptions = (
         { fontFamily, fontWeight, fontStyle },
       ),
     ),
-    alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
-    size: fontSize && parseFontSize(fontSize),
-    color: parseColor(color),
-    shading: highlightColor && {
-      fill: parseColor(highlightColor),
-    },
-    bold: fontWeight && fontWeight === 'bold',
-    italics: fontStyle && fontStyle === 'italic',
-    allCaps: textTransform && textTransform === 'uppercase',
-    underline:
-      textDecoration && textDecoration === 'underline' ? {} : undefined,
-    strike:
-      textDecoration && textDecoration === 'line-through' ? true : undefined,
+    alignment: ifTruthy(textAlign, DOCX_TEXT_ALIGN[textAlign]),
+    size: ifTruthy(fontSize, parseFontSize(fontSize)),
+    color: toDocxColor(color),
+    shading: ifTruthy(highlightColor, { fill: toDocxColor(highlightColor) }),
+    bold: ifTruthy(fontWeight, fontWeight === 'bold'),
+    italics: ifTruthy(fontStyle, fontStyle === 'italic'),
+    allCaps: ifTruthy(textTransform, textTransform === 'uppercase'),
+    underline: ifTruthy(
+      textDecoration,
+      textDecoration === 'underline' ? {} : undefined,
+    ),
+    strike: ifTruthy(
+      textDecoration,
+      textDecoration === 'line-through' ? true : undefined,
+    ),
     superScript,
     subScript,
   });
@@ -117,12 +128,12 @@ export const parseParagraphOptions = (
 
   return objectValuesDefined({
     border: {
-      bottom: borderBottomWidth && {
-        color: parseColor(borderBottomColor),
+      bottom: ifTruthy(borderBottomWidth, {
+        color: toDocxColor(borderBottomColor),
         style: BorderStyle.SINGLE,
         space: parseBorderSpace(paddingBottom),
         size: parseBorderWidth(borderBottomWidth),
-      },
+      }),
     },
     spacing: {
       before: marginTop && toTwip(marginTop),
@@ -135,8 +146,8 @@ export const parseParagraphOptions = (
       left: marginLeft && toTwip(marginLeft),
     },
     alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
-    shading: highlightColor && {
-      fill: parseColor(highlightColor),
-    },
+    shading: ifTruthy(highlightColor, {
+      fill: toDocxColor(highlightColor),
+    }),
   } satisfies IParagraphPropertiesOptions);
 };

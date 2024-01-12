@@ -144,7 +144,15 @@ export function MockDocument({
           <Typography fontSize="2rem">Size 2rem Text</Typography>
         </p>
         <p>
-          <Typography color="#f00000">Red Text</Typography>
+          <Typography color="purple">Color Text (Purple)</Typography>
+        </p>
+        <p>
+          <Typography color="#00ffff">HEX Text (Green)</Typography>
+        </p>
+        <p>
+          <Typography color="oklch(70% 0.182 40.73)">
+            OKLCH Text (Orange)
+          </Typography>
         </p>
         <p>
           <Typography highlightColor="#00ff00">Highlighted Text</Typography>

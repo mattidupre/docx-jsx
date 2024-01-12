@@ -16,7 +16,6 @@ import { useEnvironment } from './useEnvironment';
 import { usePrefixes } from './usePrefixes';
 
 type InternalElementProps = ExtendableProps & {
-  disableInDocumentAssert?: boolean;
   preferFragment?: boolean;
   elementType: ElementData['elementType'];
   elementOptions: ElementData['elementOptions'];
@@ -30,7 +29,6 @@ type InternalElementProps = ExtendableProps & {
  * Encodes component styles and options to the DOM.
  */
 export function InternalElement({
-  disableInDocumentAssert,
   preferFragment,
   elementType,
   elementOptions,
@@ -41,9 +39,7 @@ export function InternalElement({
   style: styleProp,
   children,
 }: InternalElementProps) {
-  const isWeb =
-    useEnvironment({ disableAssert: disableInDocumentAssert }).documentType ===
-    'web';
+  const isWeb = useEnvironment({ disableAssert: true }).documentType === 'web';
 
   const isFragment = preferFragment && isWeb;
 

@@ -51,7 +51,7 @@ export const assignPrefixesOptions = (
 
 export type DocumentType = 'web' | 'docx' | 'pdf';
 
-export type Color = Lowercase<`#${string}`>;
+export type Color = string;
 
 export type PageSize = {
   width: UnitsNumber;

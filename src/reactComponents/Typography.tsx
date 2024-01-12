@@ -23,7 +23,6 @@ export function Typography({
 }: TypographyProps) {
   return (
     <InternalElement
-      disableInDocumentAssert
       tagName={as}
       elementType="htmltag"
       variant={variant}

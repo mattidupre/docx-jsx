@@ -15,7 +15,6 @@ import {
   TableRow,
   TableCell,
   BorderStyle,
-  AlignmentType,
   type ITableBordersOptions,
   WidthType,
   SectionType,

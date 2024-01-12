@@ -26,7 +26,6 @@ export function Split({
 }: SplitProps) {
   return (
     <InternalElement
-      disableInDocumentAssert
       tagName={as}
       elementType="split"
       variant={variant}

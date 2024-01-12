@@ -25,6 +25,7 @@
     "@rollup/plugin-node-resolve": "^15.2.3",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^11.1.5",
+    "@types/chroma-js": "^2.4.3",
     "@types/hast": "^3.0.2",
     "@types/lodash": "^4.14.202",
     "@types/node": "^20.8.10",
@@ -83,6 +84,7 @@
   "dependencies": {
     "@storybook/react": "^7.5.3",
     "@storybook/react-vite": "^7.5.3",
+    "colorjs.io": "^0.4.5",
     "docx": "^8.5.0",
     "es-dirname": "^0.1.0",
     "hast-util-from-html": "^2.0.1",
