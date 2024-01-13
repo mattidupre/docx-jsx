@@ -13,6 +13,11 @@ export type MergedObjectValues<T extends KeyedObject> = {
     : never;
 };
 
+export type AssertObjectHasKeys<
+  TObject extends Record<TKeys, unknown>,
+  TKeys extends PropertyKey,
+> = TObject;
+
 export const isKeyedObject = (value: any): value is KeyedObject =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 

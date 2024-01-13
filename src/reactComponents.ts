@@ -1,4 +1,5 @@
 export type {
+  Variant,
   Variants,
   VariantName,
   Color,

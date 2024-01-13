@@ -1,56 +1,55 @@
 import { mapValues, merge } from 'lodash';
-import { assignDefined } from '../utils/object';
+import { type AssertObjectHasKeys, assignDefined } from '../utils/object';
 import { toDefinedArray } from '../utils/array';
 import type { FontFamily } from './fonts';
 import type { TagName } from './html';
 import type { Color } from './options';
 import type { UnitsPx, UnitsRem } from './units';
 
-type TypographyOptionsCssFlat = {
-  breakInside: 'auto' | 'avoid';
-  textAlign: 'left' | 'center' | 'right' | 'justify';
-  lineHeight: UnitsRem;
-  fontWeight: 'normal' | 'bold';
-  fontStyle: 'normal' | 'italic';
-  fontSize: 'normal' | UnitsRem;
-  fontFamily: FontFamily;
-  color: Color | 'currentColor';
-  textTransform: 'none' | 'uppercase';
-  textDecoration: 'none' | 'underline' | 'line-through';
-  textIndent: UnitsPx | UnitsRem;
-  marginTop: UnitsPx | UnitsRem;
-  marginBottom: UnitsPx | UnitsRem;
-  paddingBottom: UnitsPx | UnitsRem;
-  borderBottomWidth: UnitsPx | UnitsRem;
-  borderBottomColor: Color | 'currentColor';
-  marginLeft: UnitsPx | UnitsRem;
-};
-
-const DEFAULT_TYPOGRAPHY_CSS_OPTIONS: Required<TypographyOptionsCssFlat> = {
-  breakInside: 'auto',
-  textAlign: 'left',
-  lineHeight: '1.5rem',
-  fontWeight: 'normal',
-  fontStyle: 'normal',
-  fontSize: 'normal',
-  fontFamily: 'initial', // TODO: How to handle this with Docx?
-  color: '#000000',
-  textTransform: 'none',
-  textDecoration: 'none',
-  textIndent: '0px',
-  marginTop: '0px',
-  marginBottom: '0px',
-  paddingBottom: '0px',
-  borderBottomWidth: '0px',
-  borderBottomColor: 'currentColor',
-  marginLeft: '0px',
-};
-
-export const TYPOGRAPHY_CSS_KEYS = Object.keys(
-  DEFAULT_TYPOGRAPHY_CSS_OPTIONS,
-) as ReadonlyArray<keyof typeof DEFAULT_TYPOGRAPHY_CSS_OPTIONS>;
+export const TYPOGRAPHY_CSS_KEYS = [
+  'breakInside',
+  'textAlign',
+  'lineHeight',
+  'fontWeight',
+  'fontStyle',
+  'fontSize',
+  'fontFamily',
+  'color',
+  'textTransform',
+  'textDecoration',
+  'textIndent',
+  'marginTop',
+  'marginBottom',
+  'paddingBottom',
+  'borderBottomWidth',
+  'borderBottomColor',
+  'marginLeft',
+] as const;
 
 export type TypographyCssKey = (typeof TYPOGRAPHY_CSS_KEYS)[number];
+
+type TypographyOptionsCssFlat = AssertObjectHasKeys<
+  {
+    breakInside: 'auto' | 'avoid';
+    textAlign: 'left' | 'center' | 'right' | 'justify';
+    lineHeight: UnitsRem;
+    fontWeight: 'normal' | 'bold';
+    fontStyle: 'normal' | 'italic';
+    fontSize: 'normal' | UnitsRem;
+    fontFamily: undefined | FontFamily;
+    color: Color | 'currentColor';
+    textTransform: 'none' | 'uppercase';
+    textDecoration: 'none' | 'underline' | 'line-through';
+    textIndent: UnitsPx | UnitsRem;
+    marginTop: UnitsPx | UnitsRem;
+    marginBottom: UnitsPx | UnitsRem;
+    paddingBottom: UnitsPx | UnitsRem;
+    borderBottomWidth: UnitsPx | UnitsRem;
+    borderBottomColor: Color | 'currentColor';
+    marginLeft: UnitsPx | UnitsRem;
+  },
+  TypographyCssKey
+>;
 
 type TypographyOptionsCustomFlat = {
   highlightColor: Color;
@@ -69,7 +68,7 @@ export type TypographyOptionsFlat = TypographyOptionsCssFlat &
   TypographyOptionsCustomFlat;
 
 type TypographyOptionsFromFlat<T extends TypographyOptionsFlat> = {
-  [K in keyof T]?: undefined | T[K] | [...ReadonlyArray<undefined | string>];
+  [K in keyof T]?: undefined | T[K] | ReadonlyArray<undefined | string>;
 };
 
 /**
@@ -114,6 +113,8 @@ export const INTRINSIC_TYPOGRAPHY_OPTIONS = {
 export type VariantName = string;
 
 export type Variants = Record<VariantName, TypographyOptions>;
+
+export type Variant = TypographyOptions;
 
 export const assignVariants = <T extends Variants>(
   ...[args0, ...args]: ReadonlyArray<undefined | Partial<T>>

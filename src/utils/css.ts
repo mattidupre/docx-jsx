@@ -22,6 +22,32 @@ const parseCssProperty = (property: string) => {
   return base;
 };
 
+export const flattenCssVariables = (value: string): Array<string> => {
+  if (!/^var\(|^--/.test(value.trim())) {
+    return [value];
+  }
+  const results: Array<string> = [];
+  let nextValue = value;
+  while (true) {
+    const [, resultA, resultB] = /^([\w\d-]+)\s*,\s*(.*)$/.exec(
+      nextValue.trim(),
+    ) ?? [, '', nextValue.trim()];
+    if (resultA) {
+      results.push(resultA);
+    }
+    const [, resultC] = /^var\(\s*(.*)\)$/.exec(resultB.trim()) ?? [, ''];
+    if (resultC && resultC !== nextValue) {
+      nextValue = resultC;
+      continue;
+    } else if (!resultB.includes('var(')) {
+      results.push(resultB.trim());
+      break;
+    }
+    throw new Error(`Invalid css variable string ${value}`);
+  }
+  return results;
+};
+
 /**
  * Convert a possible array to a valid CSS var declaration.
  * @example
@@ -32,23 +58,22 @@ export const toVarDeclaration = (value: unknown): undefined | string => {
   if (!value || (Array.isArray(value) && !value.length)) {
     return undefined;
   }
-  const [currentValue, ...remainingValues] = [value].flat();
+  const [currentValue, ...remainingValues] = [value]
+    .flat(Infinity)
+    .flatMap((v) => (typeof v === 'string' ? flattenCssVariables(v) : []));
 
   if (!currentValue) {
     return toVarDeclaration(remainingValues);
   }
 
   const isCurrentValueCssVariable =
-    typeof currentValue === 'string' && currentValue.startsWith('--');
-
-  if (remainingValues.length) {
-    if (!isCurrentValueCssVariable) {
-      throw new TypeError('Only CSS variables may be followed by other values');
-    }
-    return `var(${currentValue}, ${toVarDeclaration(remainingValues)})`;
-  }
+    typeof currentValue === 'string' &&
+    (currentValue.startsWith('--') || currentValue.startsWith('var(--'));
 
   if (isCurrentValueCssVariable) {
+    if (remainingValues.length) {
+      return `var(${currentValue}, ${toVarDeclaration(remainingValues)})`;
+    }
     return `var(${currentValue})`;
   }
 
@@ -76,8 +101,14 @@ export const objectToVarValues = <TObject extends KeyedObject>(
   if (!object) {
     return {};
   }
+
   return Object.entries(object).reduce((obj, [key, value]) => {
     const keyBase = prefixKebab(prefix, key);
+    if (key === 'fontFamily') {
+      console.log(key, {
+        [`--${keyBase}`]: toVarDeclaration(value),
+      });
+    }
     if (!value) {
       return obj;
     }

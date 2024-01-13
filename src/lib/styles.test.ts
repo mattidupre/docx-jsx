@@ -21,6 +21,7 @@ test('createStyleArray', () => {
 
 test('createStyleString', () => {
   const cssString = createStyleString(createOptions());
+  console.log(cssString);
   expect(cssString).toMatchSnapshot();
   // console.log(cssString);
 });
