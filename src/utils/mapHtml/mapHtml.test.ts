@@ -25,6 +25,4 @@ test('runs without error', () => {
       return { children };
     },
   });
-
-  // console.log(JSON.stringify(result, undefined, 2));
 });

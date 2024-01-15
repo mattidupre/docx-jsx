@@ -104,11 +104,6 @@ export const objectToVarValues = <TObject extends KeyedObject>(
 
   return Object.entries(object).reduce((obj, [key, value]) => {
     const keyBase = prefixKebab(prefix, key);
-    if (key === 'fontFamily') {
-      console.log(key, {
-        [`--${keyBase}`]: toVarDeclaration(value),
-      });
-    }
     if (!value) {
       return obj;
     }
@@ -166,7 +161,6 @@ export const toCssStyleSheets = (...values: ReadonlyArray<any>) =>
         let valueString = value;
         if (value instanceof URL) {
           valueString = await (await fetch(value)).text();
-          console.log('url stylesheet', valueString);
         }
         if (typeof valueString === 'string') {
           const styleSheet = new CSSStyleSheet();

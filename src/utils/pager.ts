@@ -121,10 +121,6 @@ export class Pager {
       });
     }
 
-    // chunker.hooks.onBreakToken.register((breakToken, overflow, BreakToken) => {
-    //   console.log('onBreakToken');
-    // });
-
     {
       let currentPageIndex = 0;
       chunker.hooks.afterPageLayout.register((pageEl, page, breakToken) => {
