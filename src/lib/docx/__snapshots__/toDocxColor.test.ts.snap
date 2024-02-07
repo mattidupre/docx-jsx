@@ -11,7 +11,3 @@ exports[`toDocxColor > with red 1`] = `"ff0000"`;
 exports[`toDocxColor > with rgb(255, 0, 0) 1`] = `"ff0000"`;
 
 exports[`toDocxColor > with rgba(255, 0, 0, 0.5) [WARNS] 1`] = `"ff0000"`;
-
-exports[`toDocxColor > with rgba(255, 0, 0, 0.5) [warns] 1`] = `"ff0000"`;
-
-exports[`toDocxColor > with rgba(255, 0, 0, 0.5) 1`] = `"ff0000"`;

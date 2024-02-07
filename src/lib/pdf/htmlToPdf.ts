@@ -1,4 +1,7 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
+import path from 'node:path';
+import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import puppeteer, {
   type Browser,
   type Page,
@@ -11,7 +14,11 @@ const htmlToDomCode = `(() => {const exports={};${htmlToDomCodeCjs};return expor
 
 let browserPromise: undefined | Promise<Browser>;
 
+const EMPTY_URL = 'file://empty.html';
+
 export type HtmlToPdfOptions = {
+  publicDirectory?: string;
+  pageStyleSheets?: ReadonlyArray<string>;
   styleSheets?: ReadonlyArray<string>;
   puppeteer?: PuppeteerLaunchOptions;
   closeBrowser?: boolean;
@@ -19,7 +26,13 @@ export type HtmlToPdfOptions = {
 
 export const htmlToPdf = async (
   html: string,
-  { puppeteer: puppeteerOptions, closeBrowser, ...options }: HtmlToPdfOptions,
+  {
+    puppeteer: puppeteerOptions,
+    closeBrowser,
+    pageStyleSheets: pageStyleSheetsOption = [],
+    publicDirectory,
+    ...options
+  }: HtmlToPdfOptions,
 ): Promise<Buffer> => {
   let pagePromise: undefined | Promise<Page> = undefined;
   try {
@@ -36,6 +49,34 @@ export const htmlToPdf = async (
     await page.setRequestInterception(true);
 
     page.on('console', (msg) => console.log('Puppeteer:', msg.text()));
+
+    page.on('request', async (interceptedRequest) => {
+      const relativePath = interceptedRequest.url().replace(EMPTY_URL, '');
+      if (relativePath === '/') {
+        return interceptedRequest.respond({
+          contentType: 'text/html',
+          body: '<html><head></head><body></body></html>',
+        });
+      }
+      if (publicDirectory) {
+        const requestFilePath = path.join(publicDirectory, relativePath);
+        if (existsSync(requestFilePath)) {
+          return interceptedRequest.respond({
+            body: await fs.readFile(requestFilePath),
+          });
+        }
+      }
+      interceptedRequest.continue();
+    });
+
+    // https://github.com/puppeteer/puppeteer/issues/4526
+    await page.goto(EMPTY_URL);
+
+    await Promise.all(
+      pageStyleSheetsOption.map((styleSheet) => {
+        return page.addStyleTag({ content: styleSheet });
+      }),
+    );
 
     const pageSize = await page.evaluate(
       async (browserHtml, browserOptions, browserCode) => {
