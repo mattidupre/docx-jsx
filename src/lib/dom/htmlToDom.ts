@@ -4,12 +4,11 @@ import type {
   StyleSheetsValue,
 } from '../../entities';
 import { Pager } from '../../utils/pager';
-import { styleObjectToString, toCssStyleSheets } from '../../utils/css';
+import { styleObjectToString } from '../../utils/css';
 import { mapHtmlToDocument, type HtmlNode } from '../mapHtmlToDocument';
 import {
   variantNameToClassName,
   typographyOptionsToStyleVars,
-  createStyleString,
 } from '../styles';
 import { PageTemplate } from './pageTemplate';
 import { extendHtmlAttributes } from './extendHtmlAttributes';
@@ -63,16 +62,26 @@ const objToDom = (node: HtmlNode) => {
 };
 
 export type HtmlToDomOptions = {
-  initialStyleSheets?: ReadonlyArray<StyleSheetsValue>;
-  styleSheets?: ReadonlyArray<StyleSheetsValue>;
   onDocument?: (document: DocumentDom) => void;
-};
+} & (
+  | {
+      shadow: true;
+      initialStyleSheets?: ReadonlyArray<StyleSheetsValue>;
+      styleSheets?: ReadonlyArray<StyleSheetsValue>;
+    }
+  | {
+      shadow?: false;
+      initialStyleSheets?: never;
+      styleSheets?: never;
+    }
+);
 
 export const htmlToDom = async (
   html: string,
   {
-    initialStyleSheets: initialStyleSheetsOption = [],
-    styleSheets: styleSheetsOption = [],
+    // shadow,
+    // initialStyleSheets: initialStyleSheetsOption = [],
+    // styleSheets: styleSheetsOption = [],
     onDocument,
   }: HtmlToDomOptions = {},
 ): Promise<HTMLElement> => {
@@ -85,11 +94,17 @@ export const htmlToDom = async (
 
   const { size, stacks: stacksOptions, prefixes } = documentObj;
 
-  const documentStyleCss = createStyleString(documentObj);
+  // const documentStyleCss = createStyleString(documentObj);
 
-  const styleSheets = await toCssStyleSheets(
-    ...[...initialStyleSheetsOption, documentStyleCss, ...styleSheetsOption],
-  );
+  // const styleSheets = shadow
+  //   ? await toCssStyleSheets(
+  //       ...[
+  //         ...initialStyleSheetsOption,
+  //         documentStyleCss,
+  //         ...styleSheetsOption,
+  //       ],
+  //     )
+  //   : undefined;
 
   // const perf = performance.now();
 
@@ -123,7 +138,7 @@ export const htmlToDom = async (
 
   // renderEl.appendChild(mergedStacksEl);
 
-  const pager = new Pager({ styles: styleSheets });
+  const pager = new Pager();
 
   const extendedTemplates: Array<PageTemplate> = [];
   {
@@ -133,13 +148,8 @@ export const htmlToDom = async (
     await pager.toPages({
       content: mergedStacksEl,
       onPageStart: ({ pageIndex, setPageVars }) => {
-        const {
-          margin,
-          layouts,
-          innerPageClassName,
-          outerPageClassName,
-          continuous,
-        } = stacksOptions[stackIndex];
+        const { margin, layouts, pageClassName, continuous } =
+          stacksOptions[stackIndex];
 
         const layoutType: LayoutType =
           isFirst && !continuous ? 'first' : 'subsequent';
@@ -154,9 +164,7 @@ export const htmlToDom = async (
               margin,
               header: layouts[layoutType]?.header,
               footer: layouts[layoutType]?.footer,
-              styles: styleSheets,
-              outerClassName: outerPageClassName,
-              innerClassName: innerPageClassName,
+              pageClassName,
             });
 
           // TODO: Do this in PageTemplate constructor.
@@ -166,6 +174,8 @@ export const htmlToDom = async (
         }
 
         const { width, height } = template.contentSize;
+
+        console.log(width, height);
 
         setPageVars({
           // PagerJS doesn't like 0 margins so use 0.5in margins

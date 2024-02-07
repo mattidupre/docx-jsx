@@ -5,15 +5,11 @@ import {
   assignVariants,
   type Variants,
 } from '../entities';
-import { createStyleString } from '../lib/styles';
 import { ReactContentContext, type ReactContentContextValue } from './entities';
-import { useEnvironment } from './useEnvironment';
-import { useInjectStyleSheets } from './useInjectStyleSheets';
 
 export type ContentProviderProps<T extends Variants = Variants> = Partial<
   ReactContentContextValue<T>
 > & {
-  injectEnvironmentCss?: boolean;
   children: ReactNode;
 };
 
@@ -21,7 +17,7 @@ export function ContentProvider<T extends Variants = Variants>({
   children,
   ...props
 }: ContentProviderProps<T>) {
-  const { variants, prefixes, injectEnvironmentCss } = props;
+  const { variants, prefixes } = props;
   const { variants: prevVariants, prefixes: prevPrefixes } =
     useContext(ReactContentContext) ?? {};
 
@@ -37,20 +33,6 @@ export function ContentProvider<T extends Variants = Variants>({
       prefixes: assignPrefixesOptions({}, prevPrefixes, prefixes),
     };
   }, [variants, prevVariants, prefixes, prevPrefixes]);
-
-  const { documentType } = useEnvironment({
-    disableAssert: true,
-  });
-
-  const environmentStyleSheets = useMemo(
-    () =>
-      documentType === 'web' && injectEnvironmentCss
-        ? [createStyleString(contextValue)]
-        : [],
-    [contextValue, documentType, injectEnvironmentCss],
-  );
-
-  useInjectStyleSheets(environmentStyleSheets);
 
   return (
     <ReactContentContext.Provider value={contextValue}>

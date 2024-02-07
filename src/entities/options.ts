@@ -175,15 +175,13 @@ export const assignDocumentOptions = (
   });
 
 export type StackOptions = {
-  innerPageClassName?: string;
-  outerPageClassName?: string;
+  pageClassName?: string;
   margin?: Partial<PageMargin>;
   continuous?: boolean;
 };
 
 export type StackConfig = {
-  innerPageClassName?: string;
-  outerPageClassName?: string;
+  pageClassName?: string;
   margin: PageMargin;
   continuous: boolean;
 };

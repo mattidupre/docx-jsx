@@ -146,7 +146,9 @@ export const cssRulesArrayToString = (cssRules: CssRulesArray) => {
   return styleStrings.join('\n');
 };
 
-export const toCssStyleSheets = (...values: ReadonlyArray<any>) =>
+export const toCssStyleSheets = (
+  ...values: ReadonlyArray<CSSStyleSheet | URL | string>
+) =>
   Promise.all(
     transform(
       values,

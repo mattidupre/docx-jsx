@@ -12,6 +12,7 @@ import {
   IfEnvironment,
 } from '../reactComponents';
 import { createMockVariantsConfig } from './mockVariantsConfig';
+import { createMockPrefixesConfig } from '.';
 
 const PageCounter = () => {
   return (
@@ -58,6 +59,7 @@ const mockPageTypes = (prefix: string) => {
 
 export function MockDocument({
   variants: variantsProp,
+  prefixes: prefixesProp,
   ...props
 }: Partial<DocumentProviderProps>) {
   const variants = useMemo(
@@ -65,10 +67,15 @@ export function MockDocument({
     [variantsProp],
   );
 
+  const prefixes = useMemo(
+    () => prefixesProp || createMockPrefixesConfig(),
+    [prefixesProp],
+  );
+
   return (
-    <DocumentProvider variants={variants} {...props}>
+    <DocumentProvider variants={variants} prefixes={prefixes} {...props}>
       <Stack
-        innerPageClassName="preview__page"
+        pageClassName="preview__page"
         layouts={mockPageTypes('FIRST SECTION')}
         margin={{
           top: '1in',
@@ -257,7 +264,7 @@ export function MockDocument({
 
       <Stack
         continuous
-        innerPageClassName="preview__page"
+        pageClassName="preview__page"
         layouts={{ first: {}, subsequent: {} }}
         margin={{
           top: '1in',
@@ -268,7 +275,7 @@ export function MockDocument({
       </Stack>
 
       <Stack
-        innerPageClassName="preview__page"
+        pageClassName="preview__page"
         layouts={mockPageTypes('SECOND SECTION')}
         margin={{
           top: '1in',

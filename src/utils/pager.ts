@@ -25,8 +25,9 @@ export type OnPageRendered = (context: {
 export type OnPagesRendered = (context: { pagesElement: HTMLElement }) => void;
 
 export type PagerOptions = {
-  styles?: Array<HTMLStyleElement | CSSStyleSheet>;
   vars?: PageVars;
+  // TODO: Remove styles
+  styles?: Array<HTMLStyleElement | CSSStyleSheet>;
 };
 
 export type ToPagesOptions = {
@@ -58,30 +59,30 @@ export class Pager {
 
   readonly allStyleSheets: Array<CSSStyleSheet>;
 
-  readonly allStyleElements: Array<HTMLStyleElement>;
+  // readonly allStyleElements: Array<HTMLStyleElement>;
 
   constructor({ styles = [], vars }: PagerOptions = {}) {
-    const instanceStyleSheets = [Pager.varsToStyleSheet(vars) ?? []].flat();
+    const instanceStyleSheets = []; // [Pager.varsToStyleSheet(vars) ?? []].flat();
 
     const styleSheets: Array<CSSStyleSheet> = [
       ...Pager.baseStyleSheets,
       ...instanceStyleSheets,
     ];
 
-    const styleElements: Array<HTMLStyleElement> = [];
+    // const styleElements: Array<HTMLStyleElement> = [];
 
-    for (const style of styles) {
-      if (style instanceof CSSStyleSheet) {
-        styleSheets.push(style);
-      }
-      if (style instanceof HTMLStyleElement) {
-        styleElements.push(style);
-      }
-    }
+    // for (const style of styles) {
+    //   if (style instanceof CSSStyleSheet) {
+    //     styleSheets.push(style);
+    //   }
+    //   if (style instanceof HTMLStyleElement) {
+    //     styleElements.push(style);
+    //   }
+    // }
 
     this.allStyleSheets = styleSheets;
 
-    this.allStyleElements = styleElements;
+    // this.allStyleElements = styleElements;
   }
 
   async toPages({
@@ -98,9 +99,10 @@ export class Pager {
     hostElement.style.setProperty('pointer-events', 'none');
     hostElement.style.setProperty('z-index', '-9999');
     document.body.appendChild(hostElement);
-    const shadowElement = hostElement.attachShadow({ mode: 'closed' });
-    shadowElement.adoptedStyleSheets.push(...this.allStyleSheets);
-    shadowElement.append(...this.allStyleElements);
+    const shadowElement = document.createElement('div'); // TEMP
+    hostElement.append(shadowElement); // hostElement.attachShadow({ mode: 'closed' });
+    document.adoptedStyleSheets.push(...this.allStyleSheets); // shadowElement.adoptedStyleSheets.push(...this.allStyleSheets);
+    // shadowElement.append(...this.allStyleElements);
     const chunkerElement = document.createElement('div');
     Pager.applyVarsToElement(vars, chunkerElement);
     shadowElement.appendChild(chunkerElement);

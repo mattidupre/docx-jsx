@@ -6,12 +6,10 @@ import { InternalElement } from './InternalElement';
 import { ContentProvider } from './ContentProvider';
 
 export type DocumentProviderProps = DocumentOptions & {
-  injectEnvironmentCss?: boolean;
   children: ReactNode;
 };
 
 export function DocumentProvider({
-  injectEnvironmentCss,
   variants,
   prefixes,
   children,
@@ -31,10 +29,7 @@ export function DocumentProvider({
   );
 
   return (
-    <ContentProvider
-      injectEnvironmentCss={injectEnvironmentCss}
-      {...documentOptions}
-    >
+    <ContentProvider {...documentOptions}>
       <ReactDocumentContext.Provider value={documentContextValue}>
         <InternalElement
           preferFragment

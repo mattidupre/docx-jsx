@@ -1,13 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StyleSheetsValue } from '../entities';
 
 // TODO: Abstract into utils.
 export const useInjectStyleSheets = (
   styleSheets: ReadonlyArray<undefined | StyleSheetsValue>,
 ) => {
+  const [isStyleSheetsLoaded, setIsStyleSheetsLoaded] = useState(false);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const styleSheetsMemoized = useMemo(() => [...styleSheets], styleSheets);
+
   useEffect(() => {
     const cssStyleSheetsPromise = Promise.all(
-      styleSheets.flatMap((styleSheet) => {
+      styleSheetsMemoized.flatMap((styleSheet) => {
         if (styleSheet instanceof CSSStyleSheet) {
           return styleSheet;
         }
@@ -23,6 +28,7 @@ export const useInjectStyleSheets = (
     );
     cssStyleSheetsPromise.then((cssStyleSheets) => {
       document.adoptedStyleSheets.push(...cssStyleSheets);
+      setIsStyleSheetsLoaded(true);
     });
     return () => {
       cssStyleSheetsPromise.then((cssStyleSheets) => {
@@ -34,5 +40,7 @@ export const useInjectStyleSheets = (
         }
       });
     };
-  }, [styleSheets]);
+  }, [styleSheetsMemoized]);
+
+  return { isStyleSheetsLoaded };
 };

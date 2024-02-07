@@ -12,10 +12,20 @@ const htmlToDomCode = `(() => {const exports={};${htmlToDomCodeCjs};return expor
 let browserPromise: undefined | Promise<Browser>;
 
 export type HtmlToPdfOptions = {
-  styleSheets?: ReadonlyArray<string>;
   puppeteer?: PuppeteerLaunchOptions;
   closeBrowser?: boolean;
-};
+} & (
+  | {
+      shadow: true;
+      styleSheets: ReadonlyArray<string>;
+      styleSheetPaths?: undefined;
+    }
+  | {
+      shadow?: false;
+      styleSheets?: undefined;
+      styleSheetPaths: ReadonlyArray<string>;
+    }
+);
 
 export const htmlToPdf = async (
   html: string,

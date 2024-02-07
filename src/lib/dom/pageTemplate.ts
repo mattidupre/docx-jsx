@@ -11,9 +11,7 @@ export type PageTemplateOptions = {
   header?: InnerNode;
   content?: InnerNode;
   footer?: InnerNode;
-  outerClassName?: string;
-  innerClassName?: string;
-  styles?: Array<HTMLStyleElement | CSSStyleSheet>;
+  pageClassName?: string;
 };
 
 export type CloneOptions = {
@@ -25,29 +23,72 @@ export type ReplaceCountersOptions = {
   pageCount: number;
 };
 
-const appendNodes = (parentEl: Element, el: undefined | InnerNode) => {
-  if (!el) {
-    return;
-  }
-  return parentEl.append(...('length' in el ? [...el] : [el]));
-};
-
-const mapNodes = (
-  el: undefined | InnerNode,
-  callback: (node: Node) => void,
-) => {
+const elementsToArray = (el: undefined | InnerNode): Array<Node> => {
   if (el === undefined) {
-    return undefined;
+    return [];
   }
   if (el instanceof Node) {
-    return callback(el);
+    return [el];
   }
   if (typeof el[Symbol.iterator] === 'function') {
-    return Array.prototype.map.call(el, (thisEl) =>
-      callback(thisEl),
-    ) as unknown as NodeList;
+    return Array.prototype.map.call(el, (e) => {
+      if (!(e instanceof Element)) {
+        throw new TypeError('All nodes must be elements');
+      }
+      return e;
+    }) as Array<Element>;
   }
   throw new TypeError('Invalid element.');
+};
+
+const setClassName = (
+  innerNode: undefined | InnerNode,
+  className?: string | Array<undefined | string>,
+) => {
+  if (!className) {
+    return;
+  }
+
+  const classNames = (
+    Array.isArray(className) ? className : [className]
+  ).flatMap((cn) => (cn ? cn.split(/\s+/) : []));
+
+  elementsToArray(innerNode).forEach((node) => {
+    for (const className of classNames) {
+      if ('classList' in node && className) {
+        (node as Element).classList.add(className);
+      }
+    }
+  });
+};
+
+const createSlotElement = ({
+  rootElement,
+  parentElement,
+  className,
+  children,
+}: {
+  rootElement: Element;
+  parentElement: Element;
+  className?: string;
+  children?: InnerNode;
+}) => {
+  const element = document.createElement('div');
+  parentElement.append(element);
+
+  // const slot = document.createElement('slot');
+  // element.append(slot);
+
+  // const lightElement = document.createElement('div');
+  // rootElement.append(lightElement);
+  // slot.assign(lightElement);
+  element.append(...elementsToArray(children)); // lightElement.append(...elementsToArray(children));
+
+  if (className) {
+    element.classList.add(className);
+  }
+
+  return element;
 };
 
 const cloneNodes = (el: undefined | InnerNode, deep?: boolean): typeof el => {
@@ -65,42 +106,16 @@ const cloneNodes = (el: undefined | InnerNode, deep?: boolean): typeof el => {
   throw new TypeError('Invalid element.');
 };
 
-const setClassName = (
-  innerNode: undefined | InnerNode,
-  className?: string | Array<string>,
-) => {
-  if (!className) {
-    return;
-  }
-
-  const classNames = (
-    Array.isArray(className) ? className : [className]
-  ).flatMap((cn) => cn.split(/\s+/));
-
-  return mapNodes(innerNode, (node) => {
-    for (const className of classNames) {
-      if ('classList' in node && className) {
-        (node as Element).classList.add(className);
-      }
-    }
-  });
-};
-
 export class PageTemplate {
   private readonly options: PageTemplateOptions;
 
-  public readonly element: Element;
-
-  private static baseStyleSheet: undefined | CSSStyleSheet;
-
-  private readonly styleSheets: ReadonlyArray<CSSStyleSheet>;
-
-  private readonly styleElements: ReadonlyArray<HTMLStyleElement>;
+  public readonly element: HTMLElement;
 
   private readonly pageSize: PageSize;
 
   public readonly pageEl: Element;
   public static readonly pageClassName = 'page';
+  public static readonly outerPageClassName = 'TEMP_page';
 
   public readonly headerEl: Element;
   public static readonly headerClassName = `${PageTemplate.pageClassName}__header`;
@@ -132,62 +147,50 @@ export class PageTemplate {
 
   constructor({ content, ...options }: PageTemplateOptions) {
     this.options = PageTemplate.cloneOptions(options);
-
-    // Memoize static creation of baseStyleSheet.
-    if (!PageTemplate.baseStyleSheet) {
-      PageTemplate.baseStyleSheet = new CSSStyleSheet();
-      PageTemplate.baseStyleSheet.replaceSync(PageTemplate.innerStyle);
-    }
-
-    this.styleSheets = [
-      PageTemplate.baseStyleSheet,
-      ...(options.styles ?? []).flatMap((style) => {
-        if (style instanceof CSSStyleSheet) {
-          return style;
-        }
-        return [];
-      }),
-    ];
-    this.styleElements = (options.styles ?? []).flatMap((style) => {
-      if (style instanceof HTMLStyleElement) {
-        const clonedStyle = style.cloneNode(true) as HTMLStyleElement;
-        clonedStyle.removeAttribute('disabled');
-        return clonedStyle;
-      }
-      return [];
-    });
     this.pageSize = { ...options.size };
 
+    this.element = document.createElement('div');
+    setClassName(this.element, [
+      PageTemplate.outerPageClassName,
+      options.pageClassName,
+    ]);
+
+    this.element.style.setProperty('break-inside', 'avoid');
+    this.element.style.setProperty('break-after', 'page');
+    this.element.style.setProperty('width', options.size.width);
+    this.element.style.setProperty('height', options.size.height);
+
+    // const shadowElement = this.element.attachShadow({
+    //   mode: 'closed',
+    //   slotAssignment: 'manual',
+    // });
+    // shadowElement.adoptedStyleSheets.push(PageTemplate.getBaseStyleSheet());
+
     this.pageEl = document.createElement('div');
-    setClassName(
-      this.pageEl,
-      [options.innerClassName ?? [], PageTemplate.pageClassName].flat(),
-    );
+    setClassName(this.pageEl, PageTemplate.pageClassName);
     this.pageEl.setAttribute('style', PageTemplate.createCssVars(options));
+    this.element.appendChild(this.pageEl); // shadowElement.appendChild(this.pageEl);
 
-    this.headerEl = document.createElement('div');
-    setClassName(this.headerEl, PageTemplate.headerClassName);
-    appendNodes(this.headerEl, options.header);
-    this.pageEl.appendChild(this.headerEl);
-
-    this.contentEl = document.createElement('div');
-    setClassName(this.contentEl, PageTemplate.contentClassName);
-    appendNodes(this.contentEl, content);
-    this.pageEl.appendChild(this.contentEl);
-
-    this.footerEl = document.createElement('div');
-    setClassName(this.footerEl, PageTemplate.footerClassName);
-    appendNodes(this.footerEl, options.footer);
-    this.pageEl.appendChild(this.footerEl);
-
-    this.element = PageTemplate.createRoot({
-      innerEl: this.pageEl,
-      styleSheets: this.styleSheets,
-      className: options.outerClassName,
-      size: options.size,
+    this.headerEl = createSlotElement({
+      rootElement: this.element,
+      parentElement: this.pageEl,
+      className: PageTemplate.headerClassName,
+      children: options.header,
     });
 
-    this.element.append(...this.styleElements);
+    this.contentEl = createSlotElement({
+      rootElement: this.element,
+      parentElement: this.pageEl,
+      className: PageTemplate.contentClassName,
+      children: content,
+    });
+
+    this.footerEl = createSlotElement({
+      rootElement: this.element,
+      parentElement: this.pageEl,
+      className: PageTemplate.footerClassName,
+      children: options.footer,
+    });
   }
 
   public extend({ content }: CloneOptions) {
@@ -236,46 +239,17 @@ export class PageTemplate {
   }
 
   public replaceCounters({ pageNumber, pageCount }: ReplaceCountersOptions) {
-    [this.headerEl, this.footerEl].forEach((headerFooterEl) => {
-      selectDomElement(
-        this.options.prefixes,
-        headerFooterEl,
-        'pagenumber',
-      ).forEach((counterEl) => {
+    selectDomElement(this.options.prefixes, this.element, 'pagenumber').forEach(
+      (counterEl) => {
         counterEl.appendChild(document.createTextNode(`${pageNumber}`));
-      });
+      },
+    );
 
-      selectDomElement(
-        this.options.prefixes,
-        headerFooterEl,
-        'pagecount',
-      ).forEach((counterEl) => {
+    selectDomElement(this.options.prefixes, this.element, 'pagecount').forEach(
+      (counterEl) => {
         counterEl.appendChild(document.createTextNode(`${pageCount}`));
-      });
-    });
-  }
-
-  private static createRoot({
-    innerEl,
-    styleSheets,
-    className,
-    size,
-  }: {
-    innerEl: Element;
-    styleSheets: ReadonlyArray<CSSStyleSheet>;
-    className?: string;
-    size: PageSize;
-  }) {
-    const rootEl = document.createElement('div');
-    setClassName(rootEl, className);
-    rootEl.style.setProperty('break-inside', 'avoid');
-    rootEl.style.setProperty('break-after', 'page');
-    rootEl.style.setProperty('width', size.width);
-    rootEl.style.setProperty('height', size.height);
-    const shadowEl = rootEl.attachShadow({ mode: 'closed' });
-    shadowEl.adoptedStyleSheets.push(...styleSheets);
-    shadowEl.appendChild(innerEl);
-    return rootEl;
+      },
+    );
   }
 
   private static createCssVars({ size, margin }: PageTemplateOptions) {
@@ -291,7 +265,16 @@ export class PageTemplate {
     `;
   }
 
-  private static innerStyle = `
+  private static baseStyleSheet: undefined | CSSStyleSheet;
+  private static getBaseStyleSheet() {
+    if (!PageTemplate.baseStyleSheet) {
+      PageTemplate.baseStyleSheet = new CSSStyleSheet();
+      PageTemplate.baseStyleSheet.replaceSync(PageTemplate.innerStyle);
+    }
+    return PageTemplate.baseStyleSheet;
+  }
+
+  public static innerStyle = `
     .${PageTemplate.pageClassName} {
       position: relative;
       display: flex;
@@ -333,28 +316,34 @@ export class PageTemplate {
       position: absolute;
       bottom: var(--page-margin-footer);
     }
+  `;
 
+  public static outerStyle = `
     /* From PagedJS */
 
-    .${PageTemplate.pageClassName} [data-split-from] {
+    .${PageTemplate.outerPageClassName} {
+      border: 10px solid magenta !important;
+    }
+
+    .${PageTemplate.outerPageClassName} [data-split-from] {
       counter-increment: unset;
       counter-reset: unset;
     }
 
-    .${PageTemplate.pageClassName} [data-split-to] {
+    .${PageTemplate.outerPageClassName} [data-split-to] {
       margin-bottom: unset;
       padding-bottom: unset;
     }
 
-    .${PageTemplate.pageClassName} [data-split-from] {
+    .${PageTemplate.outerPageClassName} [data-split-from] {
       text-indent: unset;
       margin-top: unset;
       padding-top: unset;
       initial-letter: unset;
     }
 
-    .${PageTemplate.pageClassName} [data-split-from] > *::first-letter,
-    .${PageTemplate.pageClassName} [data-split-from]::first-letter {
+    .${PageTemplate.outerPageClassName} [data-split-from] > *::first-letter,
+    .${PageTemplate.outerPageClassName} [data-split-from]::first-letter {
       color: unset;
       font-size: unset;
       font-weight: unset;
@@ -366,22 +355,22 @@ export class PageTemplate {
       margin: unset;
     }
 
-    .${PageTemplate.pageClassName} [data-split-to]:not([data-footnote-call]):after,
-    .${PageTemplate.pageClassName} [data-split-to]:not([data-footnote-call])::after {
+    .${PageTemplate.outerPageClassName} [data-split-to]:not([data-footnote-call]):after,
+    .${PageTemplate.outerPageClassName} [data-split-to]:not([data-footnote-call])::after {
       content: unset;
     }
 
-    .${PageTemplate.pageClassName} [data-split-from]:not([data-footnote-call]):before,
-    .${PageTemplate.pageClassName} [data-split-from]:not([data-footnote-call])::before {
+    .${PageTemplate.outerPageClassName} [data-split-from]:not([data-footnote-call]):before,
+    .${PageTemplate.outerPageClassName} [data-split-from]:not([data-footnote-call])::before {
       content: unset;
     }
 
-    .${PageTemplate.pageClassName} li[data-split-from]:first-of-type {
+    .${PageTemplate.outerPageClassName} li[data-split-from]:first-of-type {
       list-style: none;
     }
 
-    .${PageTemplate.pageClassName} [data-align-last-split-element='justify'] {
+    .${PageTemplate.outerPageClassName} [data-align-last-split-element='justify'] {
       text-align-last: justify;
     }
-  `;
+   `;
 }

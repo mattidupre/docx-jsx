@@ -17,7 +17,13 @@ type PreviewHandle = {
 
 export const usePreview = (
   DocumentRoot: () => ReactElement,
-  { initialStyleSheets, styleSheets, onDocument }: ReactToDomOptions,
+  {
+    shadow,
+    initialStyleSheets,
+    styleSheets,
+    onDocument,
+    isDisabled,
+  }: ReactToDomOptions & { isDisabled?: boolean },
 ): PreviewHandle => {
   const previewElRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -31,41 +37,52 @@ export const usePreview = (
     );
   }, [DocumentRoot]);
 
-  useEffect(
-    () => {
-      // Only attach to DOM if this useEffect is still active. If the component
-      // has been unmounted or if a new resume prop has been provided, interrupt
-      // the operation before the preview is attached to the DOM.
-      let isInterrupted = false;
+  useEffect(() => {
+    // Allow deferring of render operation, for instance when loading CSS.
+    if (isDisabled) {
+      return;
+    }
 
-      // Retain a scoped reference to the inside element so it can be removed.
-      let thisResumeEl: HTMLElement;
+    console.log('executing');
 
-      // reactToPreview is a React-less async operation resolving to a detached
-      // element.
-      reactToDom(WrappedDocumentRoot, {
-        initialStyleSheets,
-        styleSheets,
-        onDocument,
-      }).then((resumeEl) => {
-        if (isInterrupted) {
-          return;
-        }
-        setIsLoading(false);
-        setResumeEl(resumeEl);
-        thisResumeEl = resumeEl;
-      });
+    // Only attach to DOM if this useEffect is still active. If the component
+    // has been unmounted or if a new resume prop has been provided, interrupt
+    // the operation before the preview is attached to the DOM.
+    let isInterrupted = false;
 
-      return () => {
-        isInterrupted = true;
-        if (thisResumeEl) {
-          thisResumeEl.remove();
-        }
-      };
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [initialStyleSheets, styleSheets, onDocument],
-  );
+    // Retain a scoped reference to the inside element so it can be removed.
+    let thisResumeEl: HTMLElement;
+
+    // reactToPreview is a React-less async operation resolving to a detached
+    // element.
+    reactToDom(WrappedDocumentRoot, {
+      shadow,
+      initialStyleSheets,
+      styleSheets,
+      onDocument,
+    } as ReactToDomOptions).then((resumeEl) => {
+      if (isInterrupted) {
+        return;
+      }
+      setIsLoading(false);
+      setResumeEl(resumeEl);
+      thisResumeEl = resumeEl;
+    });
+
+    return () => {
+      isInterrupted = true;
+      if (thisResumeEl) {
+        thisResumeEl.remove();
+      }
+    };
+  }, [
+    initialStyleSheets,
+    styleSheets,
+    onDocument,
+    WrappedDocumentRoot,
+    shadow,
+    isDisabled,
+  ]);
 
   useEffect(() => {
     if (resumeEl && previewElRef.current) {
