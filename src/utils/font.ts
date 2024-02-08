@@ -214,3 +214,46 @@ export const matchFontFace = <TFont extends FontFaceOptions>(
 
   return italicishMatch ?? defaultMatch;
 };
+
+/**
+ * Allows awaiting any in-progress font-loading operations.
+ */
+export const createFontListener = () => {
+  const handle = { isFontsLoading: false } as {
+    isFontsLoading: boolean;
+    reset: () => void;
+    waitForFonts: () => Promise<null>;
+  };
+  const handleFontsLoading = () => {
+    handle.isFontsLoading = true;
+  };
+  const handleFontsError = () => {
+    handle.isFontsLoading = false;
+  };
+  const handleFontsLoaded = () => {
+    handle.isFontsLoading = false;
+  };
+  document.fonts.addEventListener('loading', handleFontsLoading);
+  document.fonts.addEventListener('loadingerror', handleFontsError);
+  document.fonts.addEventListener('loadingdone', handleFontsLoaded);
+  handle.reset = () => {
+    document.fonts.removeEventListener('loading', handleFontsLoading);
+    document.fonts.removeEventListener('loadingerror', handleFontsError);
+    document.fonts.removeEventListener('loadingdone', handleFontsLoaded);
+  };
+  handle.waitForFonts = () => {
+    if (!handle.isFontsLoading) {
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => {
+      function handleFontsReady() {
+        document.fonts.removeEventListener('loadingerror', handleFontsReady);
+        document.fonts.removeEventListener('loadingdone', handleFontsReady);
+        resolve(null);
+      }
+      document.fonts.addEventListener('loadingerror', handleFontsReady);
+      document.fonts.addEventListener('loadingdone', handleFontsReady);
+    });
+  };
+  return handle;
+};

@@ -101,16 +101,16 @@ export class Pager {
     const shadowElement = hostElement.attachShadow({ mode: 'closed' });
     shadowElement.adoptedStyleSheets.push(...this.allStyleSheets);
     shadowElement.append(...this.allStyleElements);
+
     const chunkerElement = document.createElement('div');
     Pager.applyVarsToElement(vars, chunkerElement);
     shadowElement.appendChild(chunkerElement);
 
-    // Defining chunker on each call seems to save time over defining it once.
     const chunker = new Chunker();
 
     {
       let currentPageIndex = 0;
-      chunker.hooks.beforePageLayout.register((page) => {
+      chunker.hooks.beforePageLayout.register(async (page) => {
         onPageStart?.({
           pageIndex: currentPageIndex,
           setPageVars: (vars) => {

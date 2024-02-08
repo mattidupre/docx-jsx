@@ -29,7 +29,7 @@ export const htmlToPdf = async (
   {
     puppeteer: puppeteerOptions,
     closeBrowser,
-    pageStyleSheets: pageStyleSheetsOption = [],
+    pageStyleSheets = [],
     publicDirectory,
     ...options
   }: HtmlToPdfOptions,
@@ -39,7 +39,7 @@ export const htmlToPdf = async (
     if (!browserPromise) {
       browserPromise = puppeteer.launch({
         ...puppeteerOptions,
-        dumpio: true,
+        // dumpio: true,
       });
     }
 
@@ -72,8 +72,9 @@ export const htmlToPdf = async (
     // https://github.com/puppeteer/puppeteer/issues/4526
     await page.goto(EMPTY_URL);
 
+    // Add page stylesheet to load fonts.
     await Promise.all(
-      pageStyleSheetsOption.map((styleSheet) => {
+      pageStyleSheets.map((styleSheet) => {
         return page.addStyleTag({ content: styleSheet });
       }),
     );
