@@ -1,3 +1,94 @@
+import type { Simplify } from 'type-fest';
+
+type HtmlTagName = keyof HTMLElementTagNameMap;
+
+type SvgTagName = Simplify<keyof SVGElementTagNameMap>;
+
+const SVG_TAG_NAMES = [
+  'a',
+  'animate',
+  'animateMotion',
+  'animateTransform',
+  'circle',
+  'clipPath',
+  'defs',
+  'desc',
+  'ellipse',
+  'feBlend',
+  'feColorMatrix',
+  'feComponentTransfer',
+  'feComposite',
+  'feConvolveMatrix',
+  'feDiffuseLighting',
+  'feDisplacementMap',
+  'feDistantLight',
+  'feDropShadow',
+  'feFlood',
+  'feFuncA',
+  'feFuncB',
+  'feFuncG',
+  'feFuncR',
+  'feGaussianBlur',
+  'feImage',
+  'feMerge',
+  'feMergeNode',
+  'feMorphology',
+  'feOffset',
+  'fePointLight',
+  'feSpecularLighting',
+  'feSpotLight',
+  'feTile',
+  'feTurbulence',
+  'filter',
+  'foreignObject',
+  'g',
+  'image',
+  'line',
+  'linearGradient',
+  'marker',
+  'mask',
+  'metadata',
+  'mpath',
+  'path',
+  'pattern',
+  'polygon',
+  'polyline',
+  'radialGradient',
+  'rect',
+  'script',
+  'set',
+  'stop',
+  'style',
+  'svg',
+  'switch',
+  'symbol',
+  'text',
+  'textPath',
+  'title',
+  'tspan',
+  'use',
+  'view',
+] as const satisfies ReadonlyArray<SvgTagName>;
+
+/**
+ * Similar to document.createElement but also handles SVG elements.
+ * document.createElement('svg'); will otherwise fail silently.
+ */
+export const createAnyElement = <TTagName extends HtmlTagName | SvgTagName>(
+  tagName: TTagName,
+) => {
+  type TElement = TTagName extends SvgTagName
+    ? SVGElement
+    : HTMLElementTagNameMap[Exclude<TTagName, SvgTagName>];
+  if (SVG_TAG_NAMES.includes(tagName as SvgTagName)) {
+    return document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      tagName,
+    ) as unknown as TElement;
+  }
+  return document.createElement(tagName) as TElement;
+};
+
 // import { type UnitsNumber, parseUnits, toUnits } from './units';
 
 // export const createEl = (

@@ -26,3 +26,4 @@ export * from './reactComponents/usePageSize';
 export * from './reactComponents/usePreview';
 export * from './reactComponents/useEnvironment';
 export * from './reactComponents/Preview';
+export * from './reactComponents/Svg';

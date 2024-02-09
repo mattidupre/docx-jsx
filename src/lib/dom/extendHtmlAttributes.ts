@@ -39,6 +39,13 @@ export const extendHtmlAttributes = (
         targetAttributes[kebabKey] = attributeValue;
         continue;
       }
+
+      if (
+        typeof attributeValue === 'string' ||
+        typeof attributeValue === 'number'
+      ) {
+        targetAttributes[attributeKey] = attributeValue;
+      }
     }
   }
 

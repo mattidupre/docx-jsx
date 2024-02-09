@@ -18,11 +18,12 @@ import { usePrefixes } from './usePrefixes';
 type InternalElementProps = ExtendableProps & {
   preferFragment?: boolean;
   elementType: ElementData['elementType'];
-  elementOptions: ElementData['elementOptions'];
+  elementOptions?: ElementData['elementOptions'];
   variant?: VariantName;
   typography?: TypographyOptions;
   children?: ReactNode;
   tagName: TagName;
+  htmlAttributes?: Record<string, any>;
 };
 
 /**
@@ -31,10 +32,11 @@ type InternalElementProps = ExtendableProps & {
 export function InternalElement({
   preferFragment,
   elementType,
-  elementOptions,
+  elementOptions = {},
   typography: contentOptions,
   variant,
   tagName,
+  htmlAttributes = {},
   className: classNameProp,
   style: styleProp,
   children,
@@ -64,6 +66,7 @@ export function InternalElement({
   ]);
 
   const baseAttributes = {
+    ...htmlAttributes,
     className: classNames.length > 0 ? classNames : undefined,
     style: {
       ...optionsStyle,

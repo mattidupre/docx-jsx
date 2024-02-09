@@ -25,6 +25,7 @@ type ConfigByElementType = {
   htmltag: TypographyOptions & {
     variant?: VariantName;
   };
+  htmlraw: Record<string, never>;
   pagenumber: Record<string, never>;
   pagecount: Record<string, never>;
   split: Record<string, never>;

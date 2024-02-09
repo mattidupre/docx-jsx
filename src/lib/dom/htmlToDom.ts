@@ -2,6 +2,7 @@ import type {
   LayoutType,
   DocumentElement,
   StyleSheetsValue,
+  TagName,
 } from '../../entities';
 import { Pager } from '../../utils/pager';
 import { styleObjectToString, toCssStyleSheets } from '../../utils/css';
@@ -11,6 +12,7 @@ import {
   typographyOptionsToStyleVars,
   createStyleString,
 } from '../styles';
+import { createAnyElement } from '../../utils/elements';
 import { PageTemplate } from './pageTemplate';
 import { extendHtmlAttributes } from './extendHtmlAttributes';
 
@@ -42,7 +44,8 @@ const objToDom = (node: HtmlNode) => {
       ),
     });
 
-    const element = document.createElement(tagName);
+    // document.createElement('svg' | 'polygon' | etc); otherwise fails
+    const element = createAnyElement(tagName);
     for (const attributeName in attributes) {
       if (attributes[attributeName]) {
         element.setAttribute(attributeName, attributes[attributeName]!);
@@ -95,7 +98,7 @@ export const htmlToDom = async (
 
   // Create a temporary element in which to calculate / render pages. Pager and
   // PageTemplate operate in their own respective Shadow DOMs.
-  const renderEl = document.createElement('div');
+  const renderEl = createAnyElement('div');
   renderEl.style.visibility = 'hidden';
   renderEl.style.position = 'absolute';
   renderEl.style.pointerEvents = 'none';
@@ -109,7 +112,7 @@ export const htmlToDom = async (
   const mergedStacksEl = stacksOptions.reduce(
     (stacksFragment, { content, continuous }, stackIndex) => {
       stackTemplates[stackIndex] = {};
-      const stackEl = document.createElement('div');
+      const stackEl = createAnyElement('div');
       stackEl.setAttribute(stackIndexAttribute, String(stackIndex));
       if (stackIndex > 0 && !continuous) {
         stackEl.setAttribute('data-break-before', 'page');
@@ -215,7 +218,7 @@ export const htmlToDom = async (
     });
   }
 
-  const pagesEl = document.createElement('div');
+  const pagesEl = createAnyElement('div');
 
   const pageCount = extendedTemplates.length;
   extendedTemplates.forEach((template, pageIndex) => {

@@ -31,41 +31,37 @@ export const usePreview = (
     );
   }, [DocumentRoot]);
 
-  useEffect(
-    () => {
-      // Only attach to DOM if this useEffect is still active. If the component
-      // has been unmounted or if a new resume prop has been provided, interrupt
-      // the operation before the preview is attached to the DOM.
-      let isInterrupted = false;
+  useEffect(() => {
+    // Only attach to DOM if this useEffect is still active. If the component
+    // has been unmounted or if a new resume prop has been provided, interrupt
+    // the operation before the preview is attached to the DOM.
+    let isInterrupted = false;
 
-      // Retain a scoped reference to the inside element so it can be removed.
-      let thisResumeEl: HTMLElement;
+    // Retain a scoped reference to the inside element so it can be removed.
+    let thisResumeEl: HTMLElement;
 
-      // reactToPreview is a React-less async operation resolving to a detached
-      // element.
-      reactToDom(WrappedDocumentRoot, {
-        initialStyleSheets,
-        styleSheets,
-        onDocument,
-      }).then((resumeEl) => {
-        if (isInterrupted) {
-          return;
-        }
-        setIsLoading(false);
-        setResumeEl(resumeEl);
-        thisResumeEl = resumeEl;
-      });
+    // reactToPreview is a React-less async operation resolving to a detached
+    // element.
+    reactToDom(WrappedDocumentRoot, {
+      initialStyleSheets,
+      styleSheets,
+      onDocument,
+    }).then((resumeEl) => {
+      if (isInterrupted) {
+        return;
+      }
+      setIsLoading(false);
+      setResumeEl(resumeEl);
+      thisResumeEl = resumeEl;
+    });
 
-      return () => {
-        isInterrupted = true;
-        if (thisResumeEl) {
-          thisResumeEl.remove();
-        }
-      };
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [initialStyleSheets, styleSheets, onDocument],
-  );
+    return () => {
+      isInterrupted = true;
+      if (thisResumeEl) {
+        thisResumeEl.remove();
+      }
+    };
+  }, [initialStyleSheets, styleSheets, onDocument, WrappedDocumentRoot]);
 
   useEffect(() => {
     if (resumeEl && previewElRef.current) {

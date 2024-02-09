@@ -24,6 +24,7 @@ export type TagName = keyof Pick<
   | 'sub'
   | 'sup'
   | 'span'
+  | 'svg'
 >;
 
 export type HtmlAttributes = Record<string, string>;

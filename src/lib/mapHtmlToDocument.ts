@@ -23,6 +23,7 @@ import { isValueInArray } from '../utils/array';
 
 const CONTENT_ELEMENT_TYPES = [
   'htmltag',
+  'htmlraw',
   'pagecount',
   'pagenumber',
   'split',
@@ -161,6 +162,17 @@ export const mapHtmlToDocument = <TContent>(
         return childContext;
       }
 
+      if (
+        isElementOfType(elementData, 'htmlraw') ||
+        parentElementTypes.includes('htmlraw')
+      ) {
+        assignElementsContext(elementsContext, {
+          isHtmlRaw: true,
+        });
+
+        return childContext;
+      }
+
       if (isElementOfType(elementData, CONTENT_ROOT_TYPES)) {
         if (!isChildOfElementType(parentElementTypes, 'stack')) {
           throw new TypeError('Content root must be a child of stack.');
@@ -235,7 +247,10 @@ export const mapHtmlToDocument = <TContent>(
     },
     onText: ({ text, parentContext: { data } }) => {
       const { parentTagNames } = data;
-      if (!isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES)) {
+      if (
+        !isChildOfTagName(parentTagNames, PARAGRAPH_TAG_NAMES) &&
+        !isChildOfTagName(parentTagNames, 'svg')
+      ) {
         if (text.trim()) {
           console.warn(
             'Text not enclosed in a paragraph or heading is ignored.',

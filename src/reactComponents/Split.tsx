@@ -37,7 +37,6 @@ export function Split({
         columnGap: '0.0625rem',
         justifyContent: 'space-between',
       }}
-      elementOptions={{}}
       typography={contentOptions}
     >
       <div>{left}</div>

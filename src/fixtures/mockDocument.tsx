@@ -10,6 +10,7 @@ import {
   PageBreakAvoid,
   type DocumentProviderProps,
   IfEnvironment,
+  Svg,
 } from '../reactComponents';
 import { createMockVariantsConfig } from './mockVariantsConfig';
 
@@ -77,6 +78,21 @@ export function MockDocument({
         }}
       >
         <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
+
+        <Svg
+          version="1.1"
+          width="300"
+          height="200"
+          xmlns="http://www.w3.org/2000/svg"
+          id="temp"
+        >
+          <rect width="100%" height="100%" fill="red" />
+          <circle cx="150" cy="100" r="80" fill="green" />
+          <text x="150" y="125" fontSize="60" textAnchor="middle" fill="white">
+            SVG
+          </text>
+        </Svg>
+
         <h1>Heading 1</h1>
         <h2>Heading 2</h2>
         <h3>Heading 3</h3>
