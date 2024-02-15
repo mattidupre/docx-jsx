@@ -1,92 +1,69 @@
 import type { Simplify } from 'type-fest';
 
-type HtmlTagName = keyof HTMLElementTagNameMap;
+type HtmlTagName = Simplify<keyof HTMLElementTagNameMap>;
 
 type SvgTagName = Simplify<keyof SVGElementTagNameMap>;
 
-const SVG_TAG_NAMES = [
-  'a',
-  'animate',
-  'animateMotion',
-  'animateTransform',
-  'circle',
-  'clipPath',
-  'defs',
-  'desc',
-  'ellipse',
-  'feBlend',
-  'feColorMatrix',
-  'feComponentTransfer',
-  'feComposite',
-  'feConvolveMatrix',
-  'feDiffuseLighting',
-  'feDisplacementMap',
-  'feDistantLight',
-  'feDropShadow',
-  'feFlood',
-  'feFuncA',
-  'feFuncB',
-  'feFuncG',
-  'feFuncR',
-  'feGaussianBlur',
-  'feImage',
-  'feMerge',
-  'feMergeNode',
-  'feMorphology',
-  'feOffset',
-  'fePointLight',
-  'feSpecularLighting',
-  'feSpotLight',
-  'feTile',
-  'feTurbulence',
-  'filter',
-  'foreignObject',
-  'g',
-  'image',
-  'line',
-  'linearGradient',
-  'marker',
-  'mask',
-  'metadata',
-  'mpath',
-  'path',
-  'pattern',
-  'polygon',
-  'polyline',
-  'radialGradient',
-  'rect',
-  'script',
-  'set',
-  'stop',
-  'style',
-  'svg',
-  'switch',
-  'symbol',
-  'text',
-  'textPath',
-  'title',
-  'tspan',
-  'use',
-  'view',
-] as const satisfies ReadonlyArray<SvgTagName>;
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
 /**
  * Similar to document.createElement but also handles SVG elements.
  * document.createElement('svg'); will otherwise fail silently.
  */
-export const createAnyElement = <TTagName extends HtmlTagName | SvgTagName>(
+export const createElementChild = <TTagName extends HtmlTagName | SvgTagName>(
+  parentElement: Element,
   tagName: TTagName,
 ) => {
-  type TElement = TTagName extends SvgTagName
-    ? SVGElement
-    : HTMLElementTagNameMap[Exclude<TTagName, SvgTagName>];
-  if (SVG_TAG_NAMES.includes(tagName as SvgTagName)) {
+  type TElement = TTagName extends HtmlTagName
+    ? HTMLElementTagNameMap[Exclude<TTagName, SvgTagName>]
+    : SVGElementTagNameMap[Exclude<TTagName, HtmlTagName>];
+  if (tagName === 'svg' || parentElement.namespaceURI === SVG_NAMESPACE) {
     return document.createElementNS(
-      'http://www.w3.org/2000/svg',
+      SVG_NAMESPACE,
       tagName,
     ) as unknown as TElement;
   }
   return document.createElement(tagName) as TElement;
+};
+
+/** Get an element's size including scrollbars and margins */
+export const getElementOuterSize = (element: HTMLElement) => {
+  if (!element.isConnected) {
+    throw new Error('Element not attached to DOM');
+  }
+  const { offsetWidth, offsetHeight } = element;
+  const { marginTop, marginRight, marginBottom, marginLeft } =
+    window.getComputedStyle(element);
+  return {
+    width:
+      offsetWidth +
+      Number.parseInt(marginLeft, 10) +
+      Number.parseInt(marginRight, 10),
+    height:
+      offsetHeight +
+      Number.parseInt(marginTop, 10) +
+      Number.parseInt(marginBottom, 10),
+  };
+};
+
+/** Get an element's inner size excluding padding. */
+export const getElementInnerSize = (element: HTMLElement) => {
+  if (!element.isConnected) {
+    throw new Error('Element not attached to DOM');
+  }
+  const { clientWidth, clientHeight } = element;
+  const { paddingTop, paddingRight, paddingLeft, paddingBottom } =
+    window.getComputedStyle(element);
+  return {
+    width:
+      clientWidth -
+      Number.parseInt(paddingLeft, 10) -
+      Number.parseInt(paddingRight, 10),
+    height:
+      clientHeight -
+      Number.parseInt(paddingTop, 10) -
+      Number.parseInt(paddingBottom, 10),
+  };
 };
 
 // import { type UnitsNumber, parseUnits, toUnits } from './units';

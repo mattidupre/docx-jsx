@@ -8,6 +8,7 @@ import {
   useCallback,
 } from 'react';
 import { reactToDom, type ReactToDomOptions } from '../reactToDom';
+import { getElementInnerSize, getElementOuterSize } from '../utils/elements';
 import { InternalEnvironmentProvider } from './InternalEnvironmentProvider';
 
 type PreviewHandle = {
@@ -15,13 +16,23 @@ type PreviewHandle = {
   isLoading: boolean;
 };
 
+export type UsePreviewOptions = ReactToDomOptions & {
+  autoscale?: boolean;
+};
+
 export const usePreview = (
   DocumentRoot: () => ReactElement,
-  { initialStyleSheets, styleSheets, onDocument }: ReactToDomOptions,
+  { initialStyleSheets, styleSheets, onDocument, autoscale }: UsePreviewOptions,
 ): PreviewHandle => {
-  const previewElRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [resumeEl, setResumeEl] = useState<undefined | HTMLElement>(undefined);
+  const previewElRef = useRef<HTMLDivElement>(null);
+  const documentElRef = useRef<HTMLElement>();
+  const documentSizeRef = useRef<
+    undefined | { width: number; height: number }
+  >();
+  const [documentElState, setDocumentElState] = useState<
+    undefined | HTMLElement
+  >(undefined);
 
   const WrappedDocumentRoot = useCallback(() => {
     return (
@@ -37,9 +48,6 @@ export const usePreview = (
     // the operation before the preview is attached to the DOM.
     let isInterrupted = false;
 
-    // Retain a scoped reference to the inside element so it can be removed.
-    let thisResumeEl: HTMLElement;
-
     // reactToPreview is a React-less async operation resolving to a detached
     // element.
     reactToDom(WrappedDocumentRoot, {
@@ -51,29 +59,74 @@ export const usePreview = (
         return;
       }
       setIsLoading(false);
-      setResumeEl(resumeEl);
-      thisResumeEl = resumeEl;
+      setDocumentElState(resumeEl);
     });
 
     return () => {
       isInterrupted = true;
-      if (thisResumeEl) {
-        thisResumeEl.remove();
-      }
     };
   }, [initialStyleSheets, styleSheets, onDocument, WrappedDocumentRoot]);
 
   useEffect(() => {
-    if (resumeEl && previewElRef.current) {
-      previewElRef.current.append(resumeEl);
+    const { current: previewEl } = previewElRef;
+    if (!previewEl || !documentElState) {
+      return;
     }
-  }, [resumeEl]);
 
-  return useMemo(
-    () => ({
-      isLoading,
-      previewElRef,
-    }),
-    [isLoading, previewElRef],
-  );
+    previewEl.append(documentElState);
+
+    documentElRef.current = documentElState;
+    documentSizeRef.current = getElementOuterSize(documentElState);
+
+    return () => {
+      documentElState.removeChild(documentElState);
+      documentSizeRef.current = undefined;
+    };
+  }, [documentElState]);
+
+  const observerRef = useRef<undefined | ResizeObserver>();
+  useEffect(() => {
+    const { current: previewEl } = previewElRef;
+    if (!previewEl || !autoscale || observerRef.current) {
+      return;
+    }
+
+    previewEl.style.setProperty('width', '100%');
+    previewEl.style.setProperty('overflow', 'hidden');
+    previewEl.style.setProperty('display', 'flex');
+    previewEl.style.setProperty('justify-content', 'center');
+    previewEl.style.setProperty('align-items', 'center');
+
+    observerRef.current = new ResizeObserver((entries) => {
+      if (!documentElRef.current) {
+        return;
+      }
+      for (const entry of entries) {
+        if (!entry.contentBoxSize) {
+          continue;
+        }
+
+        const { width: previewWidth } = getElementInnerSize(previewEl);
+        const { width: documentWidth, height: documentHeight } =
+          documentSizeRef.current!;
+        const scale = previewWidth / documentWidth;
+        const overflowY = (1 - scale) * documentHeight;
+        documentElRef.current.style.transformOrigin = 'top center';
+        documentElRef.current.style.transform = `scale(${
+          previewWidth / documentWidth
+        })`;
+        documentElRef.current.style.marginBottom = `-${overflowY}px`;
+      }
+    });
+
+    observerRef.current.observe(previewEl);
+
+    // Fire on every render since previewElRef must be attached outside this hook
+    // and cannot be relied upon to be non-null on every render.
+  });
+
+  return {
+    isLoading,
+    previewElRef,
+  };
 };

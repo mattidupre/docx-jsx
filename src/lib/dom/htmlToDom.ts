@@ -2,7 +2,6 @@ import type {
   LayoutType,
   DocumentElement,
   StyleSheetsValue,
-  TagName,
 } from '../../entities';
 import { Pager } from '../../utils/pager';
 import { styleObjectToString, toCssStyleSheets } from '../../utils/css';
@@ -12,7 +11,6 @@ import {
   typographyOptionsToStyleVars,
   createStyleString,
 } from '../styles';
-import { createAnyElement } from '../../utils/elements';
 import { PageTemplate } from './pageTemplate';
 import { extendHtmlAttributes } from './extendHtmlAttributes';
 
@@ -30,6 +28,7 @@ const objToDom = (node: HtmlNode) => {
       properties,
       tagName,
       data: {
+        parentTagNames,
         elementsContext,
         element: { contentOptions, variant },
       },
@@ -44,8 +43,10 @@ const objToDom = (node: HtmlNode) => {
       ),
     });
 
-    // document.createElement('svg' | 'polygon' | etc); otherwise fails
-    const element = createAnyElement(tagName);
+    const element =
+      tagName === 'svg' || parentTagNames.includes('svg')
+        ? document.createElementNS('http://www.w3.org/2000/svg', tagName)
+        : document.createElement(tagName);
     for (const attributeName in attributes) {
       if (attributes[attributeName]) {
         element.setAttribute(attributeName, attributes[attributeName]!);
@@ -98,7 +99,7 @@ export const htmlToDom = async (
 
   // Create a temporary element in which to calculate / render pages. Pager and
   // PageTemplate operate in their own respective Shadow DOMs.
-  const renderEl = createAnyElement('div');
+  const renderEl = document.createElement('div');
   renderEl.style.visibility = 'hidden';
   renderEl.style.position = 'absolute';
   renderEl.style.pointerEvents = 'none';
@@ -112,7 +113,7 @@ export const htmlToDom = async (
   const mergedStacksEl = stacksOptions.reduce(
     (stacksFragment, { content, continuous }, stackIndex) => {
       stackTemplates[stackIndex] = {};
-      const stackEl = createAnyElement('div');
+      const stackEl = document.createElement('div');
       stackEl.setAttribute(stackIndexAttribute, String(stackIndex));
       if (stackIndex > 0 && !continuous) {
         stackEl.setAttribute('data-break-before', 'page');
@@ -218,7 +219,7 @@ export const htmlToDom = async (
     });
   }
 
-  const pagesEl = createAnyElement('div');
+  const pagesEl = document.createElement('div');
 
   const pageCount = extendedTemplates.length;
   extendedTemplates.forEach((template, pageIndex) => {

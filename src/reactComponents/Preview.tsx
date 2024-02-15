@@ -1,18 +1,25 @@
-import { type ReactNode, memo, useMemo, type ReactElement } from 'react';
-import type { HtmlToDomOptions } from '../lib/dom';
-import { usePreview } from './usePreview';
+import {
+  type ReactNode,
+  memo,
+  useMemo,
+  type ReactElement,
+  type RefObject,
+} from 'react';
+import { usePreview, type UsePreviewOptions } from './usePreview';
 
-type PreviewProps = HtmlToDomOptions & {
+type PreviewProps = UsePreviewOptions & {
   Loading?: () => ReactNode;
   DocumentRoot: () => ReactElement;
+  elRef?: RefObject<null | HTMLDivElement>;
 };
 
 export const Preview = memo(function Preview({
   initialStyleSheets: initialStyleSheetsProp,
   styleSheets: styleSheetsProp,
-  onDocument,
   Loading,
   DocumentRoot,
+  elRef,
+  ...props
 }: PreviewProps) {
   const initialStyleSheets = useMemo(
     () => initialStyleSheetsProp,
@@ -29,12 +36,19 @@ export const Preview = memo(function Preview({
   const { isLoading, previewElRef } = usePreview(DocumentRoot, {
     initialStyleSheets,
     styleSheets,
-    onDocument,
+    ...props,
   });
 
-  if (isLoading) {
-    return Loading ? <Loading /> : null;
-  }
-
-  return <div ref={previewElRef} />;
+  return (
+    <div
+      ref={(el) => {
+        (previewElRef.current as typeof el) = el;
+        if (elRef) {
+          (elRef.current as typeof el) = el;
+        }
+      }}
+    >
+      {isLoading && Loading && <Loading />}
+    </div>
+  );
 });

@@ -67,7 +67,7 @@ export function InternalElement({
 
   const baseAttributes = {
     ...htmlAttributes,
-    className: classNames.length > 0 ? classNames : undefined,
+    className: classNames.length > 0 ? classNames.join(' ') : undefined,
     style: {
       ...optionsStyle,
       ...styleProp,
