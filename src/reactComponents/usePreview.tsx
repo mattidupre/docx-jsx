@@ -2,7 +2,6 @@ import {
   type RefObject,
   useEffect,
   useRef,
-  useMemo,
   useState,
   type ReactElement,
   useCallback,
@@ -79,7 +78,7 @@ export const usePreview = (
     documentSizeRef.current = getElementOuterSize(documentElState);
 
     return () => {
-      documentElState.removeChild(documentElState);
+      documentElState.remove();
       documentSizeRef.current = undefined;
     };
   }, [documentElState]);
