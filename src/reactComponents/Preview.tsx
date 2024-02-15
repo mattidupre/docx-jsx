@@ -4,16 +4,21 @@ import {
   useMemo,
   type ReactElement,
   type RefObject,
+  type CSSProperties,
 } from 'react';
 import { usePreview, type UsePreviewOptions } from './usePreview';
 
 type PreviewProps = UsePreviewOptions & {
+  className?: string;
+  style?: CSSProperties;
   Loading?: () => ReactNode;
   DocumentRoot: () => ReactElement;
   elRef?: RefObject<null | HTMLDivElement>;
 };
 
 export const Preview = memo(function Preview({
+  className,
+  style,
   initialStyleSheets: initialStyleSheetsProp,
   styleSheets: styleSheetsProp,
   Loading,
@@ -41,6 +46,8 @@ export const Preview = memo(function Preview({
 
   return (
     <div
+      className={className}
+      style={style}
       ref={(el) => {
         (previewElRef.current as typeof el) = el;
         if (elRef) {
