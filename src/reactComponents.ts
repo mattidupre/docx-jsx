@@ -20,6 +20,7 @@ export * from './reactComponents/PageCount';
 export * from './reactComponents/PageNumber';
 export * from './reactComponents/Stack';
 export * from './reactComponents/Typography';
+export * from './reactComponents/Raw';
 export * from './reactComponents/Split';
 export * from './reactComponents/usePageMargins';
 export * from './reactComponents/usePageSize';

@@ -78,7 +78,9 @@ export const usePreview = (
     documentSizeRef.current = getElementOuterSize(documentElState);
 
     return () => {
-      documentElState.remove();
+      if (!documentElState.isConnected) {
+        documentElState.remove();
+      }
       documentSizeRef.current = undefined;
     };
   }, [documentElState]);
@@ -91,7 +93,6 @@ export const usePreview = (
     }
 
     previewEl.style.setProperty('width', '100%');
-    previewEl.style.setProperty('overflow', 'hidden');
     previewEl.style.setProperty('display', 'flex');
     previewEl.style.setProperty('justify-content', 'center');
     previewEl.style.setProperty('align-items', 'center');
