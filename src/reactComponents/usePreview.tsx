@@ -72,9 +72,10 @@ export const usePreview = (
       return;
     }
 
+    documentElRef.current?.remove();
     previewEl.append(documentElState);
-
     documentElRef.current = documentElState;
+
     documentSizeRef.current = getElementOuterSize(documentElState);
 
     return () => {
