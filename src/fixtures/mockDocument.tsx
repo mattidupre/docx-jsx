@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import {
   DocumentProvider,
   Stack,
@@ -13,6 +13,8 @@ import {
   Svg,
 } from '../reactComponents';
 import { createMockVariantsConfig } from './mockVariantsConfig';
+
+let LONG_TEXT: ReadonlyArray<string>;
 
 const PageCounter = () => {
   return (
@@ -79,7 +81,7 @@ export function MockDocument({
       >
         <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
 
-        <Svg
+        {/* <Svg
           version="1.1"
           width="300"
           height="200"
@@ -91,7 +93,7 @@ export function MockDocument({
           <text x="150" y="125" fontSize="60" textAnchor="middle" fill="white">
             SVG
           </text>
-        </Svg>
+        </Svg> */}
 
         <h1>Heading 1</h1>
         <h2>Heading 2</h2>
@@ -235,42 +237,70 @@ export function MockDocument({
           afternoon. Go from Corlears Hook to Coenties Slip, and from thence, by
           Whitehall, northward.
         </Typography>
+      </Stack>
+
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={{ first: {}, subsequent: {} }}
+        margin={{ top: '1in', header: '0.25in' }}
+      >
+        <h2>{`<NoPageBreak />`}</h2>
+        <h3>Should appear with next</h3>
+        <ShortText />
+        <h3>Should appear with prev</h3>
+        <ShortText />
         <PageBreakAvoid>
-          <h2>NoPageBreak</h2>
-          <p>
-            Call me Ishmael. Some years ago—never mind how long precisely—having
-            little or no money in my purse, and nothing particular to interest
-            me on shore, I thought I would sail about a little and see the
-            watery part of the world.
-          </p>
-          <p>
-            It is a way I have of driving off the spleen and regulating the
-            circulation.
-          </p>
-          <p>
-            Whenever I find myself growing grim about the mouth; whenever it is
-            a damp, drizzly November in my soul; whenever I find myself
-            involuntarily pausing before coffin warehouses, and bringing up the
-            rear of every funeral I meet; and especially whenever my hypos get
-            such an upper hand of me, that it requires a strong moral principle
-            to prevent me from deliberately stepping into the street, and
-            methodically knocking people’s hats off—then, I account it high time
-            to get to sea as soon as I can.
-          </p>
-          <p>This is my substitute for pistol and ball.</p>
-          <p>
-            With a philosophical flourish Cato throws himself upon his sword; I
-            quietly take to the ship.
-          </p>
-          <p>There is nothing surprising in this</p>
-          <p>
-            If they but knew it, almost all men in their degree, some time or
-            other, cherish very nearly the same feelings towards the ocean with
-            me.
-          </p>
+          <h3>Should appear on its own page</h3>
+          <ShortText />
         </PageBreakAvoid>
       </Stack>
 
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={{ first: {}, subsequent: {} }}
+        margin={{ top: '1in', header: '0.25in' }}
+      >
+        <h2>Variant with breakAfter: avoid</h2>
+        <Spacer length={30} />
+
+        <Typography variant="heading1" as="h2">
+          Avoid Break After
+        </Typography>
+        <PageBreakAvoid>
+          <Spacer length={30} />
+        </PageBreakAvoid>
+      </Stack>
+
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={{ first: {}, subsequent: {} }}
+        margin={{ top: '1in', header: '0.25in' }}
+      >
+        <h2>{`<NoPageBreak after />`}</h2>
+        <PageBreakAvoid>
+          <h3>Should appear alone on first page</h3>
+          <ShortText />
+        </PageBreakAvoid>
+        <PageBreakAvoid after>
+          <h3>Should appear with next</h3>
+          <ShortText />
+        </PageBreakAvoid>
+        <PageBreakAvoid>
+          <h3>Should appear with prev</h3>
+          <ShortText />
+        </PageBreakAvoid>
+      </Stack>
+
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={{ first: {}, subsequent: {} }}
+        margin={{
+          top: '1in',
+          header: '0.25in',
+        }}
+      >
+        <h1>Continuous stack 1/2</h1>
+      </Stack>
       <Stack
         continuous
         innerPageClassName="preview__page"
@@ -280,7 +310,7 @@ export function MockDocument({
           header: '0.25in',
         }}
       >
-        <h1>Continuous stack</h1>
+        <h1>Continuous stack 2/2</h1>
       </Stack>
 
       <Stack
@@ -299,10 +329,35 @@ export function MockDocument({
 
 export const createMockHtml = () => renderToStaticMarkup(<MockDocument />);
 
+function Spacer({ length }: { length: number }) {
+  let children: Array<ReactNode> = [];
+  for (let i = 0; i < length; i++) {
+    children.push(<p key={`spacer_${i}`}>|</p>);
+  }
+  return <>{children}</>;
+}
+
+function ShortText() {
+  return (
+    <Typography as="div" variant="mockContentVariant">
+      {LONG_TEXT.slice(0, 3).map((text, index) => (
+        <p key={`static_${index}`}>{text}</p>
+      ))}
+    </Typography>
+  );
+}
+
 function LongText() {
   return (
     <Typography as="div" variant="mockContentVariant">
-      {`CHAPTER 1. Loomings.
+      {LONG_TEXT.map((text, index) => (
+        <p key={`static_${index}`}>{text}</p>
+      ))}
+    </Typography>
+  );
+}
+
+LONG_TEXT = `CHAPTER 1. Loomings.
 
 Call me Ishmael. Some years ago—never mind how long precisely—having
 little or no money in my purse, and nothing particular to interest me
@@ -500,11 +555,4 @@ By reason of these things, then, the whaling voyage was welcome; the
 great flood-gates of the wonder-world swung open, and in the wild
 conceits that swayed me to my purpose, two and two there floated into
 my inmost soul, endless processions of the whale, and, mid most of them
-all, one grand hooded phantom, like a snow hill in the air.`
-        .split('\n\n')
-        .map((text, index) => (
-          <p key={`static_${index}`}>{text}</p>
-        ))}
-    </Typography>
-  );
-}
+all, one grand hooded phantom, like a snow hill in the air.`.split('\n\n');

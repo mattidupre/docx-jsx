@@ -7,6 +7,8 @@ const MOCK_VARIANTS: Variants = {
     fontSize: '2rem',
     fontWeight: 'bold',
     fontStyle: 'italic',
+    breakInside: 'avoid',
+    breakAfter: 'avoid',
   },
   hyperlink: {
     color: '#ff00ff',

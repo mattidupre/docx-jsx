@@ -8,6 +8,7 @@ import type { UnitsPx, UnitsRem } from './units';
 
 export const TYPOGRAPHY_CSS_KEYS = [
   'breakInside',
+  'breakAfter',
   'textAlign',
   'lineHeight',
   'fontWeight',
@@ -31,6 +32,7 @@ export type TypographyCssKey = (typeof TYPOGRAPHY_CSS_KEYS)[number];
 type TypographyOptionsCssFlat = AssertObjectHasKeys<
   {
     breakInside: 'auto' | 'avoid';
+    breakAfter: 'auto' | 'avoid';
     textAlign: 'left' | 'center' | 'right' | 'justify';
     lineHeight: UnitsRem;
     fontWeight: 'normal' | 'bold';

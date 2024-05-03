@@ -99,14 +99,18 @@ export const htmlToDocx = async (
     } = node;
 
     if (node.type === 'element') {
-      if (element.contentOptions.breakInside === 'avoid') {
+      const {
+        contentOptions: { breakInside, breakAfter },
+      } = element;
+      if (breakInside === 'avoid' || breakAfter === 'avoid') {
         node.children = node.children.map((child, index) => {
           if (child instanceof Paragraph) {
             return Paragraph.clone(child, {
-              keepLines: true,
+              keepLines: breakInside === 'avoid',
               // If Paragraph is the last child, do not keep the next element.
               // If there is a parent breakInside it will overwrite this.
-              keepNext: index !== node.children.length - 1,
+              keepNext:
+                index < node.children.length - 1 || breakAfter === 'avoid',
             });
           }
           return child;
