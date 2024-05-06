@@ -7,6 +7,7 @@ export type {
   TagName,
   PrefixesConfig,
   FontsConfig,
+  DocumentType,
 } from './entities';
 export {
   createStyleArray as createStylesArray,

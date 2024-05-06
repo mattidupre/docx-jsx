@@ -12,9 +12,11 @@ import {
   getFontFace,
   type FontsConfig,
   type FontFace,
+  type UnitsSize,
 } from '../../entities';
 import { objectValuesDefined } from '../../utils/object';
-import { type DocxUnits, toPt, toTwip } from './entities';
+import { toPt, toTwip } from './entities';
+
 import { toDocxColor } from './toDocxColor';
 
 // TODO: Create function to check that value is not --foo or var().
@@ -58,10 +60,10 @@ const parseFontSize = (fontSize: TypographyOptionsFlat['fontSize']) =>
   fontSize &&
   (fontSize === 'normal' ? undefined : Math.round(toPt(fontSize) * 2));
 
-const parseBorderWidth = (borderWidth: undefined | DocxUnits) =>
+const parseBorderWidth = (borderWidth: undefined | UnitsSize) =>
   borderWidth && Math.round(clamp(toPt(borderWidth), 0, 12) * 8);
 
-const parseBorderSpace = (padding: undefined | DocxUnits) =>
+const parseBorderSpace = (padding: undefined | UnitsSize) =>
   padding && Math.round(clamp(toPt(padding), 0, 31));
 
 export const parseTextRunOptions = (

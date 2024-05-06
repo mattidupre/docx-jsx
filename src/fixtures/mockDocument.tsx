@@ -6,6 +6,7 @@ import {
   Typography,
   Split,
   Grid,
+  GridItem,
   PageNumber,
   PageCount,
   PageBreakAvoid,
@@ -81,62 +82,62 @@ export function MockDocument({
         }}
       >
         <Grid gap="0.25in">
-          <Grid.Item size={1}>
+          <GridItem size={1}>
             <p>1</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>2</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>3</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>4</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>5</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>6</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>7</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>8</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>9</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>10</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>11</p>
-          </Grid.Item>
-          <Grid.Item size={1}>
+          </GridItem>
+          <GridItem size={1}>
             <p>12</p>
-          </Grid.Item>
+          </GridItem>
         </Grid>
         <Grid gap="0.25in">
-          <Grid.Item size={6}>
+          <GridItem size={6}>
             <p>Item 1: 6</p>
-          </Grid.Item>
-          <Grid.Item size={3}>
+          </GridItem>
+          <GridItem size={3}>
             <p>Item 2: 3</p>
-          </Grid.Item>
-          <Grid.Item size={3}>
+          </GridItem>
+          <GridItem size={3}>
             <p>Item 3: 3</p>
-          </Grid.Item>
-          <Grid.Item size={6}>
+          </GridItem>
+          <GridItem size={6}>
             <p>Item 4: 6</p>
-          </Grid.Item>
-          <Grid.Item size={7}>
+          </GridItem>
+          <GridItem size={7}>
             <p>Item 5: 7</p>
-          </Grid.Item>
-          <Grid.Item size={5}>
+          </GridItem>
+          <GridItem size={5}>
             <p>Item 6: 5</p>
-          </Grid.Item>
+          </GridItem>
         </Grid>
       </Stack>
 
