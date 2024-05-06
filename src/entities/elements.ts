@@ -15,6 +15,7 @@ import {
 } from './options';
 import type { TagName } from './html';
 import type { TypographyOptions, VariantName } from './typography';
+import type { UnitsSize } from './units';
 
 type ConfigByElementType = {
   document: DocumentConfig;
@@ -29,6 +30,10 @@ type ConfigByElementType = {
   pagenumber: Record<string, never>;
   pagecount: Record<string, never>;
   split: Record<string, never>;
+  gridContainer: { gap: UnitsSize; columnsCount: number };
+  gridItem: {
+    size: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+  };
 };
 
 export type ElementType = keyof ConfigByElementType;

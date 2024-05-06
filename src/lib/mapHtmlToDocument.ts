@@ -22,6 +22,8 @@ import { getValueOf } from '../utils/object';
 import { isValueInArray } from '../utils/array';
 
 const CONTENT_ELEMENT_TYPES = [
+  'gridContainer',
+  'gridItem',
   'htmltag',
   'htmlraw',
   'pagecount',
@@ -190,6 +192,30 @@ export const mapHtmlToDocument = <TContent>(
           PARAGRAPH_TAG_NAMES,
         );
 
+        if (isElementOfType(elementData, 'gridContainer')) {
+          if (isChildOfParagraph) {
+            throw new TypeError('Grids cannot be nested inside paragraphs.');
+          }
+          if (
+            isChildOfElementType(parentElementTypes, [
+              'gridItem',
+              'gridContainer',
+            ])
+          ) {
+            throw new TypeError('Grids cannot be nested inside other grids.');
+          }
+        }
+        if (isElementOfType(elementData, 'gridItem')) {
+          if (isChildOfParagraph) {
+            throw new TypeError('Grids cannot be nested inside paragraphs.');
+          }
+          if (!isChildOfElementType(parentElementTypes, ['gridContainer'])) {
+            throw new TypeError(
+              'Grid items must be nested inside grid containers.',
+            );
+          }
+        }
+
         if (tagName === 'br') {
           if (!isChildOfParagraph) {
             return parentContext!;
@@ -317,6 +343,14 @@ export const mapHtmlToDocument = <TContent>(
           children,
         });
         return [];
+      }
+
+      if (isElementOfType(elementData, ['gridItem'])) {
+        // HERE: Determine element offset in respective row.
+      }
+
+      if (isElementOfType(elementData, ['gridContainer'])) {
+        // HERE: Delete grid context.
       }
 
       if (isElementOfType(elementData, CONTENT_ELEMENT_TYPES)) {

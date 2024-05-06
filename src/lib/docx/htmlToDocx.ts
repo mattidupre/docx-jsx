@@ -19,9 +19,10 @@ import {
   WidthType,
   SectionType,
 } from 'docx';
+import { range } from 'lodash';
 import { assignDefined } from '../../utils/object';
-import { mapHtmlToDocument } from '../mapHtmlToDocument';
-import type { FontsConfig } from '../../entities';
+import { type HtmlElementNode, mapHtmlToDocument } from '../mapHtmlToDocument';
+import type { ElementData, FontsConfig } from '../../entities';
 import {
   parseTextRunOptions,
   parseParagraphOptions,
@@ -31,7 +32,8 @@ import {
   variantNameToCharacterStyleId,
   variantNameToParagraphStyleId,
 } from './variantsToDocx';
-import { toTwip } from './entities';
+import { toPt, toTwip } from './entities';
+import { toUnits } from 'src/utils/units';
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -117,8 +119,119 @@ export const htmlToDocx = async (
         });
       }
 
-      // variantNameToParagraphStyleId
-      // variantNameToCharacterStyleId
+      if (element.elementType === 'gridContainer') {
+        const {
+          document: {
+            size: { width },
+          },
+          stack: {
+            margin: { left, right },
+          },
+        } = elementsContext;
+        const {
+          elementOptions: { gap, columnsCount },
+        } = element;
+        const gapTwip = toTwip(gap);
+        const gridIndent = gapTwip * (-1 / 2);
+        const gridWidthTwip =
+          toTwip(width) - toTwip(left) - toTwip(right) - gridIndent * 2;
+        const columnWidths = range(columnsCount).map(
+          () => gridWidthTwip / columnsCount,
+        );
+
+        const rows: Array<TableRow> = [];
+        let currentRowCells: Array<TableCell> = [];
+        let positionLeft = 0;
+        const createTableCell = ({
+          start,
+          end,
+          children,
+        }: {
+          start: number;
+          end: number;
+          children: ReadonlyArray<unknown>;
+        }) => {
+          if (!(start >= 0) || !(end <= columnsCount)) {
+            throw new TypeError(`Invalid cell range ${start} to ${end} `);
+          }
+          const size = end - start;
+          return new TableCell({
+            margins: {
+              left: gapTwip / 2,
+              right: gapTwip / 2,
+            },
+            borders: TABLE_BORDERS_RESET,
+            children: children as Array<Paragraph>,
+            width: {
+              type: WidthType.PERCENTAGE,
+              size: (100 * size) / columnsCount,
+            },
+            columnSpan: size,
+          });
+        };
+        const finalizeRow = () => {
+          if (positionLeft < 12) {
+            currentRowCells.push(
+              createTableCell({
+                children: [],
+                start: positionLeft,
+                end: columnsCount,
+              }),
+            );
+          }
+          positionLeft = 0;
+          rows.push(new TableRow({ children: [...currentRowCells] }));
+          currentRowCells.splice(0, Infinity);
+        };
+
+        for (let i = 0; i < node.children.length; i += 1) {
+          const {
+            data: { element },
+            children,
+          } = node.children[i] as HtmlElementNode;
+          const {
+            elementOptions: { size },
+          } = element as ElementData<'gridItem'>;
+          let positionRight = positionLeft + size;
+
+          if (positionRight > 12) {
+            // Item overflows, wrap it to a new row.
+            finalizeRow();
+            positionLeft = 0;
+            positionRight = size;
+          }
+
+          currentRowCells.push(
+            createTableCell({
+              start: positionLeft,
+              end: positionRight,
+              children,
+            }),
+          );
+
+          positionLeft = positionRight;
+
+          if (i === node.children.length - 1) {
+            // Close out the last row.
+            finalizeRow();
+          }
+        }
+        return new Table({
+          borders: TABLE_BORDERS_RESET,
+          indent: {
+            size: gridIndent,
+            type: WidthType.DXA,
+          },
+          columnWidths,
+          rows,
+          width: { size: gridWidthTwip, type: WidthType.DXA },
+        });
+      }
+
+      if (element.elementType === 'gridItem') {
+        // Handled by gridContainer
+        return node;
+      }
 
       if (element.elementType === 'pagenumber') {
         return new TextRun({
@@ -225,17 +338,17 @@ export const htmlToDocx = async (
     if (node.type === 'root') {
       if (element.elementType === 'header') {
         return new Header({
-          children: node.children as IHeaderOptions['children'],
+          children: node.children.flat() as IHeaderOptions['children'],
         });
       }
 
       if (element.elementType === 'content') {
-        return node.children;
+        return node.children.flat();
       }
 
       if (element.elementType === 'footer') {
         return new Footer({
-          children: node.children as IHeaderOptions['children'],
+          children: node.children.flat() as IHeaderOptions['children'],
         });
       }
     }

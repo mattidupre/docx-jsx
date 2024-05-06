@@ -5,6 +5,7 @@ import {
   Stack,
   Typography,
   Split,
+  Grid,
   PageNumber,
   PageCount,
   PageBreakAvoid,
@@ -70,6 +71,75 @@ export function MockDocument({
 
   return (
     <DocumentProvider variants={variants} {...props}>
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={mockPageTypes('FIRST SECTION')}
+        margin={{
+          top: '1in',
+          header: '0.5in',
+          bottom: '1in',
+        }}
+      >
+        <Grid gap="0.25in">
+          <Grid.Item size={1}>
+            <p>1</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>2</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>3</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>4</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>5</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>6</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>7</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>8</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>9</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>10</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>11</p>
+          </Grid.Item>
+          <Grid.Item size={1}>
+            <p>12</p>
+          </Grid.Item>
+        </Grid>
+        <Grid gap="0.25in">
+          <Grid.Item size={6}>
+            <p>Item 1: 6</p>
+          </Grid.Item>
+          <Grid.Item size={3}>
+            <p>Item 2: 3</p>
+          </Grid.Item>
+          <Grid.Item size={3}>
+            <p>Item 3: 3</p>
+          </Grid.Item>
+          <Grid.Item size={6}>
+            <p>Item 4: 6</p>
+          </Grid.Item>
+          <Grid.Item size={7}>
+            <p>Item 5: 7</p>
+          </Grid.Item>
+          <Grid.Item size={5}>
+            <p>Item 6: 5</p>
+          </Grid.Item>
+        </Grid>
+      </Stack>
+
       <Stack
         innerPageClassName="preview__page"
         layouts={mockPageTypes('FIRST SECTION')}

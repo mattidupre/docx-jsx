@@ -14,6 +14,7 @@ export {
 } from './lib/styles';
 export * from './reactComponents/ContentProvider';
 export * from './reactComponents/DocumentProvider';
+export * from './reactComponents/Grid';
 export * from './reactComponents/IfEnvironment';
 export * from './reactComponents/PageBreakAvoid';
 export * from './reactComponents/PageCount';
