@@ -29,7 +29,7 @@ export const createElementChild = <TTagName extends HtmlTagName | SvgTagName>(
 /** Get an element's size including scrollbars and margins */
 export const getElementOuterSize = (element: HTMLElement) => {
   if (!element.isConnected) {
-    throw new Error('Element not attached to DOM');
+    return;
   }
   const { offsetWidth, offsetHeight } = element;
   const { marginTop, marginRight, marginBottom, marginLeft } =
@@ -49,7 +49,7 @@ export const getElementOuterSize = (element: HTMLElement) => {
 /** Get an element's inner size excluding padding. */
 export const getElementInnerSize = (element: HTMLElement) => {
   if (!element.isConnected) {
-    throw new Error('Element not attached to DOM');
+    return
   }
   const { clientWidth, clientHeight } = element;
   const { paddingTop, paddingRight, paddingLeft, paddingBottom } =

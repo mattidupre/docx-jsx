@@ -99,7 +99,8 @@ export const usePreview = (
     previewEl.style.setProperty('align-items', 'center');
 
     observerRef.current = new ResizeObserver((entries) => {
-      if (!documentElRef.current) {
+      const previewSize = getElementInnerSize(previewEl);
+      if (!documentElRef.current || !previewSize) {
         return;
       }
       for (const entry of entries) {
@@ -107,7 +108,7 @@ export const usePreview = (
           continue;
         }
 
-        const { width: previewWidth } = getElementInnerSize(previewEl);
+        const { width: previewWidth } = previewSize;
         const { width: documentWidth, height: documentHeight } =
           documentSizeRef.current!;
         const scale = previewWidth / documentWidth;
