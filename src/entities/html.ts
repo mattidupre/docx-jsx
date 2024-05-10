@@ -5,6 +5,7 @@ export type TagName = keyof Pick<
   | 'br'
   | 'div'
   | 'p'
+  | 'label'
   | 'h1'
   | 'h2'
   | 'h3'
