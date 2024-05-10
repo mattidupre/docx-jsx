@@ -1,6 +1,6 @@
 import type { UnitsSize } from '../../entities';
 
-const REM_SIZE_PX = 12;
+const REM_SIZE_PX = 16;
 const PT_PER_PX = 3 / 4;
 const PT_PER_IN = 72;
 const IN_PER_CM = 0.3937008;
