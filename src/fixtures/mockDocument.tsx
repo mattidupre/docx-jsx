@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { type ReactNode, useMemo } from 'react';
+import { merge } from 'lodash';
 import {
   DocumentProvider,
   Stack,
@@ -74,12 +75,13 @@ export function MockDocument({
     <DocumentProvider variants={variants} {...props}>
       <Stack
         innerPageClassName="preview__page"
-        layouts={mockPageTypes('FIRST SECTION')}
+        layouts={mockPageTypes('COVER SECTION')}
         margin={{
           top: '1in',
           header: '0.5in',
           bottom: '1in',
         }}
+        continuous
       >
         <Grid gap="0.25in">
           <GridItem size={1}>
@@ -143,12 +145,13 @@ export function MockDocument({
 
       <Stack
         innerPageClassName="preview__page"
-        layouts={mockPageTypes('FIRST SECTION')}
+        layouts={mockPageTypes('NEXT SECTION')}
         margin={{
           top: '1in',
           header: '0.5in',
           bottom: '1in',
         }}
+        // continuous
       >
         <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
 

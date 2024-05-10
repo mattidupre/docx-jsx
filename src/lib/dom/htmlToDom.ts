@@ -137,16 +137,10 @@ export const htmlToDom = async (
     await pager.toPages({
       content: mergedStacksEl,
       onPageStart: ({ pageIndex, setPageVars }) => {
-        const {
-          margin,
-          layouts,
-          innerPageClassName,
-          outerPageClassName,
-          continuous,
-        } = stacksOptions[stackIndex];
+        const { margin, layouts, innerPageClassName, outerPageClassName } =
+          stacksOptions[stackIndex];
 
-        const layoutType: LayoutType =
-          isFirst && !continuous ? 'first' : 'subsequent';
+        const layoutType: LayoutType = isFirst ? 'first' : 'subsequent';
 
         let template = stackTemplates[stackIndex][layoutType];
 
