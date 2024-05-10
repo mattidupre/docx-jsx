@@ -48,7 +48,7 @@ export const htmlToPdf = async (
 
     await page.setRequestInterception(true);
 
-    page.on('console', (msg) => console.log('Puppeteer:', msg.text()));
+    page.on('console', (msg) => console.info('Puppeteer:', msg.text()));
 
     page.on('request', async (interceptedRequest) => {
       const relativePath = interceptedRequest.url().replace(EMPTY_URL, '');
