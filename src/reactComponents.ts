@@ -8,6 +8,7 @@ export type {
   PrefixesConfig,
   FontsConfig,
   DocumentType,
+  PageMargin,
 } from './entities';
 export {
   createStyleArray as createStylesArray,

@@ -120,6 +120,7 @@ export const parseParagraphOptions = (
     lineHeight,
     highlightColor,
     marginTop,
+    marginRight,
     marginBottom,
     marginLeft,
     paddingBottom,
@@ -146,6 +147,7 @@ export const parseParagraphOptions = (
     indent: {
       firstLine: textIndent && toTwip(textIndent),
       left: marginLeft && toTwip(marginLeft),
+      right: marginRight && toTwip(marginRight),
     },
     alignment: textAlign && DOCX_TEXT_ALIGN[textAlign],
     shading: ifTruthy(highlightColor, {

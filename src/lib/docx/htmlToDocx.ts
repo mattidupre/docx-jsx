@@ -32,8 +32,7 @@ import {
   variantNameToCharacterStyleId,
   variantNameToParagraphStyleId,
 } from './variantsToDocx';
-import { toPt, toTwip } from './entities';
-import { toUnits } from 'src/utils/units';
+import { toTwip } from './entities';
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,

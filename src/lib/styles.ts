@@ -6,7 +6,6 @@ import {
   type PrefixesConfig,
   type TypographyOptions,
   type VariantName,
-  type FontsConfig,
   PARAGRAPH_TAG_NAMES,
 } from '../entities';
 import { getValueOf } from '../utils/object';
@@ -70,6 +69,7 @@ const DEFAULT_VARS: CssRuleDeclarations = {
 
 const DIRECT_PARAGRAPH_STYLES = {
   marginTop: 0,
+  marginRight: 0,
   marginBottom: 0,
   marginLeft: 0,
 } as const satisfies Partial<Record<keyof TypographyOptions, unknown>>;

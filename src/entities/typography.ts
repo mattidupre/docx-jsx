@@ -20,6 +20,7 @@ export const TYPOGRAPHY_CSS_KEYS = [
   'textDecoration',
   'textIndent',
   'marginTop',
+  'marginRight',
   'marginBottom',
   'paddingBottom',
   'borderBottomWidth',
@@ -44,6 +45,7 @@ type TypographyOptionsCssFlat = AssertObjectHasKeys<
     textDecoration: 'none' | 'underline' | 'line-through';
     textIndent: UnitsPx | UnitsRem;
     marginTop: UnitsPx | UnitsRem;
+    marginRight: UnitsPx | UnitsRem;
     marginBottom: UnitsPx | UnitsRem;
     paddingBottom: UnitsPx | UnitsRem;
     borderBottomWidth: UnitsPx | UnitsRem;
