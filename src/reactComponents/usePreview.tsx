@@ -20,7 +20,7 @@ export type UsePreviewOptions = ReactToDomOptions & {
 };
 
 export const usePreview = (
-  DocumentRoot: () => ReactElement,
+  children: ReactElement | Array<ReactElement>,
   { initialStyleSheets, styleSheets, onDocument, autoscale }: UsePreviewOptions,
 ): PreviewHandle => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -36,10 +36,10 @@ export const usePreview = (
   const WrappedDocumentRoot = useCallback(() => {
     return (
       <InternalEnvironmentProvider documentType="pdf" isPreview>
-        <DocumentRoot />
+        {children}
       </InternalEnvironmentProvider>
     );
-  }, [DocumentRoot]);
+  }, [children]);
 
   useEffect(() => {
     // Only attach to DOM if this useEffect is still active. If the component

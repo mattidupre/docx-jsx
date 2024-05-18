@@ -9,10 +9,10 @@ import {
 import { usePreview, type UsePreviewOptions } from './usePreview';
 
 type PreviewProps = UsePreviewOptions & {
+  children: ReactElement | Array<ReactElement>;
   className?: string;
   style?: CSSProperties;
   Loading?: () => ReactNode;
-  DocumentRoot: () => ReactElement;
   elRef?: RefObject<null | HTMLDivElement>;
 };
 
@@ -22,7 +22,7 @@ export const Preview = memo(function Preview({
   initialStyleSheets: initialStyleSheetsProp,
   styleSheets: styleSheetsProp,
   Loading,
-  DocumentRoot,
+  children,
   elRef,
   ...props
 }: PreviewProps) {
@@ -38,7 +38,7 @@ export const Preview = memo(function Preview({
     styleSheetsProp,
   );
 
-  const { isLoading, previewElRef } = usePreview(DocumentRoot, {
+  const { isLoading, previewElRef } = usePreview(children, {
     initialStyleSheets,
     styleSheets,
     ...props,

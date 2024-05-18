@@ -34,10 +34,8 @@ export const WebDocument: Story = {
 
 export const PreviewDocument: Story = {
   render: () => (
-    <Preview
-      DocumentRoot={DocumentRoot}
-      Loading={() => <h1>Loading</h1>}
-      styleSheets={[styleSheetString]}
-    />
+    <Preview Loading={() => <h1>Loading</h1>} styleSheets={[styleSheetString]}>
+      <DocumentRoot />
+    </Preview>
   ),
 };

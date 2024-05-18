@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import type { VariantName, TypographyOptions, TagName } from '../entities';
+import type { CSSProperties, ReactNode } from 'react';
+import type { VariantName, TypographyOptions } from '../entities';
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities';
 import { Typography } from './Typography';
@@ -9,7 +9,11 @@ export type SplitProps = ExtendableProps &
     as?: 'div';
     variant?: VariantName;
     left: ReactNode;
+    classNameLeft?: string;
+    styleLeft?: CSSProperties;
     right: ReactNode;
+    classNameRight?: string;
+    styleRight?: CSSProperties;
   };
 
 // TODO: If not within a <Document> or if target is web:
@@ -21,7 +25,11 @@ export function Split({
   className,
   style,
   left,
+  classNameLeft,
+  styleLeft,
   right,
+  classNameRight,
+  styleRight,
   ...contentOptions
 }: SplitProps) {
   return (
@@ -32,15 +40,24 @@ export function Split({
       className={className}
       style={{
         ...style,
-        width: '100%',
-        display: 'flex',
-        columnGap: '0.0625rem',
-        justifyContent: 'space-between',
+        ...{
+          width: '100%',
+          display: 'flex',
+          columnGap: '0.0625rem',
+          justifyContent: 'space-between',
+        },
       }}
       typography={contentOptions}
     >
-      <div>{left}</div>
-      <Typography as="div" textAlign="right">
+      <Typography as="div" className={classNameLeft} style={styleLeft}>
+        {left}
+      </Typography>
+      <Typography
+        as="div"
+        className={classNameRight}
+        style={styleRight}
+        textAlign="right"
+      >
         {right}
       </Typography>
     </InternalElement>

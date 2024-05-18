@@ -278,19 +278,6 @@ export const htmlToDocx = async (
             }),
           ],
         });
-        // return new Paragraph({
-        //   ...parseParagraphOptions(fonts, contentOptions),
-        //   style: variantNameToParagraphStyleId(elementsContext.variant),
-        //   children: [
-        //     leftChild,
-        //     new PositionalTab({
-        //       alignment: PositionalTabAlignment.RIGHT,
-        //       relativeTo: PositionalTabRelativeTo.MARGIN,
-        //       leader: PositionalTabLeader.NONE,
-        //     }),
-        //     rightChild,
-        //   ],
-        // });
       }
 
       if (node.tagName === 'li') {
