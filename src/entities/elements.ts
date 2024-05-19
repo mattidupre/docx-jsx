@@ -17,7 +17,7 @@ import type { TagName } from './html';
 import type { TypographyOptions, VariantName } from './typography';
 import type { UnitsSize } from './units';
 
-type ConfigByElementType = {
+export type ConfigByElementType = {
   document: DocumentConfig;
   stack: StackConfig;
   header: { layoutType: LayoutType };
@@ -30,6 +30,7 @@ type ConfigByElementType = {
   pagenumber: Record<string, never>;
   pagecount: Record<string, never>;
   split: Record<string, never>;
+  positionalTab: { alignment: 'left' | 'right' | 'center' };
   gridContainer: { gap: UnitsSize; columnsCount: number };
   gridItem: {
     size: number;

@@ -22,6 +22,7 @@ export * from './reactComponents/PageBreakAvoid';
 export * from './reactComponents/PageCount';
 export * from './reactComponents/PageNumber';
 export * from './reactComponents/Stack';
+export * from './reactComponents/TabSplit';
 export * from './reactComponents/Typography';
 export * from './reactComponents/Raw';
 export * from './reactComponents/Split';

@@ -29,6 +29,7 @@ const CONTENT_ELEMENT_TYPES = [
   'pagecount',
   'pagenumber',
   'split',
+  'positionalTab',
 ] as const satisfies ReadonlyArray<ElementType>;
 
 const CONTENT_ROOT_TYPES = [

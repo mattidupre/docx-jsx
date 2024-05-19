@@ -18,6 +18,10 @@ import {
   type ITableBordersOptions,
   WidthType,
   SectionType,
+  PositionalTab,
+  PositionalTabAlignment,
+  PositionalTabRelativeTo,
+  PositionalTabLeader,
 } from 'docx';
 import { range } from 'lodash';
 import { assignDefined } from '../../utils/object';
@@ -115,6 +119,26 @@ export const htmlToDocx = async (
             });
           }
           return child;
+        });
+      }
+
+      if (element.elementType === 'positionalTab') {
+        const {
+          elementOptions: { alignment },
+        } = element;
+        const alignmentValue =
+          alignment === 'left'
+            ? PositionalTabAlignment.LEFT
+            : alignment === 'center'
+            ? PositionalTabAlignment.CENTER
+            : alignment === 'right'
+            ? PositionalTabAlignment.RIGHT
+            : PositionalTabAlignment.RIGHT;
+
+        return new PositionalTab({
+          alignment: alignmentValue,
+          relativeTo: PositionalTabRelativeTo.MARGIN,
+          leader: PositionalTabLeader.NONE,
         });
       }
 
