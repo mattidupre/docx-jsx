@@ -22,6 +22,7 @@ import {
   PositionalTabAlignment,
   PositionalTabRelativeTo,
   PositionalTabLeader,
+  SymbolRun,
 } from 'docx';
 import { range } from 'lodash';
 import { assignDefined } from '../../utils/object';
@@ -92,10 +93,46 @@ export const htmlToDocx = async (
     const { contentOptions } = elementsContext;
 
     if (node.type === 'text') {
-      return new TextRun({
+      const { whiteSpace } = contentOptions;
+      const { value } = node;
+      const textRunOptions = {
         ...parseTextRunOptions(fonts, contentOptions),
         style: variantNameToCharacterStyleId(elementsContext.variant),
-        text: node.value,
+      };
+      if (whiteSpace === 'nowrap') {
+        const children: Array<string | SymbolRun> = [];
+        let prevIndex = 0;
+        value.replace(/\s|$/g, (text, index) => {
+          children.push(
+            new TextRun({
+              ...textRunOptions,
+              text: value.slice(prevIndex, index),
+            }),
+          );
+          if (index === 0) {
+            children.push(new TextRun({ ...textRunOptions, text }));
+          } else if (index < value.length - 1) {
+            children.push(
+              new SymbolRun({ char: 'FEFF' }),
+              new TextRun({ ...textRunOptions, text }),
+              new SymbolRun({ char: 'FEFF' }),
+            );
+          }
+          // Last match at index=length will be ''
+          else if (index === value.length - 1) {
+            children.push(new TextRun({ ...textRunOptions, text }));
+          }
+          prevIndex = index + 1;
+          return text;
+        });
+        return new TextRun({
+          ...textRunOptions,
+          children,
+        });
+      }
+      return new TextRun({
+        ...textRunOptions,
+        text: value,
       });
     }
 

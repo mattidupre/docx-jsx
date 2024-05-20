@@ -14,6 +14,7 @@ import {
   type DocumentProviderProps,
   IfEnvironment,
   Svg,
+  TabSplit,
 } from '../reactComponents';
 import { createMockVariantsConfig } from './mockVariantsConfig';
 
@@ -297,6 +298,33 @@ export function MockDocument({
             </p>
           }
         />
+        <TabSplit
+          left={
+            <p>
+              Circumambulate the city of a dreamy Sabbath afternoon. Go from
+              Corlears Hook to Coenties Slip, and from thence, by Whitehall,
+              northward.
+            </p>
+          }
+          right={
+            <p>
+              But look! here come more crowds, pacing straight for the water,
+              and seemingly bound for a dive.
+            </p>
+          }
+        />
+        <Typography as="p">
+          NoWrap Text:&nbsp;
+          <Typography as="span" whiteSpace="nowrap">
+            But look! here come more crowds, pacing straight for the water, and
+            seemingly bound for a dive.
+          </Typography>{' '}
+          <Typography as="span" whiteSpace="nowrap">
+            But look! here come more crowds, pacing straight for the water, and
+            seemingly bound for a dive.&nbsp;
+          </Typography>
+          End of NoWrap Text
+        </Typography>
         <Typography as="p" textAlign="left">
           Left Paragraph
         </Typography>

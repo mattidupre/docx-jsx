@@ -26,6 +26,7 @@ export const TYPOGRAPHY_CSS_KEYS = [
   'borderBottomWidth',
   'borderBottomColor',
   'marginLeft',
+  'whiteSpace',
 ] as const;
 
 export type TypographyCssKey = (typeof TYPOGRAPHY_CSS_KEYS)[number];
@@ -51,6 +52,7 @@ type TypographyOptionsCssFlat = AssertObjectHasKeys<
     borderBottomWidth: UnitsPx | UnitsRem;
     borderBottomColor: Color | 'currentColor';
     marginLeft: UnitsPx | UnitsRem;
+    whiteSpace: 'normal' | 'nowrap';
   },
   TypographyCssKey
 >;

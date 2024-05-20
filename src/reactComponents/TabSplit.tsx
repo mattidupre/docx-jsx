@@ -54,6 +54,7 @@ export function TabSplit({
           display: 'flex',
           columnGap: '0.0625rem',
           flexWrap: 'wrap',
+          justifyContent: 'space-between',
         },
       }}
       typography={contentOptions}

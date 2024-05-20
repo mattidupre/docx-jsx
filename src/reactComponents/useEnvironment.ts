@@ -1,4 +1,5 @@
 import { useContext, useMemo } from 'react';
+import type { Simplify } from 'type-fest';
 import { extendDefined } from '../utils/object';
 import {
   ReactEnvironmentContext,
@@ -23,7 +24,7 @@ type UseEnvironmentOptions = {
  */
 export const useEnvironment = ({
   disableAssert = false,
-}: UseEnvironmentOptions = {}) => {
+}: UseEnvironmentOptions = {}): Simplify<ReactEnvironmentContextValue> => {
   const documentConfig = useContext(ReactDocumentContext);
   if (!documentConfig && !disableAssert) {
     throw new Error('Document Context not found.');
