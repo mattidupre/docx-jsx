@@ -5,6 +5,7 @@ import type {
 } from '../../entities';
 import { Pager } from '../../utils/pager';
 import { styleObjectToString, toCssStyleSheets } from '../../utils/css';
+import { applyDataAttributes } from '../../utils/dataAttributes';
 import { mapHtmlToDocument, type HtmlNode } from '../mapHtmlToDocument';
 import {
   variantNameToClassName,
@@ -111,12 +112,22 @@ export const htmlToDom = async (
 
   const stackTemplates: Array<Partial<Record<LayoutType, PageTemplate>>> = [];
   const mergedStacksEl = stacksOptions.reduce(
-    (stacksFragment, { content, continuous }, stackIndex) => {
+    (
+      stacksFragment,
+      { content, continuous, innerPageClassName, innerPageDataAttributes },
+      stackIndex,
+    ) => {
       stackTemplates[stackIndex] = {};
       const stackEl = document.createElement('div');
       stackEl.setAttribute(stackIndexAttribute, String(stackIndex));
       if (stackIndex > 0 && !continuous) {
         stackEl.setAttribute('data-break-before', 'page');
+      }
+      if (innerPageClassName) {
+        stackEl.classList.add(innerPageClassName);
+      }
+      if (innerPageDataAttributes) {
+        applyDataAttributes(stackEl, innerPageDataAttributes);
       }
       stackEl.appendChild(content);
       stacksFragment.appendChild(stackEl);
@@ -137,8 +148,14 @@ export const htmlToDom = async (
     await pager.toPages({
       content: mergedStacksEl,
       onPageStart: ({ pageIndex, setPageVars }) => {
-        const { margin, layouts, innerPageClassName, outerPageClassName } =
-          stacksOptions[stackIndex];
+        const {
+          margin,
+          layouts,
+          innerPageClassName,
+          outerPageClassName,
+          outerPageDataAttributes,
+          innerPageDataAttributes,
+        } = stacksOptions[stackIndex];
 
         const layoutType: LayoutType = isFirst ? 'first' : 'subsequent';
 
@@ -155,6 +172,8 @@ export const htmlToDom = async (
               styles: styleSheets,
               outerClassName: outerPageClassName,
               innerClassName: innerPageClassName,
+              outerDataAttributes: outerPageDataAttributes,
+              innerDataAttributes: innerPageDataAttributes,
             });
 
           // TODO: Do this in PageTemplate constructor.

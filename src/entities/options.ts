@@ -3,6 +3,7 @@ import { toLowercase } from '../utils/string';
 import { assignDefined, mergeWithDefault } from '../utils/object';
 import type { UnitsNumber } from '../utils/units';
 import { pluckFromArray } from '../utils/array';
+import type { DataAttributes } from '../utils/dataAttributes';
 import { type Variants, assignVariants } from './typography';
 
 export const APP_NAME = 'Matti Docs';
@@ -49,7 +50,9 @@ export const assignPrefixesOptions = (
   ...args: ReadonlyArray<undefined | PrefixesOptions>
 ): PrefixesConfig => mergeWithDefault(parsePrefixes(), ...args);
 
-export type DocumentType = 'web' | 'docx' | 'pdf';
+export const DOCUMENT_TYPES = ['web', 'docx', 'pdf'] as const;
+
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 
 export type Color = string;
 
@@ -178,12 +181,16 @@ export type StackOptions = {
   innerPageClassName?: string;
   outerPageClassName?: string;
   margin?: Partial<PageMargin>;
+  outerPageDataAttributes?: DataAttributes;
+  innerPageDataAttributes?: DataAttributes;
   continuous?: boolean;
 };
 
 export type StackConfig = {
   innerPageClassName?: string;
   outerPageClassName?: string;
+  outerPageDataAttributes?: DataAttributes;
+  innerPageDataAttributes?: DataAttributes;
   margin: PageMargin;
   continuous: boolean;
 };

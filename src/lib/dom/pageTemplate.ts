@@ -1,6 +1,10 @@
 import { selectDomElement } from '../../entities';
 import type { PageSize, PageMargin, PrefixesConfig } from '../../entities';
 import { mathUnits } from '../../utils/units';
+import {
+  applyDataAttributes,
+  type DataAttributes,
+} from '../../utils/dataAttributes';
 
 type InnerNode = undefined | Node | NodeList;
 
@@ -13,6 +17,8 @@ export type PageTemplateOptions = {
   footer?: InnerNode;
   outerClassName?: string;
   innerClassName?: string;
+  outerDataAttributes?: Record<`data-${string}`, string>;
+  innerDataAttributes?: Record<`data-${string}`, string>;
   styles?: Array<HTMLStyleElement | CSSStyleSheet>;
 };
 
@@ -163,6 +169,7 @@ export class PageTemplate {
       this.pageEl,
       [options.innerClassName ?? [], PageTemplate.pageClassName].flat(),
     );
+    applyDataAttributes(this.pageEl, options.innerDataAttributes);
     this.pageEl.setAttribute('style', PageTemplate.createCssVars(options));
 
     this.headerEl = document.createElement('div');
@@ -185,6 +192,7 @@ export class PageTemplate {
       styleSheets: this.styleSheets,
       className: options.outerClassName,
       size: options.size,
+      dataAttributes: options.outerDataAttributes,
     });
 
     this.element.append(...this.styleElements);
@@ -260,14 +268,17 @@ export class PageTemplate {
     styleSheets,
     className,
     size,
+    dataAttributes,
   }: {
     innerEl: Element;
     styleSheets: ReadonlyArray<CSSStyleSheet>;
     className?: string;
     size: PageSize;
+    dataAttributes?: DataAttributes;
   }) {
     const rootEl = document.createElement('div');
     setClassName(rootEl, className);
+    applyDataAttributes(rootEl, dataAttributes);
     rootEl.style.setProperty('break-inside', 'avoid');
     rootEl.style.setProperty('break-after', 'page');
     rootEl.style.setProperty('width', size.width);

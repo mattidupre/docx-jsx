@@ -1,6 +1,8 @@
 import type { JsonValue } from 'type-fest';
 import { kebabCase, transform, camelCase } from 'lodash';
 
+export type DataAttributes = Record<`data-${string}`, string>;
+
 type Attributes = Record<string, unknown>;
 
 type Data = Record<string, JsonValue>;
@@ -18,11 +20,11 @@ const createDataPrefix = (options?: Options) => {
 
 export const encodeDataAttributeKey = (key: string, options?: Options) => {
   if (!/^[a-z][a-zA-Z0-9]*$/.test(key)) {
-    throw new TypeError('Key must be kebab case.');
+    throw new TypeError('Key must be camel case.');
   }
   const dataKey = createDataPrefix(options) + kebabCase(key);
 
-  return dataKey;
+  return dataKey as keyof DataAttributes;
 };
 
 export const encodeDataAttributeValue = (value: unknown) => {
@@ -52,7 +54,7 @@ export const selectByDataAttributes = (
 };
 
 export const encodeDataAttributes = (data: Data, options?: Options) => {
-  let attributes: Attributes = {};
+  let attributes: DataAttributes = {};
   for (const key in data) {
     if (data[key]) {
       attributes[encodeDataAttributeKey(key, options)] =
@@ -88,4 +90,19 @@ export const decodeDataAttributes = (
     },
     {} as Data,
   );
+};
+
+export const applyDataAttributes = (
+  element: Element,
+  attributes: undefined | DataAttributes,
+) => {
+  if (!attributes) {
+    return;
+  }
+  for (const key in attributes) {
+    if (!key.startsWith('data-')) {
+      throw new TypeError('Key must start with data-');
+    }
+    element.setAttribute(key, attributes[key as keyof typeof attributes]);
+  }
 };
