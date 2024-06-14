@@ -106,7 +106,7 @@ export const htmlToDom = async (
           stackTemplate[layoutType] = template;
         }
 
-        const template = stackTemplate[layoutType];
+        const template = stackTemplate[layoutType]!;
 
         const { width, height } = template.contentSize;
 

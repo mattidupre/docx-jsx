@@ -12,9 +12,11 @@ export default defineConfig({
     lib: {
       entry: [
         'src/reactComponents.ts',
-        'src/reactToDocx.tsx',
-        'src/reactToDom.tsx',
-        'src/reactToPdf.tsx',
+        'src/reactToDocx.ts',
+        'src/reactToDom.ts',
+        'src/reactToHtmlDocument.ts',
+        'src/reactToPdf.ts',
+        'src/reactToScript.ts',
       ],
     },
   },
