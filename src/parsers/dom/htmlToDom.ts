@@ -4,72 +4,20 @@ import type {
   StyleSheetsValue,
 } from '../../entities';
 import { Pager } from '../../utils/pager';
-import { styleObjectToString, toCssStyleSheets } from '../../utils/css';
-import { applyDataAttributes } from '../../utils/dataAttributes';
-import { mapHtmlToDocument, type HtmlNode } from '../mapHtmlToDocument';
-import {
-  variantNameToClassName,
-  typographyOptionsToStyleVars,
-  createStyleString,
-} from '../styles';
+import { toCssStyleSheets } from '../../utils/css';
+import { mapHtmlToDocument } from '../../lib/mapHtmlToDocument';
+import { createStyleString } from '../../lib/styles';
 import { PageTemplate } from './pageTemplate';
-import { extendHtmlAttributes } from './extendHtmlAttributes';
+import { stacksToFragment } from './stacksToFragment';
+import { nodeToDom } from './nodeToDom';
+import { DATA_STACK_INDEX } from './constants';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
-
-const objToDom = (node: HtmlNode) => {
-  if (node.type === 'text') {
-    return document.createTextNode(node.value);
-  }
-
-  const children = node.children as ReadonlyArray<Node>;
-
-  if (node.type === 'element') {
-    const {
-      properties,
-      tagName,
-      data: {
-        parentTagNames,
-        elementsContext,
-        element: { contentOptions, variant },
-      },
-    } = node;
-
-    const { prefixes } = elementsContext.document!;
-
-    const attributes = extendHtmlAttributes(properties, {
-      class: variant && variantNameToClassName({ prefixes }, variant),
-      style: styleObjectToString(
-        typographyOptionsToStyleVars({ prefixes }, contentOptions),
-      ),
-    });
-
-    const element =
-      tagName === 'svg' || parentTagNames.includes('svg')
-        ? document.createElementNS('http://www.w3.org/2000/svg', tagName)
-        : document.createElement(tagName);
-    for (const attributeName in attributes) {
-      if (attributes[attributeName]) {
-        element.setAttribute(attributeName, attributes[attributeName]!);
-      }
-    }
-    element.append(...children);
-
-    return element;
-  }
-
-  if (node.type === 'root') {
-    const element = document.createDocumentFragment();
-    element.append(...children);
-    return element;
-  }
-
-  throw new TypeError('Invalid node type.');
-};
 
 export type HtmlToDomOptions = {
   initialStyleSheets?: ReadonlyArray<StyleSheetsValue>;
   styleSheets?: ReadonlyArray<StyleSheetsValue>;
+  pageClassName?: string;
   onDocument?: (document: DocumentDom) => void;
 };
 
@@ -78,12 +26,13 @@ export const htmlToDom = async (
   {
     initialStyleSheets: initialStyleSheetsOption = [],
     styleSheets: styleSheetsOption = [],
+    pageClassName,
     onDocument,
   }: HtmlToDomOptions = {},
 ): Promise<HTMLElement> => {
   const documentObj = mapHtmlToDocument<HTMLElement>(
     html,
-    objToDom,
+    nodeToDom,
   ) satisfies DocumentDom;
 
   onDocument?.(documentObj);
@@ -107,34 +56,8 @@ export const htmlToDom = async (
   renderEl.style.zIndex = '-9999';
   document.body.appendChild(renderEl);
 
-  const prefix = `prefix-${Math.random()}`.replace('.', '');
-  const stackIndexAttribute = `data-${prefix}-stack-index`;
-
   const stackTemplates: Array<Partial<Record<LayoutType, PageTemplate>>> = [];
-  const mergedStacksEl = stacksOptions.reduce(
-    (
-      stacksFragment,
-      { content, continuous, innerPageClassName, innerPageDataAttributes },
-      stackIndex,
-    ) => {
-      stackTemplates[stackIndex] = {};
-      const stackEl = document.createElement('div');
-      stackEl.setAttribute(stackIndexAttribute, String(stackIndex));
-      if (stackIndex > 0 && !continuous) {
-        stackEl.setAttribute('data-break-before', 'page');
-      }
-      if (innerPageClassName) {
-        stackEl.classList.add(innerPageClassName);
-      }
-      if (innerPageDataAttributes) {
-        applyDataAttributes(stackEl, innerPageDataAttributes);
-      }
-      stackEl.appendChild(content);
-      stacksFragment.appendChild(stackEl);
-      return stacksFragment;
-    },
-    document.createDocumentFragment(),
-  );
+  const mergedStacksEl = stacksToFragment(stacksOptions, {});
 
   // renderEl.appendChild(mergedStacksEl);
 
@@ -159,28 +82,31 @@ export const htmlToDom = async (
 
         const layoutType: LayoutType = isFirst ? 'first' : 'subsequent';
 
-        let template = stackTemplates[stackIndex][layoutType];
+        const stackTemplate = (stackTemplates[stackIndex] ??= {});
 
-        if (!template) {
-          template = stackTemplates[stackIndex][layoutType] ??=
-            new PageTemplate({
-              prefixes,
-              size,
-              margin,
-              header: layouts[layoutType]?.header,
-              footer: layouts[layoutType]?.footer,
-              styles: styleSheets,
-              outerClassName: outerPageClassName,
-              innerClassName: innerPageClassName,
-              outerDataAttributes: outerPageDataAttributes,
-              innerDataAttributes: innerPageDataAttributes,
-            });
+        if (!stackTemplate[layoutType]) {
+          const template = new PageTemplate({
+            prefixes,
+            size,
+            margin,
+            header: layouts[layoutType]?.header,
+            footer: layouts[layoutType]?.footer,
+            styles: styleSheets,
+            outerClassName: [outerPageClassName, pageClassName]
+              .filter(Boolean)
+              .join(' '),
+            innerClassName: innerPageClassName,
+            outerDataAttributes: outerPageDataAttributes,
+            innerDataAttributes: innerPageDataAttributes,
+          });
 
           // TODO: Do this in PageTemplate constructor.
           renderEl.appendChild(template.element);
 
-          stackTemplates[stackIndex][layoutType] = template;
+          stackTemplate[layoutType] = template;
         }
+
+        const template = stackTemplate[layoutType];
 
         const { width, height } = template.contentSize;
 
@@ -202,18 +128,19 @@ export const htmlToDom = async (
           breakElement instanceof HTMLElement
             ? breakElement
             : breakElement.parentElement!;
-        if (element.hasAttribute(stackIndexAttribute)) {
+
+        if (element.hasAttribute(DATA_STACK_INDEX)) {
           isFirst = true;
           stackIndex = Number.parseInt(
-            element.getAttribute(stackIndexAttribute)!,
+            element.getAttribute(DATA_STACK_INDEX)!,
             10,
           );
         } else {
           isFirst = false;
           stackIndex = Number.parseInt(
             element
-              .closest(`[${stackIndexAttribute}]`)!
-              .getAttribute(stackIndexAttribute)!,
+              .closest(`[${DATA_STACK_INDEX}]`)!
+              .getAttribute(DATA_STACK_INDEX)!,
             10,
           );
         }
@@ -224,7 +151,7 @@ export const htmlToDom = async (
         extendedTemplates.push(
           unextendedTemplates[pageIndex].extend({
             content: contentElement.querySelectorAll(
-              `[${stackIndexAttribute}] > *`,
+              `[${DATA_STACK_INDEX}] > *`,
             ),
           }),
         );

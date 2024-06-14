@@ -10,7 +10,7 @@ const fontPath = require.resolve('./fixtures/mockAssets/Pacifico.ttf');
 test('creates a pdf file', async () => {
   await writeTestFile(
     'reactToPdf.pdf',
-    await reactToPdf(<MockDocument />, {
+    await reactToPdf(MockDocument, {
       puppeteer: PUPPETEER_OPTIONS,
       publicDirectory: path.dirname(fontPath),
     }),
@@ -21,7 +21,7 @@ test('supports custom fonts', async () => {
   // Pacifico is a larger font. Ensure all pages are in boundsl
   await writeTestFile(
     'reactToPdf-pacifico.pdf',
-    await reactToPdf(<MockDocument />, {
+    await reactToPdf(MockDocument, {
       puppeteer: PUPPETEER_OPTIONS,
       publicDirectory: path.dirname(fontPath),
       pageStyleSheets: [

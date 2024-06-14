@@ -27,11 +27,12 @@ export type ConfigByElementType = {
     variant?: VariantName;
   };
   htmlraw: Record<string, never>;
+  break: Record<string, never>;
   pagenumber: Record<string, never>;
   pagecount: Record<string, never>;
   split: Record<string, never>;
   positionalTab: { alignment: 'left' | 'right' | 'center' };
-  gridContainer: { gap: UnitsSize; columnsCount: number };
+  gridContainer: { columnGap: UnitsSize; columnCount: number };
   gridItem: {
     size: number;
   };

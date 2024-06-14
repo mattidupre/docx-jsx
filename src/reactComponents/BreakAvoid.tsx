@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
 import { InternalElement } from './InternalElement';
 
-type NoPageBreakProps = {
+type BreakAvoidProps = {
   after?: boolean;
   children: ReactNode;
 };
 
 // TODO: Accept class name
 
-export function PageBreakAvoid({ after, children }: NoPageBreakProps) {
+export function BreakAvoid({ after, children }: BreakAvoidProps) {
   return (
     <InternalElement
       elementType="htmltag"

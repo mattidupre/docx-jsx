@@ -3,12 +3,12 @@ import type { UnitsSize } from '../entities';
 import { InternalElement } from './InternalElement';
 
 const GridContext = createContext<
-  undefined | Pick<GridProps, 'gap' | 'columnsCount' | 'pageBreakAvoid'>
+  undefined | Pick<GridProps, 'columnGap' | 'columnCount' | 'pageBreakAvoid'>
 >(undefined);
 
 export type GridProps = {
-  gap: UnitsSize;
-  columnsCount?: number;
+  columnGap: UnitsSize;
+  columnCount?: number;
   pageBreakAvoid?: boolean;
   children?: ReactNode;
 };
@@ -16,37 +16,37 @@ export type GridProps = {
 const DEFAULT_COLUMNS_COUNT = 12;
 
 const calculateItemWidth = (
-  { columnsCount, gap }: Pick<GridProps, 'gap' | 'columnsCount'>,
+  { columnGap, columnCount }: Pick<GridProps, 'columnGap' | 'columnCount'>,
   size: number,
 ) => {
   const containerMargins = 1;
-  const itemsWidth = `(100% - ((${columnsCount} - 1 + ${containerMargins}) * ${gap}))`;
-  return `calc(${itemsWidth} * ${size} / ${columnsCount} + (${size} - 1) * ${gap})`;
+  const itemsWidth = `(100% - ((${columnCount} - 1 + ${containerMargins}) * ${columnGap}))`;
+  return `calc(${itemsWidth} * ${size} / ${columnCount} + (${size} - 1) * ${columnGap})`;
 };
 
 export function Grid({
-  gap,
-  columnsCount = DEFAULT_COLUMNS_COUNT,
+  columnGap,
+  columnCount = DEFAULT_COLUMNS_COUNT,
   pageBreakAvoid = false,
   children,
 }: GridProps) {
   return (
     <GridContext.Provider
       value={useMemo(
-        () => ({ gap, columnsCount, pageBreakAvoid }),
-        [columnsCount, gap, pageBreakAvoid],
+        () => ({ columnGap, columnCount, pageBreakAvoid }),
+        [columnCount, columnGap, pageBreakAvoid],
       )}
     >
       <InternalElement
         tagName="div"
         elementType="gridContainer"
-        elementOptions={{ gap, columnsCount }}
+        elementOptions={{ columnGap, columnCount }}
         style={{
           // page-break-avoid CSS will not work with flex.
           position: 'relative', // page-break-avoid fix
-          width: `calc(100% + ${gap})`,
-          marginLeft: `calc(-1 * (${gap} / 2))`,
-          marginRight: `calc(-1 * (${gap} / 2))`,
+          width: `calc(100% + ${columnGap})`,
+          marginLeft: `calc(-1 * (${columnGap} / 2))`,
+          marginRight: `calc(-1 * (${columnGap} / 2))`,
           overflow: 'auto',
           ...(pageBreakAvoid && {
             pageBreakInside: 'avoid',
@@ -86,8 +86,8 @@ export function GridItem({ size, children }: GridItemProps) {
         float: 'left',
         boxSizing: 'border-box',
         width: calculateItemWidth(contextValue, size),
-        marginLeft: `calc(${contextValue.gap} / 2)`,
-        marginRight: `calc(${contextValue.gap} / 2)`,
+        marginLeft: `calc(${contextValue.columnGap} / 2)`,
+        marginRight: `calc(${contextValue.columnGap} / 2)`,
       }}
     >
       {children}

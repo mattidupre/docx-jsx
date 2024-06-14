@@ -20,6 +20,7 @@ type ElementsContextOptions = {
   // TODO: Rename to TypographyOptions
   contentOptions?: TypographyOptions;
   isInsideParagraph?: boolean;
+  isInsideColumn?: boolean;
   isHtmlRaw?: boolean;
   list?: { level: number };
   variant?: VariantName;
@@ -30,6 +31,7 @@ export type ElementsContext = {
   stack: StackConfig;
   contentOptions: TypographyOptions;
   isInsideParagraph: boolean;
+  isInsideColumn: boolean;
   isHtmlRaw: boolean;
   list: { level: number };
   variant: undefined | VariantName;
@@ -65,5 +67,6 @@ export const assignElementsContext = (
     isInsideParagraph: !!compact(pluckContext('isInsideParagraph', ...args)).at(
       -1,
     ),
+    isInsideColumn: !!compact(pluckContext('isInsideColumn', ...args)).at(-1),
     isHtmlRaw: !!compact(pluckContext('isHtmlRaw', ...args)).at(-1),
   } satisfies ElementsContext);

@@ -10,7 +10,7 @@ import {
   GridItem,
   PageNumber,
   PageCount,
-  PageBreakAvoid,
+  BreakAvoid,
   type DocumentProviderProps,
   IfEnvironment,
   Svg,
@@ -84,7 +84,7 @@ export function MockDocument({
         }}
         continuous
       >
-        <Grid gap="0.25in">
+        <Grid columnGap="0.25in">
           <GridItem size={1}>
             <p>1</p>
           </GridItem>
@@ -122,7 +122,7 @@ export function MockDocument({
             <p>12</p>
           </GridItem>
         </Grid>
-        <Grid gap="0.25in">
+        <Grid columnGap="0.25in">
           <GridItem size={6}>
             <p>Item 1: 6</p>
           </GridItem>
@@ -346,15 +346,15 @@ export function MockDocument({
         layouts={{ first: {}, subsequent: {} }}
         margin={{ top: '1in', header: '0.25in' }}
       >
-        <h2>{`<NoPageBreak />`}</h2>
+        <h2>{`<BreakAvoid />`}</h2>
         <h3>Should appear with next</h3>
         <ShortText />
         <h3>Should appear with prev</h3>
         <ShortText />
-        <PageBreakAvoid>
+        <BreakAvoid>
           <h3>Should appear on its own page</h3>
           <ShortText />
-        </PageBreakAvoid>
+        </BreakAvoid>
       </Stack>
 
       <Stack
@@ -368,9 +368,9 @@ export function MockDocument({
         <Typography variant="heading1" as="h2">
           Avoid Break After
         </Typography>
-        <PageBreakAvoid>
+        <BreakAvoid>
           <Spacer length={30} />
-        </PageBreakAvoid>
+        </BreakAvoid>
       </Stack>
 
       <Stack
@@ -378,19 +378,19 @@ export function MockDocument({
         layouts={{ first: {}, subsequent: {} }}
         margin={{ top: '1in', header: '0.25in' }}
       >
-        <h2>{`<NoPageBreak after />`}</h2>
-        <PageBreakAvoid>
+        <h2>{`<BreakAvoid after />`}</h2>
+        <BreakAvoid>
           <h3>Should appear alone on first page</h3>
           <ShortText />
-        </PageBreakAvoid>
-        <PageBreakAvoid after>
+        </BreakAvoid>
+        <BreakAvoid after>
           <h3>Should appear with next</h3>
           <ShortText />
-        </PageBreakAvoid>
-        <PageBreakAvoid>
+        </BreakAvoid>
+        <BreakAvoid>
           <h3>Should appear with prev</h3>
           <ShortText />
-        </PageBreakAvoid>
+        </BreakAvoid>
       </Stack>
 
       <Stack

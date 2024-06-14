@@ -26,6 +26,7 @@ const CONTENT_ELEMENT_TYPES = [
   'gridItem',
   'htmltag',
   'htmlraw',
+  'break',
   'pagecount',
   'pagenumber',
   'split',
@@ -149,6 +150,7 @@ export const mapHtmlToDocument = <TContent>(
 
         assignElementsContext(elementsContext, {
           stack: elementData.elementOptions,
+          isInsideColumn: elementData.elementOptions.columns.columnCount > 1,
         });
 
         return childContext;
@@ -196,6 +198,11 @@ export const mapHtmlToDocument = <TContent>(
         if (isElementOfType(elementData, 'gridContainer')) {
           if (isChildOfParagraph) {
             throw new TypeError('Grids cannot be nested inside paragraphs.');
+          }
+          if (elementsContext.stack.columns.columnCount > 1) {
+            throw new TypeError(
+              'Grids cannot be nested inside sections with columns.',
+            );
           }
           if (
             isChildOfElementType(parentElementTypes, [

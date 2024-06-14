@@ -5,6 +5,7 @@ import type { UnitsNumber } from '../utils/units';
 import { pluckFromArray } from '../utils/array';
 import type { DataAttributes } from '../utils/dataAttributes';
 import { type Variants, assignVariants } from './typography';
+import type { UnitsSize } from './units';
 
 export const APP_NAME = 'Matti Docs';
 
@@ -184,6 +185,10 @@ export type StackOptions = {
   outerPageDataAttributes?: DataAttributes;
   innerPageDataAttributes?: DataAttributes;
   continuous?: boolean;
+  columns?: {
+    columnCount: number;
+    columnGap: UnitsSize;
+  };
 };
 
 export type StackConfig = {
@@ -193,9 +198,20 @@ export type StackConfig = {
   innerPageDataAttributes?: DataAttributes;
   margin: PageMargin;
   continuous: boolean;
+  columns: {
+    columnCount: number;
+    columnGap: UnitsSize;
+  };
 };
 
 export const assignStackOptions = (
   ...args: ReadonlyArray<undefined | StackOptions>
 ): StackConfig =>
-  mergeWithDefault({ margin: DEFAULT_PAGE_MARGIN, continuous: false }, ...args);
+  mergeWithDefault(
+    {
+      margin: DEFAULT_PAGE_MARGIN,
+      continuous: false,
+      columns: { columnCount: 1, columnGap: '0.5in' },
+    },
+    ...args,
+  );

@@ -23,10 +23,15 @@ import {
   PositionalTabRelativeTo,
   PositionalTabLeader,
   SymbolRun,
+  PageBreak,
+  ColumnBreak,
 } from 'docx';
 import { range } from 'lodash';
 import { assignDefined } from '../../utils/object';
-import { type HtmlElementNode, mapHtmlToDocument } from '../mapHtmlToDocument';
+import {
+  type HtmlElementNode,
+  mapHtmlToDocument,
+} from '../../lib/mapHtmlToDocument';
 import type { ElementData, FontsConfig } from '../../entities';
 import {
   parseTextRunOptions,
@@ -189,14 +194,14 @@ export const htmlToDocx = async (
           },
         } = elementsContext;
         const {
-          elementOptions: { gap, columnsCount },
+          elementOptions: { columnGap, columnCount },
         } = element;
-        const gapTwip = toTwip(gap);
+        const gapTwip = toTwip(columnGap);
         const gridIndent = gapTwip * (-1 / 2);
         const gridWidthTwip =
           toTwip(width) - toTwip(left) - toTwip(right) - gridIndent * 2;
-        const columnWidths = range(columnsCount).map(
-          () => gridWidthTwip / columnsCount,
+        const columnWidths = range(columnCount).map(
+          () => gridWidthTwip / columnCount,
         );
 
         const rows: Array<TableRow> = [];
@@ -211,7 +216,7 @@ export const htmlToDocx = async (
           end: number;
           children: ReadonlyArray<unknown>;
         }) => {
-          if (!(start >= 0) || !(end <= columnsCount)) {
+          if (!(start >= 0) || !(end <= columnCount)) {
             throw new TypeError(`Invalid cell range ${start} to ${end} `);
           }
           const size = end - start;
@@ -224,7 +229,7 @@ export const htmlToDocx = async (
             children: children as Array<Paragraph>,
             width: {
               type: WidthType.PERCENTAGE,
-              size: (100 * size) / columnsCount,
+              size: (100 * size) / columnCount,
             },
             columnSpan: size,
           });
@@ -235,7 +240,7 @@ export const htmlToDocx = async (
               createTableCell({
                 children: [],
                 start: positionLeft,
-                end: columnsCount,
+                end: columnCount,
               }),
             );
           }
@@ -291,6 +296,15 @@ export const htmlToDocx = async (
       if (element.elementType === 'gridItem') {
         // Handled by gridContainer
         return node;
+      }
+
+      if (element.elementType === 'break') {
+        const docxBreak = elementsContext.isInsideColumn
+          ? new ColumnBreak()
+          : new PageBreak();
+        return elementsContext.isInsideParagraph
+          ? docxBreak
+          : new Paragraph({ children: [docxBreak] });
       }
 
       if (element.elementType === 'pagenumber') {
@@ -403,18 +417,36 @@ export const htmlToDocx = async (
     return node.children;
   });
 
-  const { size } = mappedDocument;
+  const { size, stacks, variants } = mappedDocument;
 
-  const sections = mappedDocument.stacks.map(
-    ({ layouts, margin, content, continuous }, index) => {
-      return {
+  const sections = stacks.flatMap(
+    (
+      {
+        layouts,
+        margin,
+        content,
+        continuous,
+        columns: { columnGap, columnCount },
+      },
+      index,
+    ) => {
+      const currentSections: Array<ISectionOptions> = [];
+      currentSections.push({
         properties: {
           titlePage: true,
           type: index > 0 && continuous ? SectionType.CONTINUOUS : undefined,
           page: {
             margin,
-            size: size,
+            size,
           },
+          ...(columnCount > 1 && {
+            column: {
+              count: columnCount,
+              space: toTwip(columnGap),
+              separate: false, // adds visual separator
+              equalWidth: true,
+            },
+          }),
         },
         headers: {
           first: layouts.first.header as Header,
@@ -425,11 +457,27 @@ export const htmlToDocx = async (
           default: layouts.subsequent.footer as Footer,
         },
         children: content as ISectionOptions['children'],
-      } satisfies ISectionOptions;
+      } satisfies ISectionOptions);
+
+      // Prevent columns from filling entire page by adding second continuous section.
+      if (columnCount > 1 && !stacks[index + 1]?.continuous) {
+        currentSections.push({
+          properties: {
+            titlePage: true,
+            type: SectionType.CONTINUOUS,
+            page: {
+              margin,
+              size,
+            },
+          },
+          children: [],
+        } satisfies ISectionOptions);
+      }
+      return currentSections;
     },
   );
 
-  const styles = parseVariants(fonts, mappedDocument.variants);
+  const styles = parseVariants(fonts, variants);
 
   // const fontsWithBuffers = await fontsStore.loadFontsWithBuffers();
   // const docxFonts = [

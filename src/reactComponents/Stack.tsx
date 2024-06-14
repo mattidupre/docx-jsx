@@ -7,11 +7,15 @@ import { InternalElement } from './InternalElement';
 import { useEnvironment } from './useEnvironment';
 
 export type StackProps = StackOptions & {
-  layouts: LayoutOptions<ReactNode>;
+  layouts?: LayoutOptions<ReactNode>;
   children: ReactNode;
 };
 
-export function Stack({ children, layouts, ...options }: StackProps) {
+export function Stack({
+  children,
+  layouts = { first: {}, subsequent: {} },
+  ...options
+}: StackProps) {
   const stackConfig = useMemo(
     () => omit(assignStackOptions({}, options), ['layouts']) as StackConfig,
     [options],

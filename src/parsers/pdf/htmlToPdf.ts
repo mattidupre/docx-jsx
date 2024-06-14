@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/consistent-type-imports */
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -8,9 +7,7 @@ import puppeteer, {
   type PuppeteerLaunchOptions,
 } from 'puppeteer-core';
 import type { DocumentDom } from '../dom';
-import htmlToDomCodeCjs from '../dom?source';
-
-const htmlToDomCode = `(() => {const exports={};${htmlToDomCodeCjs};return exports;})()`;
+import { htmlToScript } from '../script';
 
 let browserPromise: undefined | Promise<Browser>;
 
@@ -42,6 +39,8 @@ export const htmlToPdf = async (
         // dumpio: true,
       });
     }
+
+    const script = htmlToScript(html, options);
 
     const browser = await browserPromise;
     const page = await (pagePromise = browser.newPage());
@@ -79,30 +78,10 @@ export const htmlToPdf = async (
       }),
     );
 
-    const pageSize = await page.evaluate(
-      async (browserHtml, browserOptions, browserCode) => {
-        const { htmlToDom } = eval(browserCode) as typeof import('../dom');
-
-        let documentObj = {} as DocumentDom;
-
-        document.body.appendChild(
-          await htmlToDom(browserHtml, {
-            ...browserOptions,
-            onDocument: (doc) => {
-              documentObj = doc;
-            },
-          }),
-        );
-
-        return documentObj.size;
-      },
-      html,
-      options,
-      htmlToDomCode,
-    );
+    const documentObj = (await page.evaluate(script)) as DocumentDom;
 
     const result = await page.pdf({
-      ...pageSize,
+      ...documentObj.size,
       printBackground: true,
       displayHeaderFooter: false,
     });

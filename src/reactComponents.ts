@@ -14,11 +14,12 @@ export {
   createStyleArray as createStylesArray,
   createStyleString as createStylesString,
 } from './lib/styles';
+export * from './reactComponents/Break';
 export * from './reactComponents/ContentProvider';
 export * from './reactComponents/DocumentProvider';
 export * from './reactComponents/Grid';
 export * from './reactComponents/IfEnvironment';
-export * from './reactComponents/PageBreakAvoid';
+export * from './reactComponents/BreakAvoid';
 export * from './reactComponents/PageCount';
 export * from './reactComponents/PageNumber';
 export * from './reactComponents/Stack';
