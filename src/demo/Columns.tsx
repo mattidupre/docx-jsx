@@ -1,9 +1,4 @@
-import {
-  DocumentProvider,
-  BreakAvoid,
-  Break,
-  Stack,
-} from '../src/reactComponents';
+import { DocumentProvider, BreakAvoid, Break, Stack } from '../reactComponents';
 import { LoremIpsum } from './lib/LoremIpsum';
 
 export function Document() {

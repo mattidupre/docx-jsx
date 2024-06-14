@@ -12,5 +12,5 @@
     "baseUrl": ".",
     "outDir": "./dist"
   },
-  "include": ["./src/**/*", "./demo"]
+  "include": ["./src/**/*"]
 }

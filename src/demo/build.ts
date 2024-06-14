@@ -1,11 +1,11 @@
 import fs from 'fs/promises';
 import path from 'path';
 import url from 'url';
-import { reactToPdf } from '../src/reactToPdf';
-import { PUPPETEER_OPTIONS } from '../src/fixtures/puppeteerOptions';
-import { reactToHtmlDocument } from '../src/reactToHtmlDocument';
-import { reactToDocx } from '../src/reactToDocx';
-import { DocumentRootComponent } from '../src/lib/reactToHtml';
+import { reactToPdf } from '../reactToPdf';
+import { PUPPETEER_OPTIONS } from '../fixtures/puppeteerOptions';
+import { reactToHtmlDocument } from '../reactToHtmlDocument';
+import { reactToDocx } from '../reactToDocx';
+import type { DocumentRootComponent } from '../lib/reactToHtml';
 
 const renderers: Record<
   string,

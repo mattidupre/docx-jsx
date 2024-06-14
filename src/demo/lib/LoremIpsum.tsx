@@ -1,4 +1,4 @@
-import { Typography } from '../../src/reactComponents';
+import { Typography } from '../../reactComponents';
 
 export function LoremIpsum({ as = 'p' }: { as?: 'p' | 'span' }) {
   return (
