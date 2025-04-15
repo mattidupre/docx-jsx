@@ -69,6 +69,7 @@ export const nodeToDom = (node: HtmlNode) => {
       const columnsEl = document.createElement('div');
       columnsEl.style.setProperty('column-count', String(columnCount));
       columnsEl.style.setProperty('column-gap', columnGap);
+      columnsEl.style.setProperty('column-fill', 'balance');
       columnsEl.append(...children);
       element.append(columnsEl);
     } else {

@@ -376,6 +376,7 @@ export const mapHtmlToDocument = <TContent>(
   }) as ReadonlyArray<DocumentElement<TContent>>;
 
   if (documents.length > 1) {
+    console.debug(documents);
     throw new Error('Expected no more than one document.');
   }
 

@@ -34,12 +34,12 @@ export const extendHtmlAttributes = (
         continue;
       }
 
+      // TODO: Rewrite below.
       const kebabKey = kebabCase(attributeKey) as `data-${string}`;
       if (kebabKey.startsWith('data-')) {
         targetAttributes[kebabKey] = attributeValue;
         continue;
       }
-
       if (
         typeof attributeValue === 'string' ||
         typeof attributeValue === 'number'

@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo } from 'react';
-import { omit } from 'lodash';
+import { merge, omit } from 'lodash';
 import { assignStackOptions, mapLayoutKeys } from '../entities';
 import type { StackOptions, LayoutOptions, StackConfig } from '../entities';
 import { ReactStackContext } from './entities';
@@ -16,6 +16,8 @@ export function Stack({
   layouts = { first: {}, subsequent: {} },
   ...options
 }: StackProps) {
+  const { continuous: isContinuous } = options;
+
   const stackConfig = useMemo(
     () => omit(assignStackOptions({}, options), ['layouts']) as StackConfig,
     [options],
@@ -69,7 +71,13 @@ export function Stack({
         preferFragment
         tagName="div"
         elementType="stack"
-        elementOptions={stackConfig}
+        elementOptions={merge({}, stackConfig, {
+          innerPageDataAttributes: {
+            ...(isContinuous && {
+              ['data-is-stack-continuous']: '',
+            }),
+          },
+        })}
       >
         {[
           ...headerFooterElements!.header,

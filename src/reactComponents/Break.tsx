@@ -1,7 +1,16 @@
 import { InternalElement } from './InternalElement';
 
-export function Break() {
+export type BreakProps = {
+  className?: string;
+};
+
+export function Break({ className }: BreakProps) {
   return (
-    <InternalElement tagName="div" elementType="break" elementOptions={{}} />
+    <InternalElement
+      className={className}
+      tagName="div"
+      elementType="break"
+      elementOptions={{}}
+    />
   );
 }

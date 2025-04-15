@@ -178,6 +178,8 @@ export const assignDocumentOptions = (
     prefixes: assignPrefixesOptions(...pluckFromArray(args, 'prefixes')),
   });
 
+type ColumnCount = 1 | 2 | 3 | 4;
+
 export type StackOptions = {
   innerPageClassName?: string;
   outerPageClassName?: string;
@@ -186,7 +188,7 @@ export type StackOptions = {
   innerPageDataAttributes?: DataAttributes;
   continuous?: boolean;
   columns?: {
-    columnCount: number;
+    columnCount: ColumnCount;
     columnGap: UnitsSize;
   };
 };
@@ -199,7 +201,7 @@ export type StackConfig = {
   margin: PageMargin;
   continuous: boolean;
   columns: {
-    columnCount: number;
+    columnCount: ColumnCount;
     columnGap: UnitsSize;
   };
 };
