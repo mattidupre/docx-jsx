@@ -17,6 +17,7 @@ export default defineConfig({
         'src/reactToHtmlDocument.ts',
         'src/reactToPdf.ts',
         'src/reactToScript.ts',
+        'src/utils.ts',
       ],
     },
   },

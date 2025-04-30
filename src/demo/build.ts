@@ -6,10 +6,17 @@ import { PUPPETEER_OPTIONS } from '../fixtures/puppeteerOptions';
 import { reactToHtmlDocument } from '../reactToHtmlDocument';
 import { reactToDocx } from '../reactToDocx';
 import type { DocumentRootComponent } from '../lib/reactToHtml';
+import {
+  isErrorObject,
+  stringifyErrorObject,
+  type ErrorObject,
+} from '../utils/error';
 
 const renderers: Record<
   string,
-  (DocumentRoot: DocumentRootComponent) => Promise<string | Buffer>
+  (
+    DocumentRoot: DocumentRootComponent,
+  ) => Promise<string | Uint8Array | ErrorObject>
 > = {
   html: (DocumentRoot) => reactToHtmlDocument(DocumentRoot),
   docx: (DocumentRoot) => reactToDocx(DocumentRoot, { fonts: {} }),
@@ -44,16 +51,23 @@ export const build = async ({ silent }: { silent?: boolean } = {}) => {
       await Promise.all(
         Object.entries(renderers).map(async ([documentType, render]) => {
           log(`Building ${baseName} to ${documentType.toUpperCase()}...`);
-          await fs.writeFile(
-            path.join(outDir, `${baseName}.${documentType}`),
-            await render(Document),
-            {
-              encoding: 'utf-8',
-            },
-          );
-          log(
-            `Building ${baseName} to ${documentType.toUpperCase()} complete.`,
-          );
+          const result = await render(Document);
+          if (isErrorObject(result)) {
+            log(
+              `Building ${baseName} to ${documentType.toUpperCase()} encountered an error: ${stringifyErrorObject(result)}`,
+            );
+          } else {
+            await fs.writeFile(
+              path.join(outDir, `${baseName}.${documentType}`),
+              result,
+              {
+                encoding: 'utf-8',
+              },
+            );
+            log(
+              `Building ${baseName} to ${documentType.toUpperCase()} complete.`,
+            );
+          }
         }),
       );
     }),

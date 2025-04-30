@@ -9,6 +9,7 @@ export const toDocxColor = (
   if (!color || color === 'currentColor') {
     return undefined;
   }
+  // @ts-expect-error
   const hex = new ColorJs(color).to('srgb').display({ format: 'hex' });
   if (hex.startsWith('#')) {
     const hexBase = hex.slice(1);

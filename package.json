@@ -85,7 +85,7 @@
   "dependencies": {
     "@storybook/react": "^7.5.3",
     "@storybook/react-vite": "^7.5.3",
-    "colorjs.io": "^0.4.5",
+    "colorjs.io": "0.4.5",
     "docx": "^8.5.0",
     "es-dirname": "^0.1.0",
     "hast-util-from-html": "^2.0.1",
@@ -96,7 +96,7 @@
     "nodemon": "^3.0.1",
     "pagedjs": "^0.4.3",
     "prop-types": "^15.8.1",
-    "puppeteer-core": "21.4.1",
+    "puppeteer-core": "24.7.2",
     "rollup-plugin-esbuild": "^6.1.0",
     "storybook": "^7.5.3",
     "uuid": "^9.0.1",

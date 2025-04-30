@@ -19,8 +19,8 @@ type PreviewProps = UsePreviewOptions & {
 export const Preview = memo(function Preview({
   className,
   style,
-  initialStyleSheets: initialStyleSheetsProp,
-  styleSheets: styleSheetsProp,
+  initialStyleSheets: initialStyleSheetsProp = [],
+  styleSheets: styleSheetsProp = [],
   Loading,
   children,
   elRef,

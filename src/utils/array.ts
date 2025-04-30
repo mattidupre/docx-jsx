@@ -11,8 +11,8 @@ export type ToDefinedArray<T> = Simplify<
   undefined extends T
     ? Array<unknown>
     : T extends ReadonlyArray<infer I>
-    ? Array<Exclude<I, undefined>>
-    : Array<Exclude<T, undefined>>
+      ? Array<Exclude<I, undefined>>
+      : Array<Exclude<T, undefined>>
 >;
 
 export const toDefinedArray = <T>(value: T): ToDefinedArray<T> => {
@@ -20,9 +20,9 @@ export const toDefinedArray = <T>(value: T): ToDefinedArray<T> => {
     return [] as unknown as ToDefinedArray<T>;
   }
   if (Array.isArray(value)) {
-    return value.filter((v) => v !== undefined) as ToDefinedArray<T>;
+    return value.filter((v) => v !== undefined) as unknown as ToDefinedArray<T>;
   }
-  return [value] as ToDefinedArray<T>;
+  return [value] as unknown as ToDefinedArray<T>;
 };
 
 /**

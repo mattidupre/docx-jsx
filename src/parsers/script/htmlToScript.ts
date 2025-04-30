@@ -12,6 +12,7 @@ export const htmlToScript = (
 ) => {
   const script = `
     {
+      console.log('htmlToScript running...');
       const rootElement = document.querySelector(\`${targetQuery}\`);
       const html = \`${html}\`;
       const options = ${JSON.stringify(options)};
@@ -23,10 +24,15 @@ export const htmlToScript = (
       {
         ${htmlToDomCodeCjs};
       }
-      return exports.htmlToDom(html, options).then((element) => {
-        rootElement.appendChild(element);
-        return result;
-      });
+      try {
+        return exports.htmlToDom(html, options).then((element) => {
+          rootElement.appendChild(element);
+          return result;
+        });
+      } catch(err) {
+        console.log('Error in htmlToScript', {err});
+        return ''; 
+      }
     }
   `;
   return functionName ? `${functionName}() ${script};` : `(() => ${script})();`;

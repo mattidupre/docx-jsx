@@ -4,10 +4,11 @@ import { existsSync } from 'node:fs';
 import puppeteer, {
   type Browser,
   type Page,
-  type PuppeteerLaunchOptions,
+  type LaunchOptions,
 } from 'puppeteer-core';
 import type { DocumentDom } from '../dom';
 import { htmlToScript } from '../script';
+import type { ErrorObject } from '../../utils';
 
 let browserPromise: undefined | Promise<Browser>;
 
@@ -17,7 +18,7 @@ export type HtmlToPdfOptions = {
   publicDirectory?: string;
   pageStyleSheets?: ReadonlyArray<string>;
   styleSheets?: ReadonlyArray<string>;
-  puppeteer?: PuppeteerLaunchOptions;
+  puppeteer?: LaunchOptions;
   closeBrowser?: boolean;
 };
 
@@ -30,13 +31,12 @@ export const htmlToPdf = async (
     publicDirectory,
     ...options
   }: HtmlToPdfOptions,
-): Promise<Buffer> => {
+): Promise<ErrorObject | Uint8Array<ArrayBufferLike>> => {
   let pagePromise: undefined | Promise<Page> = undefined;
   try {
     if (!browserPromise) {
       browserPromise = puppeteer.launch({
         ...puppeteerOptions,
-        // dumpio: true,
       });
     }
 
@@ -67,7 +67,6 @@ export const htmlToPdf = async (
       }
       interceptedRequest.continue();
     });
-
     // https://github.com/puppeteer/puppeteer/issues/4526
     await page.goto(EMPTY_URL);
 
@@ -87,16 +86,23 @@ export const htmlToPdf = async (
     });
 
     return result;
+  } catch (error) {
+    return { error };
   } finally {
-    if (pagePromise) {
-      const page = await pagePromise;
+    const page = await pagePromise;
+    try {
       await page?.close();
+    } finally {
+      pagePromise = undefined;
     }
     if (closeBrowser && browserPromise) {
       const thisBrowserPromise = browserPromise;
-      browserPromise = undefined;
-      const browser = await thisBrowserPromise;
-      await browser?.close();
+      try {
+        const browser = await thisBrowserPromise;
+        await browser?.close();
+      } finally {
+        browserPromise = undefined;
+      }
     }
   }
 };
