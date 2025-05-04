@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import url from 'url';
+import puppeteer from 'puppeteer-core';
 import { reactToPdf } from '../reactToPdf';
 import { PUPPETEER_OPTIONS } from '../fixtures/puppeteerOptions';
 import { reactToHtmlDocument } from '../reactToHtmlDocument';
@@ -12,6 +13,8 @@ import {
   type ErrorObject,
 } from '../utils/error';
 
+const browser = await puppeteer.launch(PUPPETEER_OPTIONS);
+
 const renderers: Record<
   string,
   (
@@ -20,10 +23,7 @@ const renderers: Record<
 > = {
   html: (DocumentRoot) => reactToHtmlDocument(DocumentRoot),
   docx: (DocumentRoot) => reactToDocx(DocumentRoot, { fonts: {} }),
-  pdf: (DocumentRoot) =>
-    reactToPdf(DocumentRoot, {
-      puppeteer: PUPPETEER_OPTIONS,
-    }),
+  pdf: (DocumentRoot) => reactToPdf(DocumentRoot, { browser }),
 };
 
 const currentFilePath = url.fileURLToPath(import.meta.url);

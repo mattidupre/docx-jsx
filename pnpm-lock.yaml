@@ -48,8 +48,8 @@ importers:
         specifier: ^15.8.1
         version: 15.8.1
       puppeteer-core:
-        specifier: 24.7.2
-        version: 24.7.2
+        specifier: '24.8'
+        version: 24.8.0
       react:
         specifier: 18.x
         version: 18.3.1
@@ -1289,8 +1289,8 @@ packages:
     resolution: {integrity: sha512-yMV8bb9prWI21N6FsrnPCbhoYb8UUvYCDGoSvPHBloVC095Ef2ker43hzXkJ6TpJPw53S8FeFYkARa7GGIGwxg==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
-  '@puppeteer/browsers@2.10.2':
-    resolution: {integrity: sha512-i4Ez+s9oRWQbNjtI/3+jxr7OH508mjAKvza0ekPJem0ZtmsYHP3B5dq62+IaBHKaGCOuqJxXzvFLUhJvQ6jtsQ==}
+  '@puppeteer/browsers@2.10.3':
+    resolution: {integrity: sha512-iPpnFpX25gKIVsHsqVjHV+/GzW36xPgsscWkCnrrETndcdxNsXLdCrTwhkCJNR/FGWr122dJUBeyV4niz/j3TA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -2499,8 +2499,8 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  devtools-protocol@0.0.1425554:
-    resolution: {integrity: sha512-uRfxR6Nlzdzt0ihVIkV+sLztKgs7rgquY/Mhcv1YNCWDh5IZgl5mnn2aeEnW5stYTE0wwiF4RYVz8eMEpV1SEw==}
+  devtools-protocol@0.0.1439962:
+    resolution: {integrity: sha512-jJF48UdryzKiWhJ1bLKr7BFWUQCEIT5uCNbDLqkQJBtkFxYzILJH44WN0PDKMIlGDN7Utb8vyUY85C3w4R/t2g==}
 
   diff-sequences@29.6.3:
     resolution: {integrity: sha512-EjePK1srD3P08o2j4f0ExnylqRs5B9tJjcp9t1krH2qRi8CCdsYfwe9JgSLurFBWwq4uOlipzfk5fHNvwFKr8Q==}
@@ -4130,8 +4130,8 @@ packages:
     resolution: {integrity: sha512-n13AWriBMPYxnpbb6bnaY5YoY6rGj8vPLrz6CZF3o0qJNEwlcfJVxBzYZ0NJsQ21UbdJoijPCDrM++SUVEz7+w==}
     engines: {node: '>=8.16.0'}
 
-  puppeteer-core@24.7.2:
-    resolution: {integrity: sha512-P9pZyTmJqKODFCnkZgemCpoFA4LbAa8+NumHVQKyP5X9IgdNS1ZnAnIh1sMAwhF8/xEUGf7jt+qmNLlKieFw1Q==}
+  puppeteer-core@24.8.0:
+    resolution: {integrity: sha512-tDf2YKIo5kM5r0vOzT52+PTgN0bBZOA4OFgQaqYyfarrcXLLJ92wi/lSMe44hd+F+gk0gw9QsAzyRW8v6ra93w==}
     engines: {node: '>=18'}
 
   qs@6.13.0:
@@ -6225,7 +6225,7 @@ snapshots:
 
   '@pkgr/core@0.2.3': {}
 
-  '@puppeteer/browsers@2.10.2':
+  '@puppeteer/browsers@2.10.3':
     dependencies:
       debug: 4.4.0(supports-color@5.5.0)
       extract-zip: 2.0.1
@@ -7448,9 +7448,9 @@ snapshots:
 
   chownr@2.0.0: {}
 
-  chromium-bidi@4.1.1(devtools-protocol@0.0.1425554):
+  chromium-bidi@4.1.1(devtools-protocol@0.0.1439962):
     dependencies:
-      devtools-protocol: 0.0.1425554
+      devtools-protocol: 0.0.1439962
       mitt: 3.0.1
       zod: 3.24.3
 
@@ -7715,7 +7715,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  devtools-protocol@0.0.1425554: {}
+  devtools-protocol@0.0.1439962: {}
 
   diff-sequences@29.6.3: {}
 
@@ -9669,12 +9669,12 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  puppeteer-core@24.7.2:
+  puppeteer-core@24.8.0:
     dependencies:
-      '@puppeteer/browsers': 2.10.2
-      chromium-bidi: 4.1.1(devtools-protocol@0.0.1425554)
+      '@puppeteer/browsers': 2.10.3
+      chromium-bidi: 4.1.1(devtools-protocol@0.0.1439962)
       debug: 4.4.0(supports-color@5.5.0)
-      devtools-protocol: 0.0.1425554
+      devtools-protocol: 0.0.1439962
       typed-query-selector: 2.12.0
       ws: 8.18.1
     transitivePeerDependencies:

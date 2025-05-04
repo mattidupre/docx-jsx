@@ -1,4 +1,4 @@
-import { type LaunchOptions } from 'puppeteer-core';
+import type { LaunchOptions } from 'puppeteer-core';
 
 // TODO: Store in environmental variable.
 export const PUPPETEER_OPTIONS: LaunchOptions = {
