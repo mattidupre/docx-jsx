@@ -1,6 +1,7 @@
 import { build } from 'esbuild';
 import type { JsonValue } from 'type-fest';
 import type { Browser } from 'puppeteer-core';
+import { stringifyErrorObject } from '../utils/error';
 
 /**
  * The global the bundled module exports are assigned to inside the page.
@@ -94,8 +95,10 @@ export const createBrowserHarness = async <TApi>(
   page.on('console', (message) => {
     console.info(`Browser harness: ${message.text()}`);
   });
+  // Puppeteer types a page error as `unknown`: a page can throw a value that
+  // is not an `Error`, and that value reaches this listener unchanged.
   page.on('pageerror', (error) => {
-    console.error(`Browser harness: ${error.message}`);
+    console.error(`Browser harness: ${stringifyErrorObject({ error })}`);
   });
 
   await page.setContent(BLANK_PAGE_HTML);

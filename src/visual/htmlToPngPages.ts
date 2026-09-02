@@ -1,4 +1,5 @@
 import type { Browser } from 'puppeteer-core';
+import { stringifyErrorObject } from '../utils/error';
 import {
   type HtmlInput,
   type PngPage,
@@ -75,8 +76,10 @@ const renderHtmlPages = async (
   const page = await browser.newPage();
   /** In-page exceptions are the usual cause of a stalled paginator. */
   const pageErrors: Array<string> = [];
+  // Puppeteer types a page error as `unknown`: a page can throw a value that
+  // is not an `Error`, and that value reaches this listener unchanged.
   page.on('pageerror', (error) => {
-    pageErrors.push(error.message);
+    pageErrors.push(stringifyErrorObject({ error }));
   });
   const describePageErrors = () =>
     pageErrors.length > 0

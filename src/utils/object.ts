@@ -1,4 +1,4 @@
-import type { IfAny, PartialDeep, Primitive } from 'type-fest';
+import type { If, IsAny, PartialDeep, Primitive } from 'type-fest';
 import { merge, omitBy } from 'lodash';
 
 export type KeyedObject = Record<PropertyKey, unknown> & { length?: never };
@@ -92,8 +92,8 @@ export const getValueOf = <
   value: TValue,
   key: TKey,
 ) =>
-  value[key as keyof TValue] as IfAny<
-    TKey,
+  value[key as keyof TValue] as If<
+    IsAny<TKey>,
     undefined | TValue[keyof TValue],
     TKey extends keyof TValue ? TValue[TKey] : undefined | TValue[keyof TValue]
   >;

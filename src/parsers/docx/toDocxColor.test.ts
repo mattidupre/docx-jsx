@@ -5,11 +5,11 @@ import {
   vi,
   beforeEach,
   afterEach,
-  type SpyInstance,
+  type MockInstance,
 } from 'vitest';
 import { toDocxColor } from './toDocxColor';
 
-let warn: SpyInstance;
+let warn: MockInstance;
 beforeEach(() => {
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 });

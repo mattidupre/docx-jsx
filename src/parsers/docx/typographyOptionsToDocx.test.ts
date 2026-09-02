@@ -12,7 +12,7 @@ import {
   expect,
   test,
   vi,
-  type SpyInstance,
+  type MockInstance,
 } from 'vitest';
 import {
   INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS,
@@ -39,7 +39,7 @@ type Subjects<TResult> = ReadonlyArray<Subject<TResult>>;
 const subjectToString = ([options, result]: Subject<unknown>) =>
   `(${JSON.stringify(options)}) == ${JSON.stringify(result)}`;
 
-let warn: SpyInstance;
+let warn: MockInstance;
 beforeEach(() => {
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 });

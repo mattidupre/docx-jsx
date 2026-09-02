@@ -1,5 +1,5 @@
 import type { MutableRefObject, RefObject } from 'react';
-import type { IfNever, IfUnknown } from 'type-fest';
+import type { If, IsNever, IsUnknown } from 'type-fest';
 
 export type AsMutableRef<T extends RefObject<any> | MutableRefObject<any>> =
   T extends RefObject<infer V>
@@ -15,19 +15,19 @@ export type AsMutableRef<T extends RefObject<any> | MutableRefObject<any>> =
 // never, TSource> : TSource extends {} ? { [K in keyof TSource as
 //   IfNever<TSource[K], never, K>]: TSource[K]; } : TSource;
 
-export type ReplaceUnknownDeep<TSource, TReplacement> = IfUnknown<
-  TReplacement,
+export type ReplaceUnknownDeep<TSource, TReplacement> = If<
+  IsUnknown<TReplacement>,
   // replacing unknown with unknown, so return original
   TSource,
   // otherwise
-  IfUnknown<
-    TSource,
+  If<
+    IsUnknown<TSource>,
     // return replacement
     TReplacement,
     // continue iteration
     TSource extends ReadonlyArray<infer T> // array
-      ? IfNever<
-          ReplaceUnknownDeep<T, TReplacement>,
+      ? If<
+          IsNever<ReplaceUnknownDeep<T, TReplacement>>,
           // replace Array<never> with never
           never,
           {
@@ -36,8 +36,8 @@ export type ReplaceUnknownDeep<TSource, TReplacement> = IfUnknown<
         >
       : TSource extends object // object
       ? {
-          [K in keyof TSource as IfNever<
-            ReplaceUnknownDeep<TSource[K], TReplacement>,
+          [K in keyof TSource as If<
+            IsNever<ReplaceUnknownDeep<TSource[K], TReplacement>>,
             // omit never values
             never,
             K

@@ -11,7 +11,7 @@ import {
   TableCell,
   TableLayoutType,
   TableRow,
-  VerticalAlign,
+  VerticalAlignTable,
   WidthType,
 } from 'docx';
 import type {
@@ -47,9 +47,9 @@ const DOCX_TABLE_ALIGNMENT = {
  * CSS calls the middle of a cell `middle` and OOXML calls it `center`.
  */
 const DOCX_VERTICAL_ALIGN = {
-  top: VerticalAlign.TOP,
-  middle: VerticalAlign.CENTER,
-  bottom: VerticalAlign.BOTTOM,
+  top: VerticalAlignTable.TOP,
+  middle: VerticalAlignTable.CENTER,
+  bottom: VerticalAlignTable.BOTTOM,
 } as const satisfies Record<TableVerticalAlign, string>;
 
 const DOCX_BORDER_STYLE = {

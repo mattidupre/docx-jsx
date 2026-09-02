@@ -362,6 +362,22 @@ pnpm lint                 # eslint ./src
 Chrome must be reachable (see above) for the PDF, DOM and visual suites. Every
 test file that launches Chrome shares one browser and closes it in `afterAll`.
 
+On a loaded machine, several test files launching Chrome at once can starve each
+other into `Protocol error: Connection closed`. Run the suite one file at a time
+instead:
+
+```sh
+pnpm exec vitest run --no-file-parallelism
+```
+
+`--no-file-parallelism` replaces the `--no-threads` of Vitest 0.x, which is now
+an unknown-option error. The default pool is `forks`, so `--pool=threads` is
+what opts back into worker threads.
+
+`-u`/`--update` takes an optional value in Vitest 4, so it swallows a following
+path: write `pnpm exec vitest run src/lib/styles.test.ts -u`, never
+`vitest run -u src/lib/styles.test.ts` (that updates the whole suite).
+
 ### Visual regression
 
 `src/visual/` rasterises all three targets in Chrome and compares them:

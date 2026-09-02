@@ -1,4 +1,4 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/config" />
 
 import { defineConfig } from 'vite';
 import { type PluginOption } from 'vite';
@@ -36,7 +36,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       // Report on every source file, not only the ones a test happened to load.
-      all: true,
+      // Vitest 4 removed `coverage.all`; an explicit `include` now does that job.
       include: ['src/**'],
       exclude: [
         'src/**/*.d.ts',
