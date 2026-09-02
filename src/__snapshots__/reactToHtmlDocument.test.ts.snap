@@ -1,0 +1,354 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`reactToHtmlDocument > matches the rendered element outline 1`] = `
+"div [document]
+  div [stack]
+    div [header]
+      p [htmltag]
+        b
+        em
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [header]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [content]
+      div [gridContainer]
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+      div [gridContainer]
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+        div [gridItem]
+          p
+    div [footer]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [footer]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+  div [stack]
+    div [header]
+      p [htmltag]
+        b
+        em
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [header]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [content]
+      p
+      h1
+      h2
+      h3
+      h4
+      h5
+      h6
+      ul
+        li
+        li
+        ul
+          li
+          li
+        li
+      p [htmltag]
+      p
+        span [htmltag]
+      p
+        a
+      p
+        span [htmltag]
+      p
+        b
+      p
+        strong
+      p
+        span [htmltag]
+      p
+        em
+      p
+        i
+      p
+        span [htmltag]
+      p
+        u
+      p
+        span [htmltag]
+      p
+        s
+      p
+        br
+      p
+        span [htmltag]
+      p
+        span [htmltag]
+      p
+        span [htmltag]
+      p
+        span [htmltag]
+      p
+        span [htmltag]
+      p
+        sup
+      p
+        sub
+      p
+        span [htmltag]
+      p [htmltag]
+      p [htmltag]
+      p [htmltag]
+      p [htmltag]
+      div
+        p
+      p [htmltag]
+      div [split]
+        div [htmltag]
+          p
+        div [htmltag]
+          p
+      p
+      div [split]
+        div [htmltag]
+          p
+        div [htmltag]
+          p
+      p [htmltag]
+        span [htmltag]
+      p
+      span [htmltag]
+        p
+      p
+      p [htmltag]
+        span [htmltag]
+        span [htmltag]
+      p [htmltag]
+      p [htmltag]
+      p [htmltag]
+      p [htmltag]
+    div [footer]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [footer]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+  div [stack]
+    div [content]
+      h2
+      h3
+      div [htmltag]
+        p
+        p
+        p
+      h3
+      div [htmltag]
+        p
+        p
+        p
+      div [htmltag]
+        h3
+        div [htmltag]
+          p
+          p
+          p
+  div [stack]
+    div [content]
+      h2
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      p
+      h2 [htmltag]
+      div [htmltag]
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+  div [stack]
+    div [content]
+      h2
+      div [htmltag]
+        h3
+        div [htmltag]
+          p
+          p
+          p
+      div [htmltag]
+        h3
+        div [htmltag]
+          p
+          p
+          p
+      div [htmltag]
+        h3
+        div [htmltag]
+          p
+          p
+          p
+  div [stack]
+    div [content]
+      h1
+  div [stack]
+    div [content]
+      h1
+  div [stack]
+    div [header]
+      p [htmltag]
+        b
+        em
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [header]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [content]
+      div [htmltag]
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+        p
+    div [footer]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+    div [footer]
+      p [htmltag]
+        span
+          span [pagenumber]
+          span [pagecount]
+  div [stack]
+    div [content]
+      h2
+        a [htmltag]
+      img [image]
+      div [divider]
+      p
+      div [spacer]
+      p
+      div [divider]
+      ol [list]
+        li [htmltag]
+        li [htmltag]
+        ol [list]
+          li [htmltag]
+          li [htmltag]
+        li [htmltag]
+      ul [list]
+        li [htmltag]
+      p
+        a [htmltag]
+      p
+        a [htmltag]"
+`;

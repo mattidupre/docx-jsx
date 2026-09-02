@@ -39,13 +39,11 @@ export function Split({
       variant={variant}
       className={className}
       style={{
+        width: '100%',
+        display: 'flex',
+        columnGap: '0.0625rem',
+        justifyContent: 'space-between',
         ...style,
-        ...{
-          width: '100%',
-          display: 'flex',
-          columnGap: '0.0625rem',
-          justifyContent: 'space-between',
-        },
       }}
       typography={contentOptions}
     >

@@ -2,6 +2,10 @@
 dist*
 /publish/
 
+# Visual regression diffs. The baselines in __image_snapshots__ are committed;
+# the diff images written beside them when a comparison fails are not.
+__diff_output__/
+
 # Apple
 .DS_Store
 

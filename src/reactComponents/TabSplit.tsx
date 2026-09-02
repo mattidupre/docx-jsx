@@ -48,14 +48,12 @@ export function TabSplit({
       variant={variant}
       className={className}
       style={{
+        width: '100%',
+        display: 'flex',
+        columnGap: '0.0625rem',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
         ...style,
-        ...{
-          width: '100%',
-          display: 'flex',
-          columnGap: '0.0625rem',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-        },
       }}
       typography={contentOptions}
     >

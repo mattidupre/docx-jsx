@@ -15,10 +15,24 @@ export type GridProps = {
 
 const DEFAULT_COLUMNS_COUNT = 12;
 
+/**
+ * An item spans whole columns of the row it sits in, so a size outside
+ * `1..columnCount` has no row to describe. It is clamped rather than rejected,
+ * which is what the DOCX target does with the same value: a wider item takes a
+ * row of its own instead of overflowing the grid in one target and throwing in
+ * the other.
+ */
+const clampItemSize = (size: number, columnCount: number) =>
+  Math.min(Math.max(Math.round(size), 1), columnCount);
+
 const calculateItemWidth = (
-  { columnGap, columnCount }: Pick<GridProps, 'columnGap' | 'columnCount'>,
-  size: number,
+  {
+    columnGap,
+    columnCount = DEFAULT_COLUMNS_COUNT,
+  }: Pick<GridProps, 'columnGap' | 'columnCount'>,
+  sizeProp: number,
 ) => {
+  const size = clampItemSize(sizeProp, columnCount);
   const containerMargins = 1;
   const itemsWidth = `(100% - ((${columnCount} - 1 + ${containerMargins}) * ${columnGap}))`;
   return `calc(${itemsWidth} * ${size} / ${columnCount} + (${size} - 1) * ${columnGap})`;

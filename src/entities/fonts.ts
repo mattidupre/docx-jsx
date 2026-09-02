@@ -67,6 +67,26 @@ export type Font = {
 
 export type FontsConfig = Record<FontFamily, Font>;
 
+/**
+ * `web` and `pdf` both load a font file through `@font-face`, so a source
+ * declared for one is used for the other when the exact target has no source of
+ * its own, as is a source that names no `documentType` at all. A `docx` source
+ * names a font installed on the reader's machine and is never interchangeable
+ * with a file.
+ */
+export const getFontFaceSource = (
+  { sources }: FontFace,
+  documentType: DocumentType,
+): undefined | FontFace['sources'][number] => {
+  const exactSource = sources.find(
+    (source) => source.documentType === documentType,
+  );
+  if (exactSource || documentType === 'docx') {
+    return exactSource;
+  }
+  return sources.find((source) => source.documentType !== 'docx');
+};
+
 export const getFontFace = (
   { fonts, documentType }: { fonts: FontsConfig; documentType: DocumentType },
   options: Pick<TypographyOptions, 'fontFamily' | 'fontWeight' | 'fontStyle'>,
@@ -96,21 +116,14 @@ export const getFontFace = (
     console.error(`Could not find a font face for ${options.fontFamily}`);
     return undefined;
   }
-  if (documentType === 'docx') {
-    const source = fontFace.sources.find(
-      ({ documentType }) => documentType === 'docx',
+  const source = getFontFaceSource(fontFace, documentType);
+  if (!source) {
+    console.error(
+      `Could not find a ${documentType} font face for ${options.fontFamily}`,
     );
-    if (!source) {
-      console.error(
-        `Could not find a docx font face for ${options.fontFamily}`,
-      );
-      return undefined;
-    }
-    return { ...structuredClone(fontFace), src: source.src };
+    return undefined;
   }
-  throw new TypeError(
-    `Cannot resolve font face for documentType ${documentType}`,
-  );
+  return { ...structuredClone(fontFace), src: source.src };
 };
 
 type FontsMsOffice = {

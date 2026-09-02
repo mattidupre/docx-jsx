@@ -19,8 +19,13 @@ type UseEnvironmentOptions = {
 };
 
 /**
- * Returns information about the document's execution environment. Also useful
- * to element is a child of DocumentProvider.
+ * Returns information about the document's execution environment.
+ *
+ * By default it also asserts that the caller is inside a `DocumentProvider`,
+ * which is the contract for library consumers: the hook is exported, and
+ * outside a document there is no page to describe. Library components pass
+ * `disableAssert` because they must also render under a bare
+ * `ContentProvider`, which supplies variants and prefixes but no document.
  */
 export const useEnvironment = ({
   disableAssert = false,

@@ -8,6 +8,7 @@ import type {
   VariantName,
 } from '../entities';
 import {
+  elementTypeToClassName,
   typographyOptionsToStyleVars,
   variantNameToClassName,
 } from '../lib/styles';
@@ -62,6 +63,9 @@ export function InternalElement({
 
   const classNames = compact([
     classNameProp,
+    // A stable hook for a consumer's own CSS: the element type never changes,
+    // where the tag a component renders is an implementation detail.
+    elementTypeToClassName({ prefixes }, elementType),
     variant && variantNameToClassName({ prefixes }, variant),
   ]);
 

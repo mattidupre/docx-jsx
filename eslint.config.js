@@ -107,4 +107,11 @@ export default defineFlatConfig([
       'import/no-absolute-path': 'error',
     },
   },
+  {
+    // Storybook's Component Story Format requires a default export.
+    files: ['**/*.stories.tsx'],
+    rules: {
+      'import/no-default-export': 'off',
+    },
+  },
 ]);

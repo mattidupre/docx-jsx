@@ -12,8 +12,10 @@ export type DocumentProviderProps = DocumentOptions & {
 
 export function DocumentProvider({
   injectEnvironmentCss,
+  size,
   variants,
   prefixes,
+  fonts,
   children,
 }: DocumentProviderProps) {
   const prevDocumentOptions = (useContext(ReactContentContext) ??
@@ -21,8 +23,12 @@ export function DocumentProvider({
 
   const documentOptions = useMemo(
     () =>
-      assignDocumentOptions({}, { variants, prefixes }, prevDocumentOptions),
-    [variants, prefixes, prevDocumentOptions],
+      assignDocumentOptions(
+        {},
+        { size, variants, prefixes, fonts },
+        prevDocumentOptions,
+      ),
+    [size, variants, prefixes, fonts, prevDocumentOptions],
   );
 
   const documentContextValue = useMemo(

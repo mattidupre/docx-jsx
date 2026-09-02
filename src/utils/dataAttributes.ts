@@ -11,11 +11,16 @@ type Options = {
   prefix?: Lowercase<string>;
 };
 
+/**
+ * Always ends with the `-` separating the prefix from the kebab-cased key, so
+ * that a prefixed attribute can be recognized and stripped unambiguously
+ * (`data-matti-docs-element-type`, never `data-matti-docselement-type`).
+ */
 const createDataPrefix = (options?: Options) => {
   if (!options?.prefix) {
     return 'data-';
   }
-  return `data-${options.prefix}`;
+  return `data-${options.prefix}-`;
 };
 
 export const encodeDataAttributeKey = (key: string, options?: Options) => {
@@ -46,7 +51,9 @@ export const selectByDataAttributes = (
   const query = Object.entries(dataAttributes)
     .map(([key, value]) => {
       return value
-        ? `[${encodeDataAttributeKey(key, options)}="${value}"]`
+        ? `[${encodeDataAttributeKey(key, options)}="${encodeDataAttributeValue(
+            value,
+          )}"]`
         : '';
     })
     .join('');
@@ -77,7 +84,7 @@ export const decodeDataAttributes = (
       }
       // HAST transforms data-attribute to dataAttribute.
       const kebabKey = kebabCase(key);
-      if (!kebabKey.startsWith(dataPrefix)) {
+      if (!kebabKey.startsWith(dataPrefix) || kebabKey === dataPrefix) {
         return;
       }
       let data: JsonValue;

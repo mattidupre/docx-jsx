@@ -1,6 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { type ReactNode, useMemo } from 'react';
-import { merge } from 'lodash';
 import {
   DocumentProvider,
   Stack,
@@ -15,10 +14,34 @@ import {
   IfEnvironment,
   Svg,
   TabSplit,
+  Bookmark,
+  Divider,
+  Image,
+  Link,
+  List,
+  ListItem,
+  Spacer,
 } from '../reactComponents';
 import { createMockVariantsConfig } from './mockVariantsConfig';
+import { MOCK_IMAGE_DATA_URL } from './mockImage';
 
 let LONG_TEXT: ReadonlyArray<string>;
+
+/**
+ * Fixed so every render of the fixture produces byte-identical output.
+ */
+const GENERATED_AT = '12:00:00 AM';
+
+/**
+ * The `Bookmark` the fixture's internal `Link` jumps to. A single token, so the
+ * DOCX bookmark name is the id itself rather than an escaped form of it.
+ */
+export const MOCK_BOOKMARK_ID = 'mockBookmark';
+
+export const MOCK_EXTERNAL_URL = 'https://example.com/mock';
+
+/** Half an inch, i.e. 720 twips of exact line spacing in DOCX. */
+export const MOCK_SPACER_HEIGHT = '0.5in';
 
 const PageCounter = () => {
   return (
@@ -154,7 +177,7 @@ export function MockDocument({
         }}
         // continuous
       >
-        <p>{`Generated at ${new Date().toLocaleTimeString()}`}</p>
+        <p>{`Generated at ${GENERATED_AT}`}</p>
 
         {/* <Svg
           version="1.1"
@@ -363,13 +386,13 @@ export function MockDocument({
         margin={{ top: '1in', header: '0.25in' }}
       >
         <h2>Variant with breakAfter: avoid</h2>
-        <Spacer length={30} />
+        <FillerParagraphs length={30} />
 
         <Typography variant="heading1" as="h2">
           Avoid Break After
         </Typography>
         <BreakAvoid>
-          <Spacer length={30} />
+          <FillerParagraphs length={30} />
         </BreakAvoid>
       </Stack>
 
@@ -425,13 +448,64 @@ export function MockDocument({
       >
         <LongText />
       </Stack>
+
+      <Stack
+        innerPageClassName="preview__page"
+        layouts={{ first: {}, subsequent: {} }}
+        margin={{ top: '1in', header: '0.25in' }}
+      >
+        <h2>
+          <Bookmark id={MOCK_BOOKMARK_ID}>Media, rules and navigation</Bookmark>
+        </h2>
+
+        <Image
+          src={MOCK_IMAGE_DATA_URL}
+          alt="Colour swatch"
+          width="2in"
+          align="center"
+        />
+
+        <Divider color="#333333" thickness="2px" />
+
+        <p>Above a half-inch gap.</p>
+        <Spacer height={MOCK_SPACER_HEIGHT} />
+        <p>Below a half-inch gap.</p>
+
+        <Divider color="#3366cc" thickness="1px" width={40} />
+
+        <List ordered format="lowerRoman" start={3}>
+          <ListItem>Lower Roman Item Depth 1</ListItem>
+          <ListItem>Lower Roman Item Depth 1</ListItem>
+          <List format="lowerLetter">
+            <ListItem>Lower Letter Item Depth 2</ListItem>
+            <ListItem>Lower Letter Item Depth 2</ListItem>
+          </List>
+          <ListItem>Lower Roman Item Depth 1</ListItem>
+        </List>
+
+        <List>
+          <ListItem>Bulleted List Item Depth 1</ListItem>
+        </List>
+
+        <p>
+          <Link href={MOCK_EXTERNAL_URL}>External Link Text</Link>
+        </p>
+        <p>
+          <Link bookmark={MOCK_BOOKMARK_ID}>Internal Link Text</Link>
+        </p>
+      </Stack>
     </DocumentProvider>
   );
 }
 
 export const createMockHtml = () => renderToStaticMarkup(<MockDocument />);
 
-function Spacer({ length }: { length: number }) {
+/**
+ * Enough paragraphs to push what follows onto another page. Named for what it
+ * does rather than for the space it leaves, so it does not shadow the library's
+ * own `Spacer`, which this fixture also exercises.
+ */
+function FillerParagraphs({ length }: { length: number }) {
   let children: Array<ReactNode> = [];
   for (let i = 0; i < length; i++) {
     children.push(<p key={`spacer_${i}`}>|</p>);

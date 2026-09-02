@@ -24,8 +24,9 @@ const compareDefinedProperties = <T extends Record<string, unknown>>(
   valueA[key] === valueB[key];
 
 /**
- * For internal use only. Parent contexts will completely overwrite child
- * contexts.
+ * For internal use only. A nested provider may only fill in properties its
+ * parent left undefined; contradicting a property the parent already published
+ * throws rather than silently re-targeting part of the tree.
  */
 export function InternalEnvironmentProvider({
   children,

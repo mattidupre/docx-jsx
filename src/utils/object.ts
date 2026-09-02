@@ -48,15 +48,18 @@ export const extendDefined = <T extends KeyedObject>(
   ...values: ReadonlyArray<undefined | Partial<T>>
 ): T => assignDefined({} as T, value0, ...values);
 
+/**
+ * Deep merges every value onto a fresh object, later values winning, with
+ * `defaultValue` filling any key none of them define.
+ *
+ * The result never aliases an argument. Contexts are accumulated by handing the
+ * parent's sub-objects back in as the first value, so returning the parent's
+ * object would let a child's merge rewrite its parent.
+ */
 export const mergeWithDefault = <T>(
   defaultValue: T,
-  ...[targetValue, ...values]: ReadonlyArray<undefined | PartialDeep<T>>
-) => {
-  // targetValue will otherwise be mutated before it can be extended onto
-  // itself.
-  const targetValueCloned = structuredClone(targetValue ?? {});
-  return merge(targetValue ?? {}, defaultValue, targetValueCloned, ...values);
-};
+  ...values: ReadonlyArray<undefined | PartialDeep<T>>
+) => merge({}, defaultValue, ...values);
 
 // export const mapAssign = <TOut extends KeyedObject, TIn = unknown>(
 //   values: ReadonlyArray<TIn>,

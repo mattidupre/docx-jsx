@@ -125,11 +125,13 @@ export class Pager {
       let currentPageIndex = 0;
       chunker.hooks.afterPageLayout.register((pageEl, page, breakToken) => {
         if (breakToken?.node !== undefined) {
+          // The break token opens the page after the one just laid out.
           onPageBreak?.({
             breakElement: breakToken.node,
             pageIndex: currentPageIndex,
           });
         }
+        currentPageIndex += 1;
       });
     }
 

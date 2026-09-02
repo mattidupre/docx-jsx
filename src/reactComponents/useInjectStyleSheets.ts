@@ -27,10 +27,12 @@ export const useInjectStyleSheets = (
     return () => {
       cssStyleSheetsPromise.then((cssStyleSheets) => {
         for (const cssStyleSheet of cssStyleSheets) {
-          document.adoptedStyleSheets.splice(
-            document.adoptedStyleSheets.indexOf(cssStyleSheet),
-            1,
-          );
+          const index = document.adoptedStyleSheets.indexOf(cssStyleSheet);
+          // A stylesheet already removed by someone else would otherwise
+          // splice the last adopted stylesheet out of the document.
+          if (index !== -1) {
+            document.adoptedStyleSheets.splice(index, 1);
+          }
         }
       });
     };

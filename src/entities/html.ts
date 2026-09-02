@@ -5,6 +5,8 @@ export type TagName = keyof Pick<
   | 'br'
   | 'div'
   | 'p'
+  | 'blockquote'
+  | 'pre'
   | 'label'
   | 'h1'
   | 'h2'
@@ -25,7 +27,17 @@ export type TagName = keyof Pick<
   | 'sub'
   | 'sup'
   | 'span'
+  | 'code'
   | 'svg'
+  | 'img'
+  | 'table'
+  | 'colgroup'
+  | 'col'
+  | 'thead'
+  | 'tbody'
+  | 'tr'
+  | 'th'
+  | 'td'
 >;
 
 export type HtmlAttributes = Record<string, string>;

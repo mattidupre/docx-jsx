@@ -86,10 +86,12 @@ export const usePreview = (
     };
   }, [documentElState]);
 
-  const observerRef = useRef<undefined | ResizeObserver>();
+  // `documentElState` is a dependency because the effect above attaches the
+  // document element and measures it; re-running here observes the preview
+  // element against the size of the document currently attached to it.
   useEffect(() => {
     const { current: previewEl } = previewElRef;
-    if (!previewEl || !autoscale || observerRef.current) {
+    if (!previewEl || !autoscale) {
       return;
     }
 
@@ -98,9 +100,11 @@ export const usePreview = (
     previewEl.style.setProperty('justify-content', 'center');
     previewEl.style.setProperty('align-items', 'center');
 
-    observerRef.current = new ResizeObserver((entries) => {
+    const observer = new ResizeObserver((entries) => {
+      const { current: documentEl } = documentElRef;
+      const { current: documentSize } = documentSizeRef;
       const previewSize = getElementInnerSize(previewEl);
-      if (!documentElRef.current || !previewSize) {
+      if (!documentEl || !documentSize || !previewSize) {
         return;
       }
       for (const entry of entries) {
@@ -109,23 +113,21 @@ export const usePreview = (
         }
 
         const { width: previewWidth } = previewSize;
-        const { width: documentWidth, height: documentHeight } =
-          documentSizeRef.current!;
+        const { width: documentWidth, height: documentHeight } = documentSize;
         const scale = previewWidth / documentWidth;
         const overflowY = (1 - scale) * documentHeight;
-        documentElRef.current.style.transformOrigin = 'top center';
-        documentElRef.current.style.transform = `scale(${
-          previewWidth / documentWidth
-        })`;
-        documentElRef.current.style.marginBottom = `-${overflowY}px`;
+        documentEl.style.transformOrigin = 'top center';
+        documentEl.style.transform = `scale(${scale})`;
+        documentEl.style.marginBottom = `-${overflowY}px`;
       }
     });
 
-    observerRef.current.observe(previewEl);
+    observer.observe(previewEl);
 
-    // Fire on every render since previewElRef must be attached outside this hook
-    // and cannot be relied upon to be non-null on every render.
-  });
+    return () => {
+      observer.disconnect();
+    };
+  }, [autoscale, documentElState]);
 
   return {
     isLoading,

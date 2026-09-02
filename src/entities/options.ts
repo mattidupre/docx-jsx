@@ -1,10 +1,10 @@
 import { isObject, map } from 'lodash';
 import { toLowercase } from '../utils/string';
 import { assignDefined, mergeWithDefault } from '../utils/object';
-import type { UnitsNumber } from '../utils/units';
 import { pluckFromArray } from '../utils/array';
 import type { DataAttributes } from '../utils/dataAttributes';
 import { type Variants, assignVariants } from './typography';
+import type { FontsConfig } from './fonts';
 import type { UnitsSize } from './units';
 
 export const APP_NAME = 'Matti Docs';
@@ -28,6 +28,12 @@ export type PrefixesConfig = {
 
 export type PrefixesOptions = string | Partial<PrefixesConfig>;
 
+const PREFIX_KEYS = [
+  'elementClassName',
+  'variantClassName',
+  'cssVariable',
+] as const satisfies ReadonlyArray<keyof PrefixesConfig>;
+
 const parsePrefixes = (prefixOptions?: PrefixesOptions): PrefixesConfig => {
   const defaultPrefix = toLowercase(
     typeof prefixOptions === 'string' ? prefixOptions : DEFAULT_PREFIX,
@@ -47,9 +53,41 @@ const parsePrefixes = (prefixOptions?: PrefixesOptions): PrefixesConfig => {
   };
 };
 
+/**
+ * A string shorthand names all three prefixes; an object only overrides the
+ * keys it defines, so a later partial never resets an earlier one back to the
+ * default prefix.
+ */
+const parsePrefixesOverrides = (
+  prefixOptions?: PrefixesOptions,
+): Partial<PrefixesConfig> => {
+  if (prefixOptions === undefined) {
+    return {};
+  }
+  if (typeof prefixOptions === 'string') {
+    return parsePrefixes(prefixOptions);
+  }
+  return PREFIX_KEYS.reduce<Partial<PrefixesConfig>>((overrides, key) => {
+    const value = prefixOptions[key];
+    if (value !== undefined) {
+      overrides[key] = toLowercase(value);
+    }
+    return overrides;
+  }, {});
+};
+
+/**
+ * A string argument is a shorthand, not an object, so it cannot be deep merged:
+ * `mergeWithDefault` would hand the raw string straight back.
+ */
 export const assignPrefixesOptions = (
   ...args: ReadonlyArray<undefined | PrefixesOptions>
-): PrefixesConfig => mergeWithDefault(parsePrefixes(), ...args);
+): PrefixesConfig =>
+  args.reduce<PrefixesConfig>(
+    (config, prefixOptions) =>
+      assignDefined(config, parsePrefixesOverrides(prefixOptions)),
+    parsePrefixes(),
+  );
 
 export const DOCUMENT_TYPES = ['web', 'docx', 'pdf'] as const;
 
@@ -58,8 +96,8 @@ export type DocumentType = (typeof DOCUMENT_TYPES)[number];
 export type Color = string;
 
 export type PageSize = {
-  width: UnitsNumber;
-  height: UnitsNumber;
+  width: UnitsSize;
+  height: UnitsSize;
 };
 
 const DEFAULT_PAGE_SIZE: PageSize = {
@@ -68,12 +106,12 @@ const DEFAULT_PAGE_SIZE: PageSize = {
 };
 
 export type PageMargin = {
-  top: UnitsNumber;
-  right: UnitsNumber;
-  bottom: UnitsNumber;
-  left: UnitsNumber;
-  header: UnitsNumber;
-  footer: UnitsNumber;
+  top: UnitsSize;
+  right: UnitsSize;
+  bottom: UnitsSize;
+  left: UnitsSize;
+  header: UnitsSize;
+  footer: UnitsSize;
 };
 
 const DEFAULT_PAGE_MARGIN: PageMargin = {
@@ -139,12 +177,23 @@ export const mapLayoutKeys = <TContentOutput>(
 export const createDefaultLayoutConfig = <TContent>() =>
   mapLayoutKeys(() => undefined) as LayoutConfig<TContent>;
 
+/**
+ * Assigns every layout slot onto the first argument, later arguments winning,
+ * and returns it. The target is mutated on purpose: `mapHtmlToDocument`
+ * accumulates one header or footer at a time into a config it keeps a reference
+ * to and discards the return value.
+ *
+ * A lone argument is still normalised. With nothing to assign onto it the
+ * reduce would hand back exactly what it was given -- a `Partial<LayoutOptions>`
+ * missing every slot it did not declare -- so an empty pass runs in that case
+ * and fills the rest with `undefined`.
+ */
 export const assignLayoutOptions = <TContent>(
   ...[args0, ...args]: ReadonlyArray<
     undefined | Partial<LayoutOptions<TContent>>
   >
 ) =>
-  args.reduce(
+  (args.length > 0 ? args : [undefined]).reduce(
     (targetLayouts, thisLayouts) =>
       assignDefined(
         targetLayouts!,
@@ -161,12 +210,35 @@ export type DocumentOptions = {
   size?: PageSize;
   variants?: Variants;
   prefixes?: PrefixesOptions;
+  fonts?: FontsConfig;
 };
 
 export type DocumentConfig = {
   size: PageSize;
   variants: Variants;
   prefixes: PrefixesConfig;
+  /**
+   * Optional, unlike the rest of the config: an empty object is still a font
+   * configuration, so a document that declares no fonts has to carry nothing
+   * rather than carry `{}` into every target.
+   */
+  fonts?: FontsConfig;
+};
+
+/**
+ * Later declarations win per font family, which is how every other document
+ * option is assigned. The result is spread into the config, so a document that
+ * declares no fonts is given no `fonts` key rather than an empty one.
+ */
+const assignFonts = (
+  ...args: ReadonlyArray<undefined | FontsConfig>
+): Pick<DocumentConfig, 'fonts'> | Record<string, never> => {
+  const fonts = args.reduce<undefined | FontsConfig>(
+    (theseFonts, nextFonts) =>
+      nextFonts ? { ...theseFonts, ...nextFonts } : theseFonts,
+    undefined,
+  );
+  return fonts ? { fonts } : {};
 };
 
 export const assignDocumentOptions = (
@@ -176,6 +248,9 @@ export const assignDocumentOptions = (
     size: mergeWithDefault(DEFAULT_PAGE_SIZE, ...pluckFromArray(args, 'size')),
     variants: assignVariants(args[0]?.variants, ...map(args, 'variants')),
     prefixes: assignPrefixesOptions(...pluckFromArray(args, 'prefixes')),
+    // Spread conditionally so a document with no fonts has no `fonts` key at
+    // all, rather than one holding `undefined`.
+    ...assignFonts(...pluckFromArray(args, 'fonts')),
   });
 
 type ColumnCount = 1 | 2 | 3 | 4;

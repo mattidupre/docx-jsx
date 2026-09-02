@@ -1,12 +1,32 @@
 import {
   type ReactNode,
   memo,
-  useMemo,
+  useRef,
   type ReactElement,
   type RefObject,
   type CSSProperties,
 } from 'react';
 import { usePreview, type UsePreviewOptions } from './usePreview';
+
+/**
+ * Keeps the identity of an array stable for as long as its members are stable,
+ * so that callers may pass an array literal without restarting the preview on
+ * every render.
+ */
+const useStableArray = <TValue,>(
+  array: ReadonlyArray<TValue>,
+): ReadonlyArray<TValue> => {
+  const stableRef = useRef(array);
+  const { current: stable } = stableRef;
+  if (
+    stable !== array &&
+    (stable.length !== array.length ||
+      stable.some((value, index) => value !== array[index]))
+  ) {
+    stableRef.current = array;
+  }
+  return stableRef.current;
+};
 
 type PreviewProps = UsePreviewOptions & {
   children: ReactElement | Array<ReactElement>;
@@ -26,17 +46,9 @@ export const Preview = memo(function Preview({
   elRef,
   ...props
 }: PreviewProps) {
-  const initialStyleSheets = useMemo(
-    () => initialStyleSheetsProp,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    initialStyleSheetsProp,
-  );
+  const initialStyleSheets = useStableArray(initialStyleSheetsProp);
 
-  const styleSheets = useMemo(
-    () => styleSheetsProp,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    styleSheetsProp,
-  );
+  const styleSheets = useStableArray(styleSheetsProp);
 
   const { isLoading, previewElRef } = usePreview(children, {
     initialStyleSheets,

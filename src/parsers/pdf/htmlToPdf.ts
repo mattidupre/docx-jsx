@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import type { Browser, Page } from 'puppeteer-core';
+import type { FontsConfig } from '../../entities';
 import type { DocumentDom } from '../dom';
 import { htmlToScript } from '../script';
 import type { ErrorObject } from '../../utils';
@@ -12,6 +13,7 @@ export type HtmlToPdfOptions = {
   publicDirectory?: string;
   pageStyleSheets?: ReadonlyArray<string>;
   styleSheets?: ReadonlyArray<string>;
+  fonts?: FontsConfig;
   browser: Browser;
   closeBrowser?: boolean;
 };
@@ -46,10 +48,16 @@ export const htmlToPdf = async (
       }
       if (publicDirectory) {
         const requestFilePath = path.join(publicDirectory, relativePath);
-        if (existsSync(requestFilePath)) {
-          return interceptedRequest.respond({
-            body: await fs.readFile(requestFilePath),
-          });
+        // Read before responding: a request that is neither responded to nor
+        // continued leaves the page waiting until it times out.
+        const body = existsSync(requestFilePath)
+          ? await fs.readFile(requestFilePath).catch((error: unknown) => {
+              console.error(`Cannot read ${requestFilePath}`, error);
+              return undefined;
+            })
+          : undefined;
+        if (body) {
+          return interceptedRequest.respond({ body });
         }
       }
       interceptedRequest.continue();
@@ -76,17 +84,20 @@ export const htmlToPdf = async (
   } catch (error) {
     return { error };
   } finally {
-    const page = await pagePromise;
+    // `pagePromise` rejects when the page could never be opened; awaiting it
+    // outside this try would throw out of the finally block and leak the
+    // browser along with the original error.
     try {
+      const page = await pagePromise;
       await page?.close();
-    } finally {
-      pagePromise = undefined;
+    } catch (error) {
+      console.error('Cannot close page', error);
     }
     if (closeBrowser) {
       try {
         await browser?.close();
       } catch (error) {
-        console.error(error);
+        console.error('Cannot close browser', error);
       }
     }
   }

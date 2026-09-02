@@ -5,6 +5,13 @@ exports[`createStyleArray 1`] = `
   [
     "*",
     {
+      "--mock-variable-border-bottom-color": "initial",
+      "--mock-variable-border-bottom-width": "initial",
+      "--mock-variable-margin-bottom": "initial",
+      "--mock-variable-margin-left": "initial",
+      "--mock-variable-margin-right": "initial",
+      "--mock-variable-margin-top": "initial",
+      "--mock-variable-padding-bottom": "initial",
       "border-bottom-color": "var(--mock-variable-border-bottom-color, unset)",
       "border-bottom-width": "var(--mock-variable-border-bottom-width, 0)",
       "borderStyle": "solid",
@@ -50,7 +57,7 @@ exports[`createStyleArray 1`] = `
     },
   ],
   [
-    ":where(p, h1, h2, h3, h4, h5, h6, li)",
+    ":where(p, h1, h2, h3, h4, h5, h6, li, pre, blockquote)",
     {
       "display": "flow-root",
       "marginBottom": "var(--mock-variable-margin-bottom, 0)",
@@ -66,6 +73,84 @@ exports[`createStyleArray 1`] = `
     },
   ],
   [
+    ":where(h1)",
+    {
+      "--mock-variable-font-size": "32px",
+      "--mock-variable-font-weight": "bold",
+      "--mock-variable-margin-bottom": "21.44px",
+      "--mock-variable-margin-top": "21.44px",
+    },
+  ],
+  [
+    ":where(h2)",
+    {
+      "--mock-variable-font-size": "24px",
+      "--mock-variable-font-weight": "bold",
+      "--mock-variable-margin-bottom": "19.92px",
+      "--mock-variable-margin-top": "19.92px",
+    },
+  ],
+  [
+    ":where(h3)",
+    {
+      "--mock-variable-font-size": "18.72px",
+      "--mock-variable-font-weight": "bold",
+      "--mock-variable-margin-bottom": "18.72px",
+      "--mock-variable-margin-top": "18.72px",
+    },
+  ],
+  [
+    ":where(h4)",
+    {
+      "--mock-variable-font-size": "16px",
+      "--mock-variable-font-weight": "bold",
+      "--mock-variable-margin-bottom": "21.28px",
+      "--mock-variable-margin-top": "21.28px",
+    },
+  ],
+  [
+    ":where(h5)",
+    {
+      "--mock-variable-font-size": "13.28px",
+      "--mock-variable-font-weight": "bold",
+      "--mock-variable-margin-bottom": "22.18px",
+      "--mock-variable-margin-top": "22.18px",
+    },
+  ],
+  [
+    ":where(h6)",
+    {
+      "--mock-variable-font-size": "10.72px",
+      "--mock-variable-font-weight": "bold",
+      "--mock-variable-margin-bottom": "24.98px",
+      "--mock-variable-margin-top": "24.98px",
+    },
+  ],
+  [
+    ":where(blockquote)",
+    {
+      "--mock-variable-margin-bottom": "16px",
+      "--mock-variable-margin-left": "40px",
+      "--mock-variable-margin-right": "40px",
+      "--mock-variable-margin-top": "16px",
+    },
+  ],
+  [
+    ":where(pre)",
+    {
+      "--mock-variable-font-family": "monospace",
+      "--mock-variable-margin-bottom": "16px",
+      "--mock-variable-margin-top": "16px",
+      "--mock-variable-white-space": "pre",
+    },
+  ],
+  [
+    ":where(code)",
+    {
+      "--mock-variable-font-family": "monospace",
+    },
+  ],
+  [
     ":where(.mock-class-name-heading-1), :where(h1)",
     {
       "--mock-variable-break-after": "avoid",
@@ -78,7 +163,7 @@ exports[`createStyleArray 1`] = `
     },
   ],
   [
-    ":where(.mock-class-name-hyperlink), :where(a)",
+    ":where(.mock-class-name-hyperlink), :where(a[href])",
     {
       "--mock-variable-color": "#ff00ff",
     },
@@ -119,6 +204,13 @@ exports[`createStyleString 1`] = `
 "* {
   border-width: 0;
   border-style: solid;
+  --mock-variable-padding-bottom: initial;
+  --mock-variable-border-bottom-width: initial;
+  --mock-variable-border-bottom-color: initial;
+  --mock-variable-margin-top: initial;
+  --mock-variable-margin-right: initial;
+  --mock-variable-margin-bottom: initial;
+  --mock-variable-margin-left: initial;
   break-inside: var(--mock-variable-break-inside, unset);
   break-after: var(--mock-variable-break-after, unset);
   text-align: var(--mock-variable-text-align, unset);
@@ -148,7 +240,7 @@ exports[`createStyleString 1`] = `
 :where(s) {
   text-decoration: line-through;
 }
-:where(p, h1, h2, h3, h4, h5, h6, li) {
+:where(p, h1, h2, h3, h4, h5, h6, li, pre, blockquote) {
   margin-top: var(--mock-variable-margin-top, 0);
   margin-right: var(--mock-variable-margin-right, 0);
   margin-bottom: var(--mock-variable-margin-bottom, 0);
@@ -157,6 +249,57 @@ exports[`createStyleString 1`] = `
 }
 :where(li) {
   display: list-item;
+}
+:where(h1) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 32px;
+  --mock-variable-margin-top: 21.44px;
+  --mock-variable-margin-bottom: 21.44px;
+}
+:where(h2) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 24px;
+  --mock-variable-margin-top: 19.92px;
+  --mock-variable-margin-bottom: 19.92px;
+}
+:where(h3) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 18.72px;
+  --mock-variable-margin-top: 18.72px;
+  --mock-variable-margin-bottom: 18.72px;
+}
+:where(h4) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 16px;
+  --mock-variable-margin-top: 21.28px;
+  --mock-variable-margin-bottom: 21.28px;
+}
+:where(h5) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 13.28px;
+  --mock-variable-margin-top: 22.18px;
+  --mock-variable-margin-bottom: 22.18px;
+}
+:where(h6) {
+  --mock-variable-font-weight: bold;
+  --mock-variable-font-size: 10.72px;
+  --mock-variable-margin-top: 24.98px;
+  --mock-variable-margin-bottom: 24.98px;
+}
+:where(blockquote) {
+  --mock-variable-margin-top: 16px;
+  --mock-variable-margin-right: 40px;
+  --mock-variable-margin-bottom: 16px;
+  --mock-variable-margin-left: 40px;
+}
+:where(pre) {
+  --mock-variable-font-family: monospace;
+  --mock-variable-margin-top: 16px;
+  --mock-variable-margin-bottom: 16px;
+  --mock-variable-white-space: pre;
+}
+:where(code) {
+  --mock-variable-font-family: monospace;
 }
 :where(.mock-class-name-heading-1), :where(h1) {
   --mock-variable-break-inside: avoid;
@@ -167,7 +310,7 @@ exports[`createStyleString 1`] = `
   --mock-variable-font-family: Merriweather;
   --mock-variable-color: #ff00ff;
 }
-:where(.mock-class-name-hyperlink), :where(a) {
+:where(.mock-class-name-hyperlink), :where(a[href]) {
   --mock-variable-color: #ff00ff;
 }
 :where(.mock-class-name-mock-paragraph-variant) {

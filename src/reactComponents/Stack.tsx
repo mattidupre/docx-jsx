@@ -1,5 +1,5 @@
 import { type ReactNode, useMemo } from 'react';
-import { merge, omit } from 'lodash';
+import { merge } from 'lodash';
 import { assignStackOptions, mapLayoutKeys } from '../entities';
 import type { StackOptions, LayoutOptions, StackConfig } from '../entities';
 import { ReactStackContext } from './entities';
@@ -18,8 +18,10 @@ export function Stack({
 }: StackProps) {
   const { continuous: isContinuous } = options;
 
+  // `layouts` is destructured out of the props above, so `options` never
+  // carries it into the stack config.
   const stackConfig = useMemo(
-    () => omit(assignStackOptions({}, options), ['layouts']) as StackConfig,
+    () => assignStackOptions({}, options) satisfies StackConfig,
     [options],
   );
 

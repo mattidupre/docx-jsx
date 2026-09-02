@@ -3,7 +3,7 @@ import { InternalElement } from './InternalElement';
 
 export function PageNumber() {
   if (useEnvironment({ disableAssert: true }).documentType === 'web') {
-    console.warn('PageCount will be ignored in web output.');
+    console.warn('PageNumber will be ignored in web output.');
   }
 
   return (
