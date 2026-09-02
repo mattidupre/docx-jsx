@@ -90,7 +90,7 @@ export const decodeDataAttributes = (
       let data: JsonValue;
       try {
         data = JSON.parse(decodeURI(value));
-      } catch (err) {
+      } catch {
         data = value;
       }
       result[camelCase(kebabKey.slice(dataPrefix.length))] = data;

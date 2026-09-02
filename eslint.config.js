@@ -1,12 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defineFlatConfig } from 'eslint-define-config';
+import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 
-// @ts-expect-error
-import typescriptParser from '@typescript-eslint/parser';
+import tseslint from 'typescript-eslint';
 
-import typescriptPlugin from '@typescript-eslint/eslint-plugin';
 // @ts-expect-error
 import importPlugin from 'eslint-plugin-import';
 import reactPlugin from 'eslint-plugin-react';
@@ -20,35 +18,38 @@ const GLOBS_ALL = EXTENSIONS_ALL.map((ext) => `src/**/*.${ext}`);
 
 const TSCONFIG_PATH = path.join(ROOT_DIR, 'tsconfig.json');
 
-export default defineFlatConfig([
+export default defineConfig([
   {
     files: GLOBS_ALL,
     plugins: {
       import: importPlugin,
-      '@typescript-eslint': typescriptPlugin,
+      '@typescript-eslint': tseslint.plugin,
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
     },
     linterOptions: {
-      reportUnusedDisableDirectives: true,
+      reportUnusedDisableDirectives: 'warn',
     },
     languageOptions: {
       sourceType: 'module',
       ecmaVersion: 'latest',
-      parser: typescriptParser,
+      parser: tseslint.parser,
+      globals: {
+        JSX: true,
+        ...globals.node,
+      },
       parserOptions: {
-        parserOptions: {
-          ecmaFeatures: { modules: true },
-          project: TSCONFIG_PATH,
-        },
-        globals: {
-          JSX: true,
-          ...globals.node,
-        },
+        ecmaFeatures: { modules: true },
+        projectService: true,
+        tsconfigRootDir: ROOT_DIR,
       },
     },
     settings: {
-      'import/parsers': { ['@typescript-eslint/parser']: EXTENSIONS_ALL },
+      // `import/parsers` is deliberately absent: it names a module for
+      // eslint-plugin-import to `require()` itself, and `@typescript-eslint/parser`
+      // is no longer resolvable now that the unified `typescript-eslint` package
+      // owns it. Under flat config the plugin falls back to
+      // `languageOptions.parser`, which is that same parser.
       'import/resolver': {
         typescript: { project: TSCONFIG_PATH },
         node: {
@@ -61,7 +62,7 @@ export default defineFlatConfig([
       },
     },
     rules: {
-      ...typescriptPlugin.configs.recommended.rules,
+      ...tseslint.plugin.configs.recommended.rules,
       '@typescript-eslint/no-unnecessary-type-constraint': 'off',
       '@typescript-eslint/no-import-type-side-effects': 'error',
       '@typescript-eslint/no-unused-vars': 'warn',
@@ -75,7 +76,12 @@ export default defineFlatConfig([
       ...reactPlugin.configs.recommended.rules,
       'react/react-in-jsx-scope': 'off',
 
-      ...reactHooksPlugin.configs.recommended.rules,
+      // Listed explicitly rather than spread from
+      // `reactHooksPlugin.configs.recommended.rules`: v7 folded the whole React
+      // Compiler ruleset (`refs`, `globals`, `purity`, `set-state-in-effect`,
+      // …) into `recommended`, which is a new set of rule decisions rather than
+      // the two this project opted into.
+      'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
 
       ...importPlugin.configs.recommended.rules,
