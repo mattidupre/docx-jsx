@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { createMockPrefixesConfig } from '../fixtures';
 import { ContentProvider } from './ContentProvider';
 import { List, ListItem } from './List';
