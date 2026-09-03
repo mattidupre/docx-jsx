@@ -30,7 +30,7 @@
     "@storybook/react-vite": "^10.6.0",
     "@types/hast": "^3.0.5",
     "@types/lodash": "^4.17.25",
-    "@types/node": "^24.13.3",
+    "@types/node": "^26.4.1",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",
     "@types/react": "~18.2.34",

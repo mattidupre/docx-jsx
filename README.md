@@ -28,8 +28,7 @@ pnpm add matti-docs
 ```
 
 Node 22.12 or newer (`engines.node`). The floor is the one `puppeteer-core` 25
-imposes. Development runs on Node 24, the current LTS, and `.nvmrc` pins that
-major.
+imposes. Development runs on Node 26, and `.nvmrc` pins that major.
 
 Peer dependencies (all declared optional, so a consumer that only renders DOCX
 on a server does not have to install the DOM half):
@@ -426,8 +425,7 @@ Known limits of the pipeline:
 
 ## Development
 
-Node 24 (the current LTS) for development: `.nvmrc` pins the major, and
-`engines.node` records the `>=22.12.0` floor the package itself needs. Only the
+Node 26 for development: `.nvmrc` pins the major, and `engines.node` records the `>=22.12.0` floor the package itself needs. Only the
 `.nvmrc` version is exercised by the test suite.
 
 ```sh
