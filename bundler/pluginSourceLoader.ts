@@ -5,7 +5,7 @@ import jsonPlugin from '@rollup/plugin-json';
 import { optimizeLodashImports } from '@optimize-lodash/rollup-plugin';
 import pluginTerser from '@rollup/plugin-terser';
 import pluginCleanup from 'rollup-plugin-cleanup';
-import pluginSourceLoader from './rollupPluginSourceLoader';
+import pluginSourceLoader from './rollupPluginSourceLoader.ts';
 
 export default () =>
   pluginSourceLoader({

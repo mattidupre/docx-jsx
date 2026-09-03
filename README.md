@@ -27,6 +27,9 @@ Two ideas hold it together:
 pnpm add matti-docs
 ```
 
+Node 22.12 or newer (`engines.node`). The floor is the one `puppeteer-core` 25
+imposes; this repository develops on 22.14 and pins the major in `.nvmrc`.
+
 Peer dependencies (all declared optional, so a consumer that only renders DOCX
 on a server does not have to install the DOM half):
 
@@ -355,9 +358,11 @@ pnpm exec vitest run      # one pass
 pnpm test:coverage        # v8 coverage over all of src, reported on failure too
 pnpm test:visual          # the visual regression suite only
 pnpm test:visual:update   # rewrite every image baseline
-pnpm typecheck            # tsc --noEmit
-pnpm lint                 # eslint ./src
+pnpm typecheck            # tsc --noEmit, on TypeScript 7
+pnpm lint                 # eslint ./src, on ESLint 10
 ```
+
+Both of those are set up in [Type checking and linting](#type-checking-and-linting).
 
 Chrome must be reachable (see above) for the PDF, DOM and visual suites. Every
 test file that launches Chrome shares one browser and closes it in `afterAll`.
@@ -420,12 +425,74 @@ Known limits of the pipeline:
 
 ## Development
 
+Node 22 — `.nvmrc` pins the major and `engines.node` records the `>=22.12.0`
+floor.
+
 ```sh
 pnpm build        # clean, vite build, emit types, then link:push
 pnpm dev          # the same, on watch via nodemon
+pnpm build:src    # vite build only
+pnpm build:types  # declaration emit only
 pnpm storybook    # storybook dev server (STORYBOOK_PORT, default 3000)
 pnpm link:push    # clean-publish into ./publish and `yalc push` it
 ```
 
+`vite.config.ts` builds the library in lib mode, ESM and CJS, one chunk set per
+entry point. Which modules stay unbundled is declared in that config:
+`build.rolldownOptions.external` reads `package.json` and externalises every
+name in `dependencies` and `peerDependencies` — bare and subpath alike, so
+`lodash/merge` and `react/jsx-runtime` are covered — plus every Node builtin
+with and without the `node:` prefix. `devDependencies` are deliberately absent,
+so build-time-only code is bundled. Adding a runtime dependency therefore needs
+no config change. (This replaces `rollup-plugin-node-externals`, whose v9
+requires Node 24.)
+
+`bundler/` holds the `?source` loader. An import whose specifier ends in
+`?source` — `src/parsers/script/htmlToScript.ts` imports `../dom?source` — is
+replaced by the fully bundled, minified CJS of that module as a string literal,
+which `reactToScript` and `reactToPdf` evaluate inside the page. The nested
+bundle runs once per output format; a `load` hook filter keeps Rolldown from
+calling into the plugin for every other module in the graph.
+
 `src/demo/` holds full documents built to `dist-demo/` in every target;
 `src/demo.test.ts` runs that build and asserts nothing errored.
+
+### Type checking and linting
+
+TypeScript is installed twice, because TypeScript 7 is the native compiler and
+ships no JavaScript compiler API:
+
+- `typescript-native` is an alias for the real `typescript` package (7.x). It
+  owns the `tsc` binary, so `pnpm typecheck` and `pnpm build:types` compile with
+  TypeScript 7.
+- `typescript` is an alias for `@typescript/typescript6`, Microsoft's
+  side-by-side release of the 6.x JavaScript API. Everything that resolves
+  `typescript` — typescript-eslint, Storybook's docgen, an editor's tsserver —
+  gets that API, and typescript-eslint's `typescript >=4.8.4 <6.1.0` peer range
+  is satisfied. Its binary is `tsc6`, so it never shadows `tsc`.
+
+Nothing in `.vscode/settings.json` selects a compiler, so an editor resolves
+`typescript` and keeps using the 6.x language service while the published
+`dist/*.d.ts` come from 7. The declaration output of the two agrees except for
+quoting (`'a'` against `"a"`), the order of union members, and a redundant
+`| undefined` on optional properties that 7 omits.
+
+Linting is ESLint 10 flat config (`eslint.config.js`) with `typescript-eslint`,
+`eslint-plugin-react`, `eslint-plugin-react-hooks` and
+`eslint-plugin-import-x` — the fork of `eslint-plugin-import` that runs on
+ESLint 10, where the original calls the removed `context.parserOptions`. Every
+rule kept its name and severity under the `import-x/` prefix. Two settings carry
+weight:
+
+- `import-x/extensions` lists the TypeScript extensions. Left at the default the
+  plugin follows only `.js`/`.mjs`/`.cjs`, which is why `no-cycle`, `default`
+  and `export` used to analyse nothing here.
+- `import-x/resolver-next` runs `createTypeScriptImportResolver` and import-x's
+  own node resolver, each wrapped so a specifier carrying a bundler query
+  (`../dom?source`) is reported unresolved rather than silently resolving to
+  `../dom`, whose exports are unrelated. `import-x/no-unresolved` exempts that
+  form.
+
+`react-hooks` stays limited to `rules-of-hooks` and `exhaustive-deps`: the React
+Compiler rules that v7 folded into `recommended` are a separate decision and are
+not enabled.

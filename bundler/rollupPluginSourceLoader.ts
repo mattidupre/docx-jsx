@@ -13,6 +13,13 @@ const PLUGIN_NAME = 'bundled-source-loader';
 
 const LOADER_QUERY = '?source';
 
+/**
+ * `LOADER_QUERY` as a hook filter. Rollup 4.38+ and Rolldown use it to skip the
+ * `load` handler for ids that cannot match, instead of calling into JavaScript
+ * once per module in the graph.
+ */
+const LOADER_QUERY_FILTER = /\?source$/;
+
 const META_KEY = `is-${PLUGIN_NAME}`;
 
 const getInlineBase = (id: string) =>
@@ -72,44 +79,50 @@ export default function pluginSourceLoader({
       };
     },
 
-    async load(id) {
-      const baseId = getInlineBase(id);
+    load: {
+      filter: { id: LOADER_QUERY_FILTER },
 
-      if (!baseId) {
-        return null;
-      }
+      // The `getInlineBase` guard stays as a fallback for any host that
+      // ignores the filter and calls the handler for every module.
+      async handler(id) {
+        const baseId = getInlineBase(id);
 
-      this.addWatchFile(baseId);
-
-      const bundle = await rollup({
-        ...rollupOptions,
-        cache,
-        input: baseId, // full path resolved in resolveId
-        plugins,
-      });
-
-      if (currentInputOptions.cache !== false) {
-        cache = bundle.cache;
-      }
-
-      builds.set(id, bundle);
-
-      const result = await bundle.generate(rollupOptions?.output ?? {});
-
-      if (result.output.length !== 1) {
-        this.warn(`Invalid output for entry ${id}`);
-        return 'export default undefined;';
-      }
-
-      const { code, moduleIds } = result.output[0];
-
-      for (const moduleId of moduleIds) {
-        if (this.getModuleInfo(moduleId)) {
-          this.addWatchFile(moduleId);
+        if (!baseId) {
+          return null;
         }
-      }
 
-      return `export default ${JSON.stringify(code)};`;
+        this.addWatchFile(baseId);
+
+        const bundle = await rollup({
+          ...rollupOptions,
+          cache,
+          input: baseId, // full path resolved in resolveId
+          plugins,
+        });
+
+        if (currentInputOptions.cache !== false) {
+          cache = bundle.cache;
+        }
+
+        builds.set(id, bundle);
+
+        const result = await bundle.generate(rollupOptions?.output ?? {});
+
+        if (result.output.length !== 1) {
+          this.warn(`Invalid output for entry ${id}`);
+          return 'export default undefined;';
+        }
+
+        const { code, moduleIds } = result.output[0];
+
+        for (const moduleId of moduleIds) {
+          if (this.getModuleInfo(moduleId)) {
+            this.addWatchFile(moduleId);
+          }
+        }
+
+        return `export default ${JSON.stringify(code)};`;
+      },
     },
   });
 

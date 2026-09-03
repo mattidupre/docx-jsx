@@ -3,6 +3,9 @@
   "name": "matti-docs",
   "version": "0.0.0",
   "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "files": [
     "dist/",
     "src/",
@@ -24,7 +27,6 @@
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-terser": "^1.0.0",
-    "@rollup/plugin-typescript": "^12.3.0",
     "@storybook/react-vite": "^10.6.0",
     "@types/hast": "^3.0.5",
     "@types/lodash": "^4.17.25",
@@ -33,24 +35,19 @@
     "@types/pngjs": "^6.0.5",
     "@types/react": "~18.2.34",
     "@types/react-dom": "~18.2.14",
-    "@types/react-reconciler": "^0.28.6",
-    "@types/uuid": "^9.0.6",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "4.1.11",
-    "clean-publish": "^4.2.0",
-    "concurrently": "^8.2.2",
+    "clean-publish": "^7.1.0",
     "docx-preview": "^0.4.0",
-    "dotenv-cli": "^7.3.0",
+    "dotenv-cli": "^11.0.0",
     "esbuild": "^0.28.2",
-    "eslint": "^9.39.5",
+    "eslint": "^10.9.1",
     "eslint-import-resolver-typescript": "^4.4.5",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-prettier": "^5.5.6",
+    "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "fast-xml-parser": "^5.11.1",
     "globals": "^17.12.0",
-    "jest-extended": "^4.0.2",
     "jszip": "^3.10.1",
     "nodemon": "^3.1.14",
     "pdfjs-dist": "^6.3.289",
@@ -60,11 +57,11 @@
     "rollup": "^4.63.1",
     "rollup-plugin-cleanup": "^3.2.1",
     "rollup-plugin-esbuild": "^6.2.1",
-    "rollup-plugin-node-externals": "^8.1.2",
     "storybook": "^10.6.0",
     "type-fest": "^5.9.0",
-    "typescript": "^6.0.3",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.69.0",
+    "typescript-native": "npm:typescript@^7.0.2",
     "vite": "^8.2.2",
     "vite-node": "^6.0.0",
     "vitest": "^4.1.11",
@@ -97,15 +94,13 @@
   "dependencies": {
     "colorjs.io": "0.7.1",
     "docx": "^9.7.1",
-    "es-dirname": "^1.0.1",
     "hast-util-from-html": "^2.0.1",
     "hast-util-from-html-isomorphic": "^2.0.0",
     "hast-util-to-dom": "^4.0.0",
     "hast-util-to-html": "^9.0.0",
     "lodash": "^4.18.1",
     "pagedjs": "^0.4.3",
-    "puppeteer-core": "25.9",
-    "uuid": "^14.0.2"
+    "puppeteer-core": "25.9"
   },
   "scripts": {
     "clean": "rm -rf dist/*",
@@ -122,6 +117,14 @@
     "lint": "eslint ./src",
     "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push publish && rm -rf ./publish",
     "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
+  },
+  "pnpm": {
+    "updateConfig": {
+      "ignoreDependencies": [
+        "@types/react",
+        "@types/react-dom"
+      ]
+    }
   },
   "nodemonConfig": {
     "ext": "ts,js,tsx,jsx,json,css",

@@ -1,10 +1,46 @@
 /// <reference types="vitest/config" />
 
+import { readFileSync } from 'node:fs';
+import { builtinModules } from 'node:module';
 import { defineConfig } from 'vite';
 import { type PluginOption } from 'vite';
-import pluginSourceLoader from './bundler/pluginSourceLoader';
-import pluginNodeExternals from 'rollup-plugin-node-externals';
+import pluginSourceLoader from './bundler/pluginSourceLoader.ts';
 import { optimizeLodashImports as pluginLodash } from '@optimize-lodash/rollup-plugin';
+
+type PackageManifest = {
+  dependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+};
+
+const manifest = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+) as PackageManifest;
+
+/**
+ * Everything the published package expects the consumer to provide: its
+ * `dependencies` and `peerDependencies`, plus every Node builtin in both the
+ * bare and the `node:`-prefixed spelling. `devDependencies` are absent on
+ * purpose so build-time-only code keeps getting bundled.
+ */
+const EXTERNAL_MODULES = new Set([
+  ...Object.keys(manifest.dependencies ?? {}),
+  ...Object.keys(manifest.peerDependencies ?? {}),
+  ...builtinModules,
+  ...builtinModules.map((name) => `node:${name}`),
+]);
+
+/** `lodash/merge.js` -> `lodash`, `@scope/name/sub` -> `@scope/name`. */
+const toPackageName = (source: string) => {
+  const segments = source.split('/');
+  return source.startsWith('@') ? segments.slice(0, 2).join('/') : segments[0];
+};
+
+/**
+ * Lib-mode externals, replacing rollup-plugin-node-externals: its v9 needs Node
+ * 24 and `RegExp.escape`, and this project's floor is Node 22.
+ */
+const isExternalModule = (source: string) =>
+  EXTERNAL_MODULES.has(source) || EXTERNAL_MODULES.has(toPackageName(source));
 
 export default defineConfig({
   build: {
@@ -20,16 +56,14 @@ export default defineConfig({
         'src/utils.ts',
       ],
     },
+    rolldownOptions: {
+      external: isExternalModule,
+    },
   },
-  plugins: [
-    { ...pluginNodeExternals(), enforce: 'pre' } as PluginOption,
-    pluginSourceLoader() as PluginOption,
-    pluginLodash(),
-  ],
+  plugins: [pluginSourceLoader() as PluginOption, pluginLodash()],
   test: {
     include: ['./src/**/*.test.{js,jsx,ts,tsx}'],
     // includeSource: ['./src/**/*.{js,jsx,ts,tsx}'],
-    setupFiles: ['./testSetup.js'],
     // Launching Chrome and paginating the mock document is slow.
     testTimeout: 60_000,
     hookTimeout: 60_000,

@@ -1,4 +1,4 @@
-import puppeteer, { type Browser } from 'puppeteer-core';
+import { launch, type Browser } from 'puppeteer-core';
 import { PUPPETEER_OPTIONS } from './puppeteerOptions';
 
 /**
@@ -8,7 +8,7 @@ import { PUPPETEER_OPTIONS } from './puppeteerOptions';
  * process outlives the run.
  */
 export const launchTestBrowser = (): Promise<Browser> =>
-  puppeteer.launch(PUPPETEER_OPTIONS);
+  launch(PUPPETEER_OPTIONS);
 
 /**
  * `browser.close()` resolves as soon as the devtools connection drops. When
