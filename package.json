@@ -1,17 +1,25 @@
 {
   "type": "module",
-  "name": "matti-docs",
-  "version": "0.0.0",
+  "name": "@mattidupre/matti-docs",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattidupre/docx-jsx.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "license": "UNLICENSED",
   "engines": {
     "node": ">=22.12.0"
   },
   "files": [
     "dist/",
-    "src/",
-    "bundler/",
-    "vite.config.*",
-    "tsconfig.json"
+    "!dist/**/*.test.d.ts",
+    "!dist/**/*.stories.d.ts",
+    "!dist/demo/",
+    "!dist/fixtures/",
+    "!dist/visual/"
   ],
   "exports": {
     "./*": {
@@ -53,6 +61,7 @@
     "pdfjs-dist": "^6.3.289",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
+    "pnpm-sync": "0.3.5",
     "prettier": "^3.9.6",
     "rollup": "^4.63.1",
     "rollup-plugin-cleanup": "^3.2.1",
@@ -64,8 +73,7 @@
     "typescript-native": "npm:typescript@^7.0.2",
     "vite": "^8.2.2",
     "vite-node": "^6.0.0",
-    "vitest": "^4.1.11",
-    "yalc": "1.0.0-pre.53"
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "@types/react": "18.x",
@@ -115,8 +123,9 @@
     "test:visual:update": "UPDATE_SNAPSHOTS=1 vitest run src/visual",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ./src",
-    "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push publish && rm -rf ./publish",
-    "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
+    "link:push": "[ ! -f node_modules/.pnpm-sync.json ] || pnpm-sync copy",
+    "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'",
+    "release": "scripts/release.sh"
   },
   "pnpm": {
     "updateConfig": {
