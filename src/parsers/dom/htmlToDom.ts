@@ -234,12 +234,13 @@ export const htmlToDom = async (
         // Note that contentElement is NOT cloned. It will be detached from
         // pager. A page can hold content from several continuous stacks; all
         // of it is kept, in document order, inside the template of the stack
-        // that starts the page.
+        // that starts the page. Each stack keeps its own element, as it had
+        // while pagedjs measured it: unwrapping it changes which selectors
+        // match (`:first-child`, the stack's class and data attributes), so
+        // the page would no longer be the height pagedjs filled.
         extendedTemplates.push(
           template.extend({
-            content: contentElement.querySelectorAll(
-              `[${DATA_STACK_INDEX}] > *`,
-            ),
+            content: contentElement.querySelectorAll(`[${DATA_STACK_INDEX}]`),
           }),
         );
       },
