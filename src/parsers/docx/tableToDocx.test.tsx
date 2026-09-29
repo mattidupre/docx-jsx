@@ -112,7 +112,8 @@ describe('Table', () => {
     );
 
     const [table] = tables(docx.document);
-    expect(widths(findAll(table, 'w:tblW'), 'w:tblW')).toEqual(['50%']);
+    // docx writes a percentage in fiftieths of a percent: 2500 is 50%.
+    expect(widths(findAll(table, 'w:tblW'), 'w:tblW')).toEqual(['2500']);
     expect(
       findAll(table, 'w:tblW').map((node) => attribute(node, 'w:type')),
     ).toEqual(['pct']);
@@ -389,7 +390,7 @@ describe('TableCell', () => {
     );
 
     const [row] = rows(tables(docx.document)[0]);
-    expect(widths(row, 'w:tcW')).toEqual(['1440', '25%']);
+    expect(widths(row, 'w:tcW')).toEqual(['1440', '1250']);
   });
 
   it('wraps bare text in a paragraph and keeps blocks as they are', async () => {
