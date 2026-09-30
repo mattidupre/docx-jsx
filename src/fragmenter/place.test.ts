@@ -4,12 +4,13 @@ import {
   unitCountOf,
   type BoundaryKind,
   type BoxSize,
+  type Checkpoint,
   type MeasuredBlock,
   type MeasuredRegion,
   type MeasuredStack,
   type PlacedPage,
 } from './model';
-import { placePages, type PlacementInput } from './place';
+import { MASONRY_LOOKAHEAD, placePages, type PlacementInput } from './place';
 import type { FragmentationProfile } from './profile';
 import { resolveFragmentationProfile } from './profiles';
 
@@ -93,6 +94,7 @@ const toBlock = (
 ): MeasuredBlock => ({
   kind: 'text',
   region: undefined,
+  unit: undefined,
   height: 0,
   marginTop: 0,
   insetTop: 0,
@@ -434,6 +436,7 @@ describe('margins', () => {
       columnCount: 2,
       columnGap: 10,
       fill: 'auto',
+      masonry: undefined,
     };
     const blocks = Array.from({ length: 12 }, () =>
       atomic(10, { marginTop: 5, region }),
@@ -637,6 +640,7 @@ describe('columns', () => {
     columnCount: 2,
     columnGap: 10,
     fill,
+    masonry: undefined,
   });
   const lines = (count: number, region: MeasuredRegion) =>
     Array.from({ length: count }, () => atomic(10, { region }));
@@ -769,6 +773,283 @@ describe('checkpoints', () => {
       const resumed = run(stacks, { resumeFrom: serialized[pageIndex] });
       expect(describePages(resumed.pages)).toEqual(
         describePages(full.pages.slice(pageIndex)),
+      );
+    }
+  });
+});
+
+describe('masonry', () => {
+  const SEQUENTIAL: FragmentationOption = { columns: { fill: 'sequential' } };
+
+  /** A unit of one paragraph of that many lines, or of the blocks given. */
+  type UnitSpec = number | ReadonlyArray<BlockSpec>;
+
+  /** The blocks of a masonry region of `columnCount` columns. */
+  const masonry = (
+    specs: ReadonlyArray<UnitSpec>,
+    columnCount = 2,
+  ): Array<BlockSpec> => {
+    const region: MeasuredRegion = {
+      id: 0,
+      columnCount,
+      columnGap: 10,
+      fill: 'balance',
+      masonry: { unitCount: specs.length },
+    };
+    return specs.flatMap((spec, index) =>
+      (typeof spec === 'number' ? [text(spec)] : spec).map(
+        (block, blockIndex): BlockSpec => ({
+          ...block,
+          region,
+          unit: { index, opens: blockIndex === 0 },
+        }),
+      ),
+    );
+  };
+
+  /** The packed order as `unit:page.column`. */
+  const packed = ({ packedOrder }: ReturnType<typeof run>) =>
+    packedOrder.map(
+      ({ unit, pageIndex, columnIndex }) =>
+        `${unit}:${pageIndex}.${columnIndex}`,
+    );
+
+  /** Every column of every page, in reading order. */
+  const columnsOf = (pages: ReadonlyArray<PlacedPage>) =>
+    pages.flatMap((page) =>
+      page.items.flatMap((item) =>
+        item.kind === 'region' ? item.columns : [],
+      ),
+    );
+
+  test('packs each unit into the column that ends highest', () => {
+    const result = run([{ blocks: masonry([3, 5, 2, 4, 1]) }], {
+      profile: SEQUENTIAL,
+    });
+    expect(describePages(result.pages)).toEqual([
+      ['columns(0.0[0-3] 0.2[0-2] 0.3[0-4] | 0.1[0-5] 0.4[0-1])'],
+    ]);
+    // The packed order reads the columns top to bottom, left to right.
+    expect(packed(result)).toEqual([
+      '0:0.0',
+      '2:0.0',
+      '3:0.0',
+      '1:0.1',
+      '4:0.1',
+    ]);
+  });
+
+  test('packs a later unit that fits when the next one fits nowhere', () => {
+    const result = run([{ blocks: masonry([6, 6, 5, 3, 2]) }], {
+      profile: SEQUENTIAL,
+    });
+    expect(describePages(result.pages)).toEqual([
+      ['columns(0.0[0-6] 0.3[0-3] | 0.1[0-6] 0.4[0-2])'],
+      ['columns(0.2[0-5] | )'],
+    ]);
+    expect(packed(result)).toEqual([
+      '0:0.0',
+      '3:0.0',
+      '1:0.1',
+      '4:0.1',
+      '2:1.0',
+    ]);
+  });
+
+  test(`looks no more than ${MASONRY_LOOKAHEAD} units ahead`, () => {
+    const firstPageUnits = (between: number) =>
+      run(
+        [
+          {
+            blocks: masonry([
+              6,
+              6,
+              5,
+              ...Array.from({ length: between }, () => 5),
+              1,
+            ]),
+          },
+        ],
+        { profile: SEQUENTIAL },
+      )
+        .packedOrder.filter(({ pageIndex }) => pageIndex === 0)
+        .map(({ unit }) => unit);
+    expect(firstPageUnits(MASONRY_LOOKAHEAD - 1)).toEqual([
+      0,
+      3 + MASONRY_LOOKAHEAD - 1,
+      1,
+    ]);
+    expect(firstPageUnits(MASONRY_LOOKAHEAD)).toEqual([0, 1]);
+  });
+
+  test('splits a unit taller than a column as flow does, and carries it on at the top of the next page', () => {
+    const result = run([{ blocks: masonry([3, 25, 2]) }], {
+      profile: SEQUENTIAL,
+    });
+    expect(describePages(result.pages)).toEqual([
+      ['columns(0.0[0-3] 0.1[0-7] | 0.1[7-17])'],
+      ['columns(0.1[17-25] | 0.2[0-2])'],
+    ]);
+    expect(packed(result)).toEqual([
+      '0:0.0',
+      '1:0.0',
+      '1:0.1',
+      '1:1.0',
+      '2:1.1',
+    ]);
+  });
+
+  test('keeps orphans and widows inside a unit that splits', () => {
+    // One line would be left under the first unit, so the split unit starts
+    // in the next column, and it carries two lines to the next page.
+    const { pages } = run([{ blocks: masonry([9, 12]) }], {
+      profile: SEQUENTIAL,
+    });
+    expect(describePages(pages)).toEqual([
+      ['columns(0.0[0-9] | 0.1[0-10])'],
+      ['columns(0.1[10-12] | )'],
+    ]);
+  });
+
+  test('keeps a unit that keeps with the next one in its column', () => {
+    const pagesWith = (keepNext: boolean) =>
+      run([{ blocks: masonry([8, 7, [text(1, { keepNext })], 4]) }], {
+        profile: SEQUENTIAL,
+      }).pages;
+    expect(describePages(pagesWith(false))).toEqual([
+      ['columns(0.0[0-8] | 0.1[0-7] 0.2[0-1])'],
+      ['columns(0.3[0-4] | )'],
+    ]);
+    expect(describePages(pagesWith(true))).toEqual([
+      ['columns(0.0[0-8] | 0.1[0-7])'],
+      ['columns(0.2[0-1] 0.3[0-4] | )'],
+    ]);
+  });
+
+  test('balances the last page', () => {
+    const blocks = masonry([14]);
+    expect(describePages(run([{ blocks }]).pages)).toEqual([
+      ['columns(0.0[0-7] | 0.0[7-14])'],
+    ]);
+    expect(
+      describePages(run([{ blocks }], { profile: SEQUENTIAL }).pages),
+    ).toEqual([['columns(0.0[0-10] | 0.0[10-14])']]);
+    // Whole units packed into the shortest column already end close
+    // together; balancing them keeps their order.
+    const whole = masonry([2, 6, 2, 2, 1]);
+    expect(packed(run([{ blocks: whole }]))).toEqual(
+      packed(run([{ blocks: whole }], { profile: SEQUENTIAL })),
+    );
+  });
+
+  test('starts a new page at a unit that opens with a forced break, and packs nothing ahead of it', () => {
+    const result = run(
+      [{ blocks: masonry([6, 6, 5, [text(1, { breakBefore: 'page' })], 1]) }],
+      { profile: SEQUENTIAL },
+    );
+    expect(packed(result)).toEqual([
+      '0:0.0',
+      '1:0.1',
+      '2:1.0',
+      '3:2.0',
+      '4:2.1',
+    ]);
+  });
+
+  /** A deterministic pseudo-random sequence. */
+  const random = (seed: number) => () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+
+  const randomUnits = (seed: number): Array<UnitSpec> => {
+    const next = random(seed);
+    return Array.from({ length: 25 }, () =>
+      Array.from({ length: Math.floor(next() * 3) + 1 }, () => {
+        const flags: BlockSpec = {
+          keepNext: next() < 0.2,
+          keepLines: next() < 0.1,
+          marginTop: Math.floor(next() * 20),
+          marginBottom: Math.floor(next() * 20),
+        };
+        return next() < 0.2
+          ? atomic(Math.floor(next() * 120) + 1, flags)
+          : text(Math.floor(next() * 18) + 1, flags);
+      }),
+    );
+  };
+
+  test('is deterministic, places every line once and reads every unit on from column to column', () => {
+    for (let seed = 1; seed <= 30; seed += 1) {
+      const specs = randomUnits(seed);
+      for (const columnCount of [2, 3]) {
+        for (const profile of ['word', 'css'] as const) {
+          const stacks = [{ blocks: masonry(specs, columnCount) }];
+          const result = run(stacks, { profile });
+          expect(run(stacks, { profile })).toEqual(result);
+
+          // Every page places something.
+          for (const page of result.pages) {
+            expect(columnsOf([page]).flat().length).toBeGreaterThan(0);
+          }
+
+          // Every line or box of every block is placed exactly once.
+          const columns = columnsOf(result.pages);
+          const placed = columns
+            .flat()
+            .flatMap(({ block, from, to }) =>
+              Array.from(
+                { length: to - from },
+                (_value, offset) => `${block.index}:${from + offset}`,
+              ),
+            );
+          const expected = stacks[0].blocks.flatMap((spec, index) =>
+            Array.from(
+              { length: unitCountOf(toBlock(spec, 0, index)) },
+              (_value, unit) => `${index}:${unit}`,
+            ),
+          );
+          expect([...placed].sort()).toEqual([...expected].sort());
+
+          // A unit's pieces follow one another in reading order: it ends
+          // every column it carries on from and opens the one it goes on in,
+          // so it is never seen again once another unit came after it.
+          const filled = columns.filter((column) => column.length > 0);
+          const done = new Set<number>();
+          let current: undefined | number = undefined;
+          for (const placement of filled.flat()) {
+            const unit = placement.block.unit?.index;
+            if (unit !== current) {
+              expect(unit === undefined || done.has(unit)).toBe(false);
+              if (current !== undefined) {
+                done.add(current);
+              }
+              current = unit;
+            }
+          }
+        }
+      }
+    }
+  });
+
+  test('resuming from a page packs the same pages and the same order from there on', () => {
+    const stacks: Array<StackSpec> = [
+      { blocks: masonry(randomUnits(7)) },
+      { blocks: [text(5)], continuous: true },
+    ];
+    const full = run(stacks);
+    expect(full.pages.length).toBeGreaterThan(2);
+    const serialized: ReadonlyArray<Checkpoint> = JSON.parse(
+      JSON.stringify(full.checkpoints),
+    );
+    for (let pageIndex = 1; pageIndex < full.pages.length; pageIndex += 1) {
+      const checkpoint = serialized[pageIndex];
+      const resumed = run(stacks, { resumeFrom: checkpoint });
+      expect(describePages(resumed.pages)).toEqual(
+        describePages(full.pages.slice(pageIndex)),
+      );
+      expect(resumed.packedOrder).toEqual(
+        full.packedOrder.slice(checkpoint.packedCount),
       );
     }
   });

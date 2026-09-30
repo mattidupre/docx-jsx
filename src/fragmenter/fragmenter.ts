@@ -1,6 +1,6 @@
 import type { PageSize } from '../entities';
 import { measureStack, type MeasuredStackDom } from './measure';
-import type { BoxSize } from './model';
+import type { BoxSize, FragmentationLayout } from './model';
 import { placePages } from './place';
 import type { FragmentationProfile } from './profile';
 import { createFragmentationProfile } from './profiles';
@@ -92,11 +92,16 @@ export class Fragmenter {
     this.profile = profile;
   }
 
+  /**
+   * Paginates the stacks and renders every page. Resolves to the layout a
+   * target that cannot lay out needs to follow the pages: the packed order of
+   * masonry columns.
+   */
   async toPages({
     stacks,
     onPageStart,
     onPageRendered,
-  }: ToPagesOptions): Promise<void> {
+  }: ToPagesOptions): Promise<FragmentationLayout> {
     await loadFonts();
 
     const hostElement = document.createElement('div');
@@ -136,7 +141,7 @@ export class Fragmenter {
       };
 
       const stackDoms: Array<MeasuredStackDom> = [];
-      const { pages } = placePages({
+      const { pages, packedOrder } = placePages({
         profile: this.profile,
         stacks,
         measureStack: (stackIndex, size) => {
@@ -163,6 +168,17 @@ export class Fragmenter {
         });
         onPageRendered?.({ contentElement, pageIndex });
       });
+
+      return {
+        stackCount: stacks.length,
+        masonryStacks: stackDoms.flatMap((stackDom, stackIndex) => {
+          const masonry = stackDom.stack.blocks.find(
+            ({ region }) => region?.masonry,
+          )?.region?.masonry;
+          return masonry ? [{ stackIndex, unitCount: masonry.unitCount }] : [];
+        }),
+        packedOrder,
+      };
     } finally {
       hostElement.remove();
     }

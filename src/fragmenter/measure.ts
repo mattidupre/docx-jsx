@@ -1,4 +1,5 @@
 import {
+  COLUMNS_DATA_ATTRIBUTES,
   decodeElementData,
   isElementOfType,
   type ElementData,
@@ -511,8 +512,20 @@ export const measureStack = ({
           style.columnFill === 'auto' || style.columnFill === 'balance-all'
             ? style.columnFill
             : 'balance';
+        const masonry =
+          element.getAttribute(
+            COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill'),
+          ) === 'masonry'
+            ? { unitCount: Array.from(element.children).length }
+            : undefined;
         regionSource = element;
-        region = { id: regions.size, columnCount, columnGap, fill };
+        region = {
+          id: regions.size,
+          columnCount,
+          columnGap,
+          fill,
+          masonry,
+        };
         regions.set(region.id, element);
         measured.style.setProperty('column-count', 'auto');
         measured.style.setProperty(
@@ -529,6 +542,7 @@ export const measureStack = ({
     let pendingBreak: undefined | 'page' | 'column' = undefined;
     const ancestors: Array<StyledElement> = [];
     let currentRegion: undefined | MeasuredRegion = undefined;
+    let currentUnit: MeasuredBlock['unit'] = undefined;
 
     const addBreak = (value: undefined | 'page' | 'column') => {
       if (value === 'page' || (value === 'column' && pendingBreak !== 'page')) {
@@ -690,6 +704,7 @@ export const measureStack = ({
         index: drafts.length,
         kind: tableUnits.length > 0 || kind !== 'table' ? kind : 'atomic',
         region: currentRegion,
+        unit: currentUnit,
         height,
         marginTop: topEdges.margin,
         insetTop: topEdges.inset,
@@ -708,6 +723,9 @@ export const measureStack = ({
         trim,
       };
       pendingBreak = undefined;
+      if (currentUnit) {
+        currentUnit = { index: currentUnit.index, opens: false };
+      }
       keepGroup?.push(block);
       drafts.push({
         block,
@@ -766,8 +784,20 @@ export const measureStack = ({
         const group: undefined | Array<MeasuredBlock> = groupsChildren
           ? []
           : keepGroup;
-        for (const child of children) {
+        // Every element child of a masonry region is one unit; the index
+        // counts the children as the DOCX mapping does, all of them.
+        const masonry = source === regionSource && region?.masonry;
+        Array.from(source.children).forEach((child, childIndex) => {
+          if (!isStyledElement(child)) {
+            return;
+          }
+          if (masonry) {
+            currentUnit = { index: childIndex, opens: true };
+          }
           visit(child, group);
+        });
+        if (masonry) {
+          currentUnit = undefined;
         }
         currentRegion = previousRegion;
         ancestors.pop();

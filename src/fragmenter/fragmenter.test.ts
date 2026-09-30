@@ -7,7 +7,8 @@ import {
   createBrowserHarness,
   type BrowserHarness,
 } from '../fixtures/browserHarness';
-import type { UnitsSize } from '../entities';
+import { COLUMNS_DATA_ATTRIBUTES, type UnitsSize } from '../entities';
+import type { FragmentationLayout } from './model';
 import type * as fragmenterModule from './fragmenter';
 import type * as profilesModule from './profiles';
 
@@ -34,6 +35,7 @@ type FragmentedResult = {
   listStarts: Array<Array<number>>;
   /** Per page, where every `<p>` is drawn, from the top of the page. */
   paragraphs: Array<Array<{ top: number; height: number }>>;
+  layout: FragmentationLayout;
 };
 
 /**
@@ -87,7 +89,7 @@ describe('Fragmenter', () => {
         const paragraphs: FragmentedResult['paragraphs'] = [];
         const pageSizes: Array<{ width: UnitsSize; height: UnitsSize }> = [];
 
-        await new api.Fragmenter({
+        const layout = await new api.Fragmenter({
           profile: api.createFragmentationProfile(
             name === 'css' ? 'css' : 'word',
           ),
@@ -148,7 +150,15 @@ describe('Fragmenter', () => {
           },
         });
 
-        return { pages, starts, probeWidths, extents, listStarts, paragraphs };
+        return {
+          pages,
+          starts,
+          probeWidths,
+          extents,
+          listStarts,
+          paragraphs,
+          layout,
+        };
       },
       stacks,
       profileName,
@@ -322,6 +332,73 @@ describe('Fragmenter', () => {
     expect(word.paragraphs[0][1].top - word.paragraphs[0][0].top).toBeCloseTo(
       capHeight + 10,
     );
+  });
+
+  describe('masonry columns', () => {
+    /** Units of that many lines, ten of which fill a column. */
+    const masonry = (units: ReadonlyArray<[string, number]>) =>
+      `<div ${COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill')}="masonry" style="column-count:2;column-gap:20px">${units
+        .map(([name, count]) => `<div>${lines(name, count)}</div>`)
+        .join('')}</div>`;
+
+    it('renders the units in packed order, which is the DOM order', async () => {
+      const { pages, layout } = await fragment(
+        single(
+          masonry([
+            ['a', 3],
+            ['b', 5],
+            ['c', 2],
+            ['d', 4],
+            ['e', 1],
+          ]),
+        ),
+      );
+
+      // Each unit goes to the column that ends highest; the columns are then
+      // read top to bottom, left to right.
+      expect(pages).toEqual([
+        [
+          ...texts('a', 3),
+          ...texts('c', 2),
+          ...texts('d', 4),
+          ...texts('b', 5),
+          ...texts('e', 1),
+        ].join(''),
+      ]);
+      expect(layout).toEqual({
+        stackCount: 1,
+        masonryStacks: [{ stackIndex: 0, unitCount: 5 }],
+        packedOrder: [0, 2, 3, 1, 4].map((unit, index) => ({
+          stackIndex: 0,
+          unit,
+          pageIndex: 0,
+          columnIndex: index < 3 ? 0 : 1,
+        })),
+      });
+    });
+
+    it('splits a unit taller than a column and reads it on across pages', async () => {
+      const { pages, layout } = await fragment(
+        single(
+          masonry([
+            ['a', 3],
+            ['b', 25],
+            ['c', 2],
+          ]),
+        ),
+      );
+
+      expect(pages).toEqual([
+        [...texts('a', 3), ...texts('b', 17)].join(''),
+        [...texts('b', 25).slice(17), ...texts('c', 2)].join(''),
+      ]);
+      expect(
+        layout.packedOrder.map(
+          ({ unit, pageIndex, columnIndex }) =>
+            `${unit}:${pageIndex}.${columnIndex}`,
+        ),
+      ).toEqual(['0:0.0', '1:0.0', '1:0.1', '1:1.0', '1:1.1', '2:1.1']);
+    });
   });
 
   it('ends with a blank page after a trailing forced break', async () => {

@@ -12,6 +12,7 @@ import {
   type MeasuredBlock,
   type MeasuredRegion,
   type MeasuredStack,
+  type PackedUnit,
   type PageContext,
   type PageItem,
   type Piece,
@@ -51,6 +52,12 @@ export type PlacementResult = {
   pages: ReadonlyArray<PlacedPage>;
   /** The state at the start of every page, `checkpoints[i]` for page `i`. */
   checkpoints: ReadonlyArray<Checkpoint>;
+  /**
+   * Every masonry unit placed, in packed order: page by page, column by
+   * column, top to bottom. A resumed run lists those of its own pages, which
+   * follow the checkpoint's `packedCount` entries of the full run's.
+   */
+  packedOrder: ReadonlyArray<PackedUnit>;
 };
 
 type FillStop = 'end' | 'full' | 'forced-page' | 'forced-column' | 'region';
@@ -71,6 +78,12 @@ type Box = {
   mustProgress: boolean;
   /** Whether the page has content above the box, so a forced break applies. */
   hasContentAbove: boolean;
+  /**
+   * The bottom margin of the block right above the box, for a box that goes
+   * on below content in the same column: the first block's top margin
+   * combines with it as it would with a block placed in the box.
+   */
+  marginAbove?: number;
   context: Omit<PageContext, 'used'>;
 };
 
@@ -232,7 +245,7 @@ const fill = (
   const pieces = [...input];
   const placed: Array<Placement> = [];
   let used = 0;
-  let previousMarginBottom = 0;
+  let previousMarginBottom = box.marginAbove ?? 0;
   let index = 0;
   const contextNow = (): PageContext => ({ ...box.context, used });
   const stopWith = (stop: FillStop, rest: Array<Piece>): FillResult => ({
@@ -272,7 +285,7 @@ const fill = (
     const opening = from === 0;
     const collapsedMarginTop = !opening
       ? 0
-      : last
+      : last || box.marginAbove !== undefined
         ? combineMargins(profile, previousMarginBottom, block.marginTop)
         : box.atTop === undefined || profile.margins.keepAtTop[box.atTop]
           ? block.marginTop
@@ -435,6 +448,340 @@ const fillColumns = (
   return { columns, used, rest, forcedPage };
 };
 
+/**
+ * How many packing units after one that fits in no column are tried in its
+ * place, in source order, before the page ends. It bounds how far masonry
+ * moves a unit ahead of the ones before it.
+ */
+export const MASONRY_LOOKAHEAD = 8;
+
+type MasonryColumn = {
+  placed: Array<Placement>;
+  /** Where its last border box ends, from the top of the region. */
+  bottom: number;
+  /** The bottom margin below that border box. */
+  marginBottom: number;
+  /** Its last piece carries on at the top of the next column. */
+  sealed: boolean;
+};
+
+/** Whether a packing unit opens with a forced page break. */
+const opensWithPageBreak = (pieces: ReadonlyArray<Piece>): boolean =>
+  pieces[0]?.from === 0 && pieces[0].block.breakBefore === 'page';
+
+/** Whether a packing unit goes on with a unit begun on an earlier page. */
+const continuesUnit = (pieces: ReadonlyArray<Piece>): boolean =>
+  pieces[0] !== undefined &&
+  (pieces[0].from > 0 || pieces[0].block.unit?.opens === false);
+
+/** The piece without a forced break before it. */
+const withoutBreak = (piece: Piece): Piece =>
+  piece.block.breakBefore === undefined
+    ? piece
+    : { ...piece, block: { ...piece.block, breakBefore: undefined } };
+
+/**
+ * The packing units of a masonry region: its units (the pieces of one child
+ * of the region), with a unit that keeps with the next one (a heading, or a
+ * group marked keep-with-next) chained to it, so they move as one. Packing
+ * decides where columns end, so only a page break at the start of a unit is
+ * kept, and it starts a packing unit of its own.
+ */
+const packingUnitsOf = (
+  profile: FragmentationProfile,
+  pieces: ReadonlyArray<Piece>,
+  context: PageContext,
+): Array<Array<Piece>> => {
+  const units: Array<Array<Piece>> = [];
+  for (const piece of pieces) {
+    const unit = units.at(-1);
+    if (unit && unit[0].block.unit?.index === piece.block.unit?.index) {
+      unit.push(withoutBreak(piece));
+    } else {
+      units.push([
+        piece.block.breakBefore === 'column' ? withoutBreak(piece) : piece,
+      ]);
+    }
+  }
+  const packing: Array<Array<Piece>> = [];
+  units.forEach((unit, index) => {
+    const previous = units[index - 1]?.at(-1);
+    const chain = packing.at(-1);
+    if (
+      chain &&
+      previous &&
+      !opensWithPageBreak(unit) &&
+      keepsTogether(profile, previous.block, unit[0].block, context)
+    ) {
+      chain.push(...unit);
+    } else {
+      packing.push([...unit]);
+    }
+  });
+  return packing;
+};
+
+/**
+ * Packs the units of a masonry region into the columns of one page. The
+ * packing is greedy and deterministic:
+ * - the packing units are taken in source order, each into the column whose
+ *   content ends highest (the leftmost of equals) among those it fits in
+ *   whole;
+ * - when the next one fits in no column, the next {@link MASONRY_LOOKAHEAD}
+ *   are tried in its place, in order, and the first that fits is placed;
+ *   when none fits, the page ends;
+ * - a packing unit too tall for an empty column of a whole page splits as
+ *   flow does, under the page's rules: it starts below the last column with
+ *   content, and each piece that does not end it carries on at the top of the
+ *   next column, which is empty, so the unit reads on from column to column.
+ *   A column whose last piece carries on takes nothing more, and what does
+ *   not fit on the page goes on at the top of the next page's first column
+ *   before anything else is packed there.
+ *
+ * The columns are then read top to bottom, left to right: that is the packed
+ * order. A packing unit that starts with a forced page break waits for a new
+ * page, and nothing after it is packed ahead of it.
+ */
+const packMasonry = (
+  profile: FragmentationProfile,
+  pieces: ReadonlyArray<Piece>,
+  region: { stackIndex: number; region: MeasuredRegion },
+  height: number,
+  atTop: undefined | StartKind,
+  mustProgress: boolean,
+  hasContentAbove: boolean,
+  context: Omit<PageContext, 'used'>,
+): ColumnsResult => {
+  const columns: Array<MasonryColumn> = Array.from(
+    { length: region.region.columnCount },
+    () => ({ placed: [], bottom: 0, marginBottom: 0, sealed: false }),
+  );
+  const pending = packingUnitsOf(profile, pieces, { ...context, used: 0 });
+  const isPageEmpty = () => columns.every(({ placed }) => placed.length === 0);
+
+  /** The box below the content of a column, or the column when empty. */
+  const boxOf = (
+    columnIndex: number,
+    boxHeight: number,
+    progress: boolean,
+    empty = columns[columnIndex].placed.length === 0,
+  ): Box => {
+    const startKind = columnIndex === 0 ? atTop : 'column';
+    return {
+      height: empty ? boxHeight : boxHeight - columns[columnIndex].bottom,
+      atTop: empty ? startKind : undefined,
+      // A forced column break means nothing to a packing.
+      isColumn: false,
+      mustProgress: progress,
+      hasContentAbove: false,
+      marginAbove: empty ? undefined : columns[columnIndex].marginBottom,
+      context: {
+        ...context,
+        startKind: (empty ? startKind : undefined) ?? context.startKind,
+        boxHeight,
+        columnIndex,
+      },
+    };
+  };
+
+  const commit = (columnIndex: number, result: FillResult) => {
+    const column = columns[columnIndex];
+    const last = result.placed.at(-1);
+    if (!last) {
+      return;
+    }
+    const top = column.bottom;
+    column.placed.push(
+      ...result.placed.map((placement) => ({
+        ...placement,
+        bottom: top + placement.bottom,
+      })),
+    );
+    column.bottom = top + result.used;
+    column.marginBottom =
+      last.to === unitCountOf(last.block) ? last.block.marginBottom : 0;
+  };
+
+  /** Places a packing unit whole in the highest ending column it fits. */
+  const placeWhole = (unit: ReadonlyArray<Piece>): boolean => {
+    const candidates = columns
+      .map((_column, columnIndex) => columnIndex)
+      .filter((columnIndex) => !columns[columnIndex].sealed)
+      .sort((a, b) => columns[a].bottom - columns[b].bottom || a - b);
+    for (const columnIndex of candidates) {
+      const result = fill(
+        profile,
+        unit,
+        boxOf(columnIndex, height, false),
+        region,
+      );
+      if (result.rest.length === 0) {
+        commit(columnIndex, result);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  /**
+   * Whether a packing unit is too tall for an empty column of a whole page,
+   * the first one or any other (their top margins may differ).
+   */
+  const isOversized = (unit: ReadonlyArray<Piece>): boolean =>
+    [0, columns.length - 1].every(
+      (columnIndex) =>
+        fill(
+          profile,
+          unit,
+          boxOf(columnIndex, context.boxHeight, false, true),
+          region,
+        ).rest.length > 0,
+    );
+
+  /**
+   * Splits a packing unit as flow does, from below the last column with
+   * content onwards. Returns what did not fit on the page.
+   */
+  const placeFlowing = (
+    unit: ReadonlyArray<Piece>,
+    progress: boolean,
+  ): { rest: Array<Piece>; placed: boolean } => {
+    const start = Math.max(
+      0,
+      columns.findLastIndex(({ placed }) => placed.length > 0),
+    );
+    let rest = [...unit];
+    let first: undefined | number = undefined;
+    let last = start;
+    for (
+      let columnIndex = start;
+      columnIndex < columns.length && rest.length > 0;
+      columnIndex += 1
+    ) {
+      const result = fill(
+        profile,
+        rest,
+        boxOf(columnIndex, height, progress && isPageEmpty()),
+        region,
+      );
+      if (result.placed.length === 0) {
+        // Once begun, the unit goes on in the very next column or not here.
+        if (first !== undefined) {
+          break;
+        }
+        continue;
+      }
+      commit(columnIndex, result);
+      rest = result.rest;
+      first ??= columnIndex;
+      last = columnIndex;
+    }
+    if (first === undefined) {
+      return { rest, placed: false };
+    }
+    // Nothing may come between the pieces: the columns the unit carries on
+    // from take nothing more, nor, when it goes on to the next page, does
+    // any column after it on this one.
+    columns
+      .slice(first, rest.length > 0 ? columns.length : last)
+      .forEach((column) => {
+        column.sealed = true;
+      });
+    return { rest, placed: true };
+  };
+
+  let forcedPage = false;
+  // The head carries on at the top of the next page and takes no more here.
+  let headWaits = false;
+  /** Splits the head as flow does; false when none of it fits. */
+  const flowHead = (progress: boolean): boolean => {
+    const { rest, placed } = placeFlowing(pending[0], progress);
+    if (!placed) {
+      return false;
+    }
+    if (rest.length === 0) {
+      pending.shift();
+    } else {
+      pending[0] = rest;
+      headWaits = true;
+    }
+    return true;
+  };
+
+  while (pending.length > 0) {
+    const head = pending[0];
+    if (opensWithPageBreak(head) && (!isPageEmpty() || hasContentAbove)) {
+      forcedPage = true;
+      break;
+    }
+    if (!headWaits) {
+      // A unit begun on the page before goes on at the top of the first
+      // column, before anything else, as flow would carry it on.
+      if (continuesUnit(head)) {
+        if (flowHead(mustProgress)) {
+          continue;
+        }
+        break;
+      }
+      if (placeWhole(head)) {
+        pending.shift();
+        continue;
+      }
+      if (isOversized(head) && flowHead(mustProgress)) {
+        continue;
+      }
+    }
+    let placedAhead = false;
+    for (
+      let index = 1;
+      index < pending.length && index <= MASONRY_LOOKAHEAD;
+      index += 1
+    ) {
+      if (opensWithPageBreak(pending[index])) {
+        break;
+      }
+      if (placeWhole(pending[index])) {
+        pending.splice(index, 1);
+        placedAhead = true;
+        break;
+      }
+    }
+    if (!placedAhead) {
+      break;
+    }
+  }
+
+  // Every page takes something: an empty page flows the head from the top.
+  if (mustProgress && isPageEmpty() && pending.length > 0) {
+    flowHead(true);
+  }
+
+  return {
+    columns: columns.map(({ placed }) => placed),
+    used: Math.max(0, ...columns.map(({ bottom }) => bottom)),
+    rest: pending.flat(),
+    forcedPage,
+  };
+};
+
+/** The masonry units a page shows, in packed order. */
+const packedUnitsOf = (
+  items: ReadonlyArray<PageItem>,
+  pageIndex: number,
+): Array<PackedUnit> =>
+  items.flatMap((item) =>
+    item.kind !== 'region' || !item.region.masonry
+      ? []
+      : item.columns.flatMap((column, columnIndex) =>
+          column.flatMap(({ block: { stackIndex, unit } }, index) =>
+            unit === undefined ||
+            column[index - 1]?.block.unit?.index === unit.index
+              ? []
+              : [{ stackIndex, unit: unit.index, pageIndex, columnIndex }],
+          ),
+        ),
+  );
+
 /** How far into the pieces a fill got: fewer left, or less of the first. */
 const consumedAtLeast = (
   result: ColumnsResult,
@@ -473,7 +820,7 @@ const fillRegion = (
   context: Omit<PageContext, 'used'>,
 ): ColumnsResult => {
   const run = (height: number, progress: boolean) =>
-    fillColumns(
+    (region.region.masonry ? packMasonry : fillColumns)(
       profile,
       pieces,
       region,
@@ -525,6 +872,7 @@ export const placePages = ({
   const forcedStarts = new Set<number>();
   const pages: Array<PlacedPage> = [];
   const checkpoints: Array<Checkpoint> = [];
+  const packedOrder: Array<PackedUnit> = [];
 
   let queue: Array<Piece> = [];
   let loadedStackCount = 0;
@@ -607,6 +955,7 @@ export const placePages = ({
     forcedStarts: [...forcedStarts],
     pendingBreak,
     startKind,
+    packedCount: (resumeFrom?.packedCount ?? 0) + packedOrder.length,
   });
 
   if (resumeFrom) {
@@ -775,11 +1124,12 @@ export const placePages = ({
     }
 
     pages.push({ stackIndex, first, startKind, size, items });
+    packedOrder.push(...packedUnitsOf(items, pageIndex));
     pageIndex += 1;
     if (nextStartKind) {
       startKind = nextStartKind;
     }
   }
 
-  return { pages, checkpoints };
+  return { pages, checkpoints, packedOrder };
 };
