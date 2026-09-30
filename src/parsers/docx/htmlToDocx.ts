@@ -537,6 +537,14 @@ export const htmlToDocx = async (
 
       const paragraphOptions = parseParagraphOptions(fonts, contentOptions);
 
+      // The element that carries the break rule may itself be the paragraph,
+      // as in `<Typography as="h2" breakAfter="avoid">`. The loop below only
+      // reaches the paragraphs a wrapper holds.
+      const ownKeepOptions = {
+        ...(breakInside === 'avoid' && { keepLines: true }),
+        ...(breakAfter === 'avoid' && { keepNext: true }),
+      };
+
       // `breakInside` accumulates down the context, so a table built inside a
       // `BreakAvoid` knows to keep its own rows and paragraphs together.
       const keepChildrenTogether = contentOptions.breakInside === 'avoid';
@@ -557,7 +565,9 @@ export const htmlToDocx = async (
               // If Paragraph is the last child, do not keep the next element.
               // If there is a parent breakInside it will overwrite this.
               keepNext:
-                index < node.children.length - 1 || breakAfter === 'avoid',
+                index < node.children.length - 1 ||
+                breakAfter === 'avoid' ||
+                child[PARAGRAPH_OPTIONS_KEY].keepNext === true,
             });
           }
           // A Table keeps itself together through `cantSplit` on its rows.
@@ -920,6 +930,7 @@ export const htmlToDocx = async (
         const { list } = elementsContext;
         return new Paragraph({
           ...paragraphOptions,
+          ...ownKeepOptions,
           // The declared numbering, rather than `bullet`: `bullet` always
           // writes Word's own `ListParagraph` style, and `w:pPr` holds at most
           // one `w:pStyle`, so an item could never keep its variant's style.
@@ -941,6 +952,7 @@ export const htmlToDocx = async (
       if (node.tagName === 'p') {
         return new Paragraph({
           ...paragraphOptions,
+          ...ownKeepOptions,
           style: variantNameToParagraphStyleId(elementsContext.variant),
           tabStops: toTabStops(node.children),
           children: node.children as ParagraphChild[],
@@ -954,6 +966,7 @@ export const htmlToDocx = async (
           // assigned after them and still win.
           ...PRE_PARAGRAPH_OPTIONS,
           ...paragraphOptions,
+          ...ownKeepOptions,
           style: variantNameToParagraphStyleId(elementsContext.variant),
           tabStops: toTabStops(node.children),
           children: node.children as ParagraphChild[],
@@ -990,6 +1003,7 @@ export const htmlToDocx = async (
       if (node.tagName in DOCX_HEADING) {
         return new Paragraph({
           ...paragraphOptions,
+          ...ownKeepOptions,
           // `heading` is only a shorthand for a built-in style id and `w:pPr`
           // holds at most one `w:pStyle`: an explicit variant wins over the tag.
           style:
