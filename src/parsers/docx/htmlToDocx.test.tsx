@@ -575,6 +575,61 @@ const sectionTypes = (docx: DocxArchive) =>
     return type && attribute(type, 'w:val');
   });
 
+describe('stack boundaries', () => {
+  const spacingOf = (docx: DocxArchive, text: string) => {
+    const [paragraph] = paragraphs(docx.document).filter(
+      (candidate) => textOf(candidate) === text,
+    );
+    const [spacing] = findAll(paragraph, 'w:spacing');
+    return spacing && attributesOf(spacing, ['w:before', 'w:after']);
+  };
+
+  it('writes no space after the last paragraph before a new page', async () => {
+    // Word takes a paragraph's space after off the next one's space before,
+    // even across a next-page section break.
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <Typography as="p" marginBottom="12pt">
+            Last on its page
+          </Typography>
+        </Stack>
+        <Stack>
+          <Typography as="p" marginTop="24pt">
+            First on the next
+          </Typography>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    expect(spacingOf(docx, 'Last on its page')).toEqual({
+      'w:before': undefined,
+      'w:after': '0',
+    });
+    expect(spacingOf(docx, 'First on the next')).toEqual({
+      'w:before': '480',
+      'w:after': undefined,
+    });
+  });
+
+  it('keeps the space after before a continuous stack', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <Typography as="p" marginBottom="12pt">
+            Above
+          </Typography>
+        </Stack>
+        <Stack continuous>
+          <p>Below</p>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    expect(spacingOf(docx, 'Above')?.['w:after']).toBe('240');
+  });
+});
+
 describe('column sections', () => {
   it('ends a column section inside its last paragraph', async () => {
     const docx = await toDocxArchive(columnStacks());

@@ -416,6 +416,26 @@ const compensateTrimmedSpacing = (
 };
 
 /**
+ * Word collapses adjacent spacing by taking the previous paragraph's space
+ * after off the next paragraph's space before, and it does so across a section
+ * break that starts a new page as well: the first paragraph of the next stack
+ * would lose its space before. The space after the last paragraph of a stack
+ * that ends its page moves nothing on that page, so it is written as 0.
+ */
+const withoutTrailingSpaceAfter = (
+  blocks: ReadonlyArray<unknown>,
+): Array<unknown> => {
+  const result = [...blocks];
+  const last = result.at(-1);
+  if (last instanceof Paragraph) {
+    result[result.length - 1] = Paragraph.clone(last, {
+      spacing: { ...last[PARAGRAPH_OPTIONS_KEY].spacing, after: 0 },
+    });
+  }
+  return result;
+};
+
+/**
  * A `w:tab` run together with the tab stop the paragraph holding it has to
  * declare. A tab with no stop to travel to advances by Word's default half
  * inch, so the two only mean "push the rest of the line to the right margin"
@@ -1331,9 +1351,15 @@ const createDocx = async (
       index,
     ) => {
       const currentSections: Array<ISectionOptions> = [];
-      const blocks = Array.isArray(content)
+      const compensated = Array.isArray(content)
         ? compensateTrimmedSpacing(content, rules.margins.adjacent)
         : content;
+      const blocks =
+        Array.isArray(compensated) &&
+        index < stacks.length - 1 &&
+        !stacks[index + 1].continuous
+          ? withoutTrailingSpaceAfter(compensated)
+          : compensated;
       const children =
         startsWithPageBreak[index] &&
         Array.isArray(blocks) &&
