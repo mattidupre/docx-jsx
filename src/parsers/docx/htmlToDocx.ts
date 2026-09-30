@@ -49,7 +49,7 @@ import {
   wordSpaceAboveCapHeight,
   wordSpaceBelowBaseline,
 } from '../../entities';
-import { resolveDocumentFonts } from '../../lib/documentFonts';
+import { resolveDocumentFontFiles } from '../../lib/documentFonts';
 import {
   type HtmlElementNode,
   mapHtmlToDocument,
@@ -83,6 +83,7 @@ import { MAX_LIST_LEVEL, createListNumbering } from './numberingToDocx';
 import { type DocumentImage, resolveDocumentImages } from './documentImages';
 import { tableToDocx } from './tableToDocx';
 import { type PackedDocxPatches, patchPackedDocx } from './patchPackedDocx';
+import { type EmbeddedFont, resolveDocxFonts } from './fontsToDocx';
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -627,23 +628,43 @@ export type HtmlToDocxOptions = {
    * before the document is mapped.
    */
   publicDirectory?: string;
+  /**
+   * Whether the DOCX embeds the font file of every face without a `docx`
+   * source that the document uses, so Word lays text out in the same font as
+   * the PDF. Defaults to true. Off, the DOCX still names those fonts, which
+   * Word uses when they are installed. A font whose licence forbids embedding
+   * is never embedded.
+   */
+  embedFonts?: boolean;
 };
 
 const createDocx = async (
   html: string,
-  { fonts: fontsOption, svgImages, publicDirectory }: HtmlToDocxOptions,
-): Promise<{ document: Document; rules: FragmentationRules }> => {
+  {
+    fonts: fontsOption,
+    svgImages,
+    publicDirectory,
+    embedFonts = true,
+  }: HtmlToDocxOptions,
+): Promise<{
+  document: Document;
+  rules: FragmentationRules;
+  embeddedFonts: ReadonlyArray<EmbeddedFont>;
+}> => {
   // Mapping is synchronous and reading an image is not, so every `Image` source
   // in the document is resolved to bytes before the mapping starts.
   const images = await resolveDocumentImages(html, { publicDirectory });
 
-  // The metrics a line box needs are read from the font files up front, for
-  // the same reason. A call-level config overrides the document's.
-  const fonts =
-    (await resolveDocumentFonts(html, {
+  // The font files are read up front, for the same reason: a line box needs
+  // their metrics, and a run names a face by the family its file names
+  // itself. A call-level config overrides the document's.
+  const { fonts, embeddedFonts } = resolveDocxFonts(
+    (await resolveDocumentFontFiles(html, {
       fonts: fontsOption,
       publicDirectory,
-    })) ?? {};
+    })) ?? { fonts: {}, fontFiles: new Map() },
+    { embedFonts },
+  );
 
   // Every list declares the numbering it needs while it is mapped, so the
   // document ships exactly the definitions its paragraphs point at.
@@ -1433,42 +1454,15 @@ const createDocx = async (
     mappedDocument.defaultTypography,
   );
 
-  // const fontsWithBuffers = await fontsStore.loadFontsWithBuffers();
-  // const docxFonts = [
-  // {
-  //   name: 'Sevillana',
-  //   characterSet: CharacterSet.ANSI,
-  //   data: fs.readFileSync(
-  //     '/Users/mattidupre/Repositories/matti-docs/src/fixtures/mockAssets/Sevillana.ttf',
-  //   ),
-  // },
-  // ...transform(
-  //   fontsWithBuffers,
-  //   (target, font) => {
-  //     if (!font) {
-  //       return;
-  //     }
-  //     target.push(
-  //       ...font.fontFaces.map(({ fontFaceName, buffer }) => ({
-  //         name: fontFaceName,
-  //         data: buffer,
-  //         characterSet: CharacterSet.ANSI,
-  //       })),
-  //     );
-  //   },
-  //   [] as Array<ArrayValues<NonNullable<IPropertiesOptions['fonts']>>>,
-  // ),
-  // ];
-
   return {
     document: new Document({
-      // fonts: docxFonts,
       evenAndOddHeaderAndFooters: false,
       sections,
       styles,
       numbering: listNumbering.toNumberingOptions(),
     }),
     rules,
+    embeddedFonts,
   };
 };
 
@@ -1498,16 +1492,17 @@ const warnUnwritableRules = ({ margins, columns }: FragmentationRules) => {
 };
 
 /** The document's rules as the settings `patchPackedDocx` writes. */
-const toPackedDocxPatches = ({
-  lines,
-  margins,
-}: FragmentationRules): PackedDocxPatches => ({
+const toPackedDocxPatches = (
+  { lines, margins }: FragmentationRules,
+  embeddedFonts: ReadonlyArray<EmbeddedFont>,
+): PackedDocxPatches => ({
   // Word's widow control is two lines or nothing. `style` stands for CSS's
   // initial value, which is two.
   widowControl: [lines.orphans, lines.widows].some(
     (count) => count === 'style' || count >= 2,
   ),
   sumAdjacentMargins: margins.adjacent === 'sum',
+  embeddedFonts,
 });
 
 /** The `docx` document for `html`, before packing. */
@@ -1516,15 +1511,15 @@ export const htmlToDocx = async (html: string, options: HtmlToDocxOptions) =>
 
 /**
  * The packed DOCX for `html`, with the settings `docx` cannot write patched
- * in from the document's fragmentation rules.
+ * in from the document's fragmentation rules, and its fonts embedded.
  */
 export const htmlToPackedDocx = async (
   html: string,
   options: HtmlToDocxOptions,
 ): Promise<Buffer> => {
-  const { document, rules } = await createDocx(html, options);
+  const { document, rules, embeddedFonts } = await createDocx(html, options);
   return patchPackedDocx(
     await Packer.toBuffer(document),
-    toPackedDocxPatches(rules),
+    toPackedDocxPatches(rules, embeddedFonts),
   );
 };

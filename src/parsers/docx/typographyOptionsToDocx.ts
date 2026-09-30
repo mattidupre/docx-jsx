@@ -13,12 +13,15 @@ import {
   assignTypographyOptions,
   capHeightToFontSize,
   typographyOptionsToFlat,
+  findFontFace,
+  getFontFaceSource,
   getFontFace,
   resolveLineBoxFont,
   type FontsConfig,
   type FontFace,
   type UnitsSize,
 } from '../../entities';
+import { isFontStyleItalicish, isFontWeightBoldish } from '../../utils/font';
 import { type KeyedObject, objectValuesDefined } from '../../utils/object';
 import { toPt, toTwip } from './entities';
 
@@ -87,9 +90,68 @@ const clampPt = (
   return value;
 };
 
-// For now only support default docx font names
 const parseFontFace = (fontFace: undefined | FontFace): undefined | string =>
   fontFace?.src;
+
+/**
+ * The font a run names and the bold and italic toggles that pick its style.
+ *
+ * A face with a `docx` source names that installed font, and the run's own
+ * weight and style set the toggles. A face Word knows by its embedded file
+ * (`wordFont`) is matched as the browser matches it, from the run's family,
+ * weight and style over the ones it inherits, and names the family its file
+ * names itself: the toggles pick the file's own style in that family, plus
+ * the bold or italic a browser synthesizes when the face has none. They are
+ * written whenever the typography states them, since a file of a weight
+ * other than regular or bold is the regular style of a family of its own.
+ */
+const parseRunFont = (
+  fonts: FontsConfig,
+  typographyOptions: TypographyOptions,
+  inheritedTypography: undefined | TypographyOptions,
+): Pick<IRunPropertiesOptions, 'font' | 'bold' | 'italics'> => {
+  const { fontFamily, fontWeight, fontStyle } =
+    typographyOptionsToFlat(typographyOptions);
+  const typography = typographyOptionsToFlat(
+    assignTypographyOptions({}, inheritedTypography, typographyOptions),
+  );
+  // A run that states none of them inherits its font whole.
+  const fontFace = [fontFamily, fontWeight, fontStyle].some(
+    (value) => value !== undefined,
+  )
+    ? findFontFace(fonts, typography)?.fontFace
+    : undefined;
+  const wordFont =
+    fontFace && !getFontFaceSource(fontFace, 'docx')
+      ? fontFace.wordFont
+      : undefined;
+  if (fontFace && wordFont) {
+    const bold =
+      wordFont.bold ||
+      (typography.fontWeight === 'bold' &&
+        !isFontWeightBoldish(fontFace.fontWeight));
+    const italics =
+      wordFont.italic ||
+      (typography.fontStyle === 'italic' &&
+        !isFontStyleItalicish(fontFace.fontStyle));
+    return {
+      font: wordFont.fontName,
+      bold: bold || (typography.fontWeight === undefined ? undefined : false),
+      italics:
+        italics || (typography.fontStyle === undefined ? undefined : false),
+    };
+  }
+  return {
+    font: parseFontFace(
+      getFontFace(
+        { fonts, documentType: 'docx' },
+        { fontFamily, fontWeight, fontStyle },
+      ),
+    ),
+    bold: ifTruthy(fontWeight, fontWeight === 'bold'),
+    italics: ifTruthy(fontStyle, fontStyle === 'italic'),
+  };
+};
 
 /**
  * `w:sz` is a font size in half-points. CSS `font-size: normal` has no Word
@@ -155,25 +217,22 @@ export const parseTextRunOptions = (
     capHeight,
     fontSize,
     color,
-    fontFamily,
     highlightColor,
-    fontWeight,
-    fontStyle,
     textTransform,
     textDecoration,
     superScript,
     subScript,
   } = typographyOptionsToFlat(typographyOptions ?? {});
+  const { font, bold, italics } = parseRunFont(
+    fonts,
+    typographyOptions ?? {},
+    inheritedTypography,
+  );
 
   // `textAlign` is deliberately absent: alignment is a paragraph property in
   // OOXML and is emitted by parseParagraphOptions.
   return objectValuesDefined({
-    font: parseFontFace(
-      getFontFace(
-        { fonts, documentType: 'docx' },
-        { fontFamily, fontWeight, fontStyle },
-      ),
-    ),
+    font,
     size:
       capHeight === undefined
         ? ifTruthy(fontSize, parseFontSize(fontSize))
@@ -192,8 +251,8 @@ export const parseTextRunOptions = (
           ),
     color: toDocxColor(color),
     shading: ifTruthy(highlightColor, { fill: toDocxColor(highlightColor) }),
-    bold: ifTruthy(fontWeight, fontWeight === 'bold'),
-    italics: ifTruthy(fontStyle, fontStyle === 'italic'),
+    bold,
+    italics,
     allCaps: ifTruthy(textTransform, textTransform === 'uppercase'),
     underline: ifTruthy(
       textDecoration,

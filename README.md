@@ -132,6 +132,7 @@ const docx = await reactToDocx(Document, {
   fonts,            // FontsConfig; overrides fonts declared on DocumentProvider
   publicDirectory,  // where a non-data: `Image` src is read from
   svgImages,        // { [svgId]: { data, width, height } } rasterised `Svg`s
+  embedFonts,       // embed the document's font files; defaults to true
 });
 
 // PDF -> Uint8Array, or `{ error }` (see `isErrorObject`)
@@ -427,9 +428,9 @@ without either target relying on its own defaults. Both are the lowest-priority
 source in their target.
 
 **Fonts.** A `FontsConfig` maps a family name to font faces, each with per-target
-sources: a file for `web`/`pdf` (emitted as `@font-face`) and an installed Word
-font name for `docx`. Declare them once on `DocumentProvider`, or pass `fonts` to
-a renderer to override.
+sources: a file for `web`/`pdf` (emitted as `@font-face`) and, optionally, an
+installed Word font name for `docx`. Declare them once on `DocumentProvider`, or
+pass `fonts` to a renderer to override.
 
 ```ts
 const fonts = {
@@ -440,7 +441,13 @@ const fonts = {
         fontStyle: 'normal',
         sources: [
           { documentType: 'web', src: 'Merriweather-Regular.ttf', format: 'truetype' },
-          { documentType: 'docx', src: 'Calibri', format: 'truetype' },
+        ],
+      },
+      {
+        fontWeight: '700',
+        fontStyle: 'normal',
+        sources: [
+          { documentType: 'web', src: 'Merriweather-Bold.ttf', format: 'truetype' },
         ],
       },
     ],
@@ -448,8 +455,29 @@ const fonts = {
 };
 ```
 
-A source with no `documentType` serves both browser targets. A `docx` source
-names a font on the reader's machine and is never used as a file.
+A source with no `documentType` serves both browser targets.
+
+The DOCX embeds the font files, so Word sets text in the same font as the PDF
+without it being installed. Each face's file goes into the font table under the
+family name inside the file (name ID 1), in the one of Word's four styles
+(regular, bold, italic, bold italic) its `OS/2` `fsSelection` says it is; runs
+and styles name that family in `w:rFonts`, and their bold and italic toggles
+pick the face the browser would pick. A file of another weight, such as
+`Merriweather-Light.ttf`, is the regular style of a family of its own
+(`Merriweather Light`). Only families the document uses are embedded, and the
+obfuscation keys are derived from the files, so the same document gives the
+same font parts. Word reads single TrueType or OpenType files: a `woff`/`woff2`
+file or a collection is not embedded (with a warning).
+
+A font's licence is respected (`OS/2` `fsType`): installable, editable and
+preview & print fonts are embedded; a restricted font is not, and a warning
+names it. `embedFonts: false` turns embedding off. Either way the DOCX still
+names the font, and Word uses it when it is installed.
+
+A `docx` source opts a face out: the DOCX names that installed Word font instead
+(`Calibri` for Merriweather, say, or `Arial` for an Arial file) and embeds
+nothing for it. Word's own fonts are installed wherever Word is, so embedding
+them would only make the document larger.
 
 A face's `web`/`pdf` source is also its font file for the line model: the
 renderers that run in Node (`reactToDocx`, `reactToPdf`,
