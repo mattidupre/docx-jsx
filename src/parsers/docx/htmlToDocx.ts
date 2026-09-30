@@ -52,8 +52,10 @@ import {
 import { resolveDocumentFonts } from '../../lib/documentFonts';
 import {
   type HtmlElementNode,
+  type HtmlNode,
   mapHtmlToDocument,
 } from '../../lib/mapHtmlToDocument';
+import type { FragmentationLayout } from '../../fragmenter/model';
 import type {
   ElementData,
   ElementsContext,
@@ -83,6 +85,13 @@ import { MAX_LIST_LEVEL, createListNumbering } from './numberingToDocx';
 import { type DocumentImage, resolveDocumentImages } from './documentImages';
 import { tableToDocx } from './tableToDocx';
 import { type PackedDocxPatches, patchPackedDocx } from './patchPackedDocx';
+import {
+  MISSING_MASONRY_LAYOUT_MESSAGE,
+  MasonryContent,
+  MasonryUnit,
+  packMasonryUnits,
+  type MasonryBreak,
+} from './masonryToDocx';
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -627,11 +636,55 @@ export type HtmlToDocxOptions = {
    * before the document is mapped.
    */
   publicDirectory?: string;
+  /**
+   * The layout a browser run made of the same document, or a function that
+   * makes it, called only when the document has masonry columns: their
+   * packed order comes from it. `reactToDocx` makes it with its `browser`.
+   */
+  layout?: FragmentationLayout | (() => Promise<FragmentationLayout>);
 };
+
+const toDocxBreaks = (masonryBreak: MasonryBreak) =>
+  masonryBreak.kind === 'page'
+    ? [new PageBreak()]
+    : range(masonryBreak.count).map(() => new ColumnBreak());
+
+/** A unit's last block ending with a column or page break, when it can. */
+const withMasonryBreakAfter = (
+  block: BlockChild,
+  masonryBreak: MasonryBreak,
+): undefined | BlockChild => {
+  if (!(block instanceof Paragraph)) {
+    return undefined;
+  }
+  const options = block[PARAGRAPH_OPTIONS_KEY];
+  // The break ends the last line, so it takes no room of its own, and the
+  // paragraph keeps with nothing past it.
+  return new Paragraph(
+    {
+      ...options,
+      keepNext: false,
+      children: [...(options.children ?? []), ...toDocxBreaks(masonryBreak)],
+    },
+    block[LINE_BOX_KEY],
+  );
+};
+
+/** A paragraph that holds only a break, after a table. */
+const createMasonryBreak = (masonryBreak: MasonryBreak): BlockChild =>
+  new DocxParagraph({
+    spacing: { before: 0, after: 0, line: 1, lineRule: LineRuleType.EXACT },
+    children: toDocxBreaks(masonryBreak),
+  });
 
 const createDocx = async (
   html: string,
-  { fonts: fontsOption, svgImages, publicDirectory }: HtmlToDocxOptions,
+  {
+    fonts: fontsOption,
+    svgImages,
+    publicDirectory,
+    layout: layoutOption,
+  }: HtmlToDocxOptions,
 ): Promise<{ document: Document; rules: FragmentationRules }> => {
   // Mapping is synchronous and reading an image is not, so every `Image` source
   // in the document is resolved to bytes before the mapping starts.
@@ -649,7 +702,7 @@ const createDocx = async (
   // document ships exactly the definitions its paragraphs point at.
   const listNumbering = createListNumbering();
 
-  const mappedDocument = mapHtmlToDocument(html, (node) => {
+  const parseNode = (node: HtmlNode) => {
     const elementsContext = node.data.elementsContext;
     const { contentOptions } = elementsContext;
 
@@ -1291,13 +1344,26 @@ const createDocx = async (
     }
 
     if (node.type === 'root') {
-      const rootChildren = toBlockChildren(
-        node.children,
-        withLineSpacing(
-          parseParagraphOptions(fonts, contentOptions),
-          resolveElementLineBox(node.tagName).lineBox,
-        ),
+      const rootParagraphOptions = withLineSpacing(
+        parseParagraphOptions(fonts, contentOptions),
+        resolveElementLineBox(node.tagName).lineBox,
       );
+
+      if (
+        element.elementType === 'content' &&
+        elementsContext.stack.columns.fill === 'masonry'
+      ) {
+        return new MasonryContent(
+          node.children
+            .flat(Infinity)
+            .filter((child) => child instanceof MasonryUnit)
+            .map((unit) =>
+              toBlockChildren(unit.children, rootParagraphOptions),
+            ),
+        );
+      }
+
+      const rootChildren = toBlockChildren(node.children, rootParagraphOptions);
 
       if (element.elementType === 'header') {
         return new Header({
@@ -1317,9 +1383,47 @@ const createDocx = async (
     }
 
     return node.children;
+  };
+
+  const mappedDocument = mapHtmlToDocument(html, (node) => {
+    const parsed = parseNode(node);
+    // Every direct child of a masonry stack is one unit the packing moves.
+    return node.type === 'element' &&
+      node.data.elementsContext.stack.columns.fill === 'masonry' &&
+      node.data.parentElementTypes.at(-2) === 'content'
+      ? new MasonryUnit([parsed])
+      : parsed;
   });
 
-  const { size, stacks, variants } = mappedDocument;
+  const { size, variants } = mappedDocument;
+
+  // A masonry stack's units go in the order a layout run packed them.
+  const needsLayout = mappedDocument.stacks.some(
+    ({ content }) => content instanceof MasonryContent,
+  );
+  const layout = !needsLayout
+    ? undefined
+    : typeof layoutOption === 'function'
+      ? await layoutOption()
+      : layoutOption;
+  const stacks = mappedDocument.stacks.map((stack, stackIndex) => {
+    if (!(stack.content instanceof MasonryContent)) {
+      return stack;
+    }
+    if (layout === undefined) {
+      throw new Error(MISSING_MASONRY_LAYOUT_MESSAGE);
+    }
+    return {
+      ...stack,
+      content: packMasonryUnits(stack.content.units, {
+        stackIndex,
+        stackCount: mappedDocument.stacks.length,
+        layout,
+        withBreakAfter: withMasonryBreakAfter,
+        createBreak: createMasonryBreak,
+      }),
+    };
+  });
 
   const rules = resolveFragmentationRules(mappedDocument.fragmentation);
   warnUnwritableRules(rules);
@@ -1332,6 +1436,7 @@ const createDocx = async (
       index > 0 &&
       !stack.continuous &&
       stacks[index - 1].columns.columnCount > 1 &&
+      stacks[index - 1].columns.fill !== 'masonry' &&
       rules.columns.fill !== 'sequential' &&
       rules.columns.endBeforePage === 'page-break-before' &&
       isSameMargin(stack.margin, stacks[index - 1].margin) &&
@@ -1346,7 +1451,7 @@ const createDocx = async (
         margin,
         content,
         continuous,
-        columns: { columnGap, columnCount },
+        columns: { columnGap, columnCount, fill },
       },
       index,
     ) => {
@@ -1402,9 +1507,11 @@ const createDocx = async (
       // a paragraph to hold it, unless the next stack's first paragraph takes
       // it (`page-break-before`). An empty `children` becomes a carrier that
       // `patchPackedDocx` cuts to one point (`minimal`); an empty paragraph
-      // stays an ordinary line (`line`).
+      // stays an ordinary line (`line`). Masonry columns end where the
+      // layout ended them, with explicit breaks, and are not balanced again.
       if (
         columnCount > 1 &&
+        fill !== 'masonry' &&
         rules.columns.fill !== 'sequential' &&
         !stacks[index + 1]?.continuous &&
         !startsWithPageBreak[index + 1]
