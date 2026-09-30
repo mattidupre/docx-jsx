@@ -100,6 +100,8 @@
     }
   },
   "dependencies": {
+    "@capsizecss/core": "^4.1",
+    "@capsizecss/unpack": "^4.0",
     "colorjs.io": "0.7.1",
     "docx": "^9.8.1",
     "hast-util-from-html": "^2.0.1",
