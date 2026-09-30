@@ -3,7 +3,12 @@ import { toLowercase } from '../utils/string';
 import { assignDefined, mergeWithDefault } from '../utils/object';
 import { pluckFromArray } from '../utils/array';
 import type { DataAttributes } from '../utils/dataAttributes';
-import { type Variants, assignVariants } from './typography';
+import {
+  type DefaultTypography,
+  type Variants,
+  assignTypographyOptions,
+  assignVariants,
+} from './typography';
 import type { FontsConfig } from './fonts';
 import type { FragmentationOption } from './fragmentation';
 import type { UnitsSize } from './units';
@@ -213,6 +218,11 @@ export type DocumentOptions = {
   prefixes?: PrefixesOptions;
   fonts?: FontsConfig;
   /**
+   * The body text of the document: its font (which needs a font file, see
+   * `fonts`), size and line height. Written to Word as `w:docDefaults`.
+   */
+  defaultTypography?: DefaultTypography;
+  /**
    * The conventions the DOM and PDF targets break pages by: `word` (the
    * default) or `css`, or rules over either.
    */
@@ -229,6 +239,8 @@ export type DocumentConfig = {
    * rather than carry `{}` into every target.
    */
   fonts?: FontsConfig;
+  /** Optional, like `fonts`: a document that declares none carries nothing. */
+  defaultTypography?: DefaultTypography;
   /** Optional, like `fonts`: a document that chooses none carries nothing. */
   fragmentation?: FragmentationOption;
 };
@@ -261,6 +273,17 @@ const assignFonts = (
   return fonts ? { fonts } : {};
 };
 
+/**
+ * Later declarations win per option. The result is spread into the config, so
+ * a document that declares no default typography has no key for it.
+ */
+const assignDefaultTypography = (
+  ...args: ReadonlyArray<undefined | DefaultTypography>
+): Pick<DocumentConfig, 'defaultTypography'> | Record<string, never> =>
+  args.some((value) => value !== undefined)
+    ? { defaultTypography: assignTypographyOptions({}, ...args) }
+    : {};
+
 export const assignDocumentOptions = (
   ...args: ReadonlyArray<undefined | DocumentOptions>
 ): DocumentConfig =>
@@ -271,6 +294,7 @@ export const assignDocumentOptions = (
     // Spread conditionally so a document with no fonts has no `fonts` key at
     // all, rather than one holding `undefined`.
     ...assignFonts(...pluckFromArray(args, 'fonts')),
+    ...assignDefaultTypography(...pluckFromArray(args, 'defaultTypography')),
     ...assignFragmentation(...pluckFromArray(args, 'fragmentation')),
   });
 

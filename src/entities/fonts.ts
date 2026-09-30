@@ -45,6 +45,21 @@ type FontFormat =
   | 'woff'
   | 'woff2';
 
+/**
+ * The metrics of a font file, in font units, as `@capsizecss/unpack` reads
+ * them: `ascent`, `descent` (negative) and `lineGap` from the `hhea` table,
+ * which is what Word's single line spacing adds up, and the cap height from
+ * `OS/2`. Plain numbers, so a font configuration carrying them stays JSON and
+ * reaches headless Chrome with the rest of the document's options.
+ */
+export type FontMetrics = {
+  unitsPerEm: number;
+  ascent: number;
+  descent: number;
+  lineGap: number;
+  capHeight: number;
+};
+
 export type FontFace = FontFaceOptions & {
   src?: string;
   sources: ReadonlyArray<
@@ -59,6 +74,13 @@ export type FontFace = FontFaceOptions & {
         format: 'truetype';
       }
   >;
+  /**
+   * The metrics of the face's font file. Left out, they are read from the
+   * file (its `web` or `pdf` source) by the targets that render in Node, which
+   * can reach it through `publicDirectory`; a document rendered only in a
+   * browser declares them here.
+   */
+  metrics?: FontMetrics;
 };
 
 export type Font = {
@@ -87,31 +109,56 @@ export const getFontFaceSource = (
   return sources.find((source) => source.documentType !== 'docx');
 };
 
+/**
+ * The font file of a face: the file the PDF loads, which is also the file its
+ * metrics are read from.
+ */
+export const getFontFaceFile = (fontFace: FontFace): undefined | string =>
+  getFontFaceSource(fontFace, 'pdf')?.src;
+
+type FontFaceQuery = Pick<
+  TypographyOptions,
+  'fontFamily' | 'fontWeight' | 'fontStyle'
+>;
+
+/**
+ * The family text is set in: the first of a `font-family` list.
+ */
+export const toFontFamilyName = (
+  fontFamily: undefined | string,
+): undefined | FontFamily => {
+  // TODO: Handle fallbacks.
+  const [fontFamilyName] = fontFamily?.trim().split(/\s*,\s*/) ?? [];
+  return fontFamilyName || undefined;
+};
+
+/**
+ * The configured face text in `options` is set in, matched by the CSS rules
+ * for weight and style, with the name of its family.
+ */
+export const findFontFace = (
+  fonts: FontsConfig,
+  options: FontFaceQuery,
+): undefined | { fontFamily: FontFamily; fontFace: FontFace } => {
+  const { fontFamily, fontWeight, fontStyle } =
+    typographyOptionsToFlat(options);
+  const fontFamilyName = toFontFamilyName(fontFamily);
+  if (fontFamilyName === undefined) {
+    return undefined;
+  }
+  const fontFaces = getValueOf(fonts, fontFamilyName)?.fontFaces ?? [];
+  const fontFace = matchFontFace(fontFaces, { fontWeight, fontStyle });
+  return fontFace && { fontFamily: fontFamilyName, fontFace };
+};
+
 export const getFontFace = (
   { fonts, documentType }: { fonts: FontsConfig; documentType: DocumentType },
-  options: Pick<TypographyOptions, 'fontFamily' | 'fontWeight' | 'fontStyle'>,
+  options: FontFaceQuery,
 ): undefined | SetRequired<FontFace, 'src'> => {
-  const {
-    fontFamily: fontFamilyOption,
-    fontWeight,
-    fontStyle,
-  } = typographyOptionsToFlat(options);
-
-  if (!fontFamilyOption) {
+  if (!toFontFamilyName(typographyOptionsToFlat(options).fontFamily)) {
     return undefined;
   }
-
-  const fontFamilyValues = fontFamilyOption.trim().split(/\s*,\s*/);
-
-  if (fontFamilyValues.length === 0) {
-    return undefined;
-  }
-
-  // TODO: Handle fallbacks.
-  const fontFamily = fontFamilyValues[0];
-
-  const fontFaces = getValueOf(fonts, fontFamily)?.fontFaces ?? [];
-  const fontFace = matchFontFace(fontFaces, { fontWeight, fontStyle });
+  const { fontFace } = findFontFace(fonts, options) ?? {};
   if (!fontFace) {
     console.error(`Could not find a font face for ${options.fontFamily}`);
     return undefined;

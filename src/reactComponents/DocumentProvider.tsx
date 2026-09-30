@@ -16,6 +16,7 @@ export function DocumentProvider({
   variants,
   prefixes,
   fonts,
+  defaultTypography,
   fragmentation,
   children,
 }: DocumentProviderProps) {
@@ -26,10 +27,18 @@ export function DocumentProvider({
     () =>
       assignDocumentOptions(
         {},
-        { size, variants, prefixes, fonts, fragmentation },
+        { size, variants, prefixes, fonts, defaultTypography, fragmentation },
         prevDocumentOptions,
       ),
-    [size, variants, prefixes, fonts, fragmentation, prevDocumentOptions],
+    [
+      size,
+      variants,
+      prefixes,
+      fonts,
+      defaultTypography,
+      fragmentation,
+      prevDocumentOptions,
+    ],
   );
 
   const documentContextValue = useMemo(

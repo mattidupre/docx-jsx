@@ -5,6 +5,7 @@ export * from './elements';
 export * from './fonts';
 export * from './fragmentation';
 export * from './html';
+export * from './lineBox';
 export * from './options';
 export * from './typography';
 export * from './units';

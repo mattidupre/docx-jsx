@@ -1,7 +1,6 @@
-import path from 'node:path';
-import fs from 'node:fs/promises';
 import { decodeElementData, isElementOfType } from '../../entities';
 import { mapHtml } from '../../utils/mapHtml/mapHtml';
+import { readPublicFile } from '../../lib/publicFiles';
 
 /**
  * The raster formats `docx` can write into `word/media`. An SVG needs a
@@ -21,8 +20,6 @@ export type DocumentImage = {
   readonly intrinsicWidth: undefined | number;
   readonly intrinsicHeight: undefined | number;
 };
-
-const DATA_URL_EXP = /^data:([^;,]*)(;base64)?,([\S\s]*)$/;
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
@@ -148,67 +145,21 @@ const readImageHeader = (
   );
 };
 
-const decodeDataUrl = (src: string): undefined | Uint8Array => {
-  const [, , base64, payload] = DATA_URL_EXP.exec(src) ?? [];
-  if (payload === undefined) {
-    return undefined;
-  }
-  if (!base64) {
-    throw new TypeError(
-      `The image "${src.slice(0, 32)}…" is a data URL that is not base64 encoded.`,
-    );
-  }
-  return new Uint8Array(Buffer.from(payload, 'base64'));
-};
-
-const readFileIfExists = async (
-  filePath: string,
-): Promise<undefined | Uint8Array> => {
-  try {
-    return new Uint8Array(await fs.readFile(filePath));
-  } catch {
-    return undefined;
-  }
-};
-
 /**
- * Where the browser would have fetched `src` from, read from disk instead.
- * `publicDirectory` is tried first so that the same `src` resolves to the same
- * file as the PDF target's request interception, and an absolute path is only
- * used when nothing under the public directory matches.
+ * The bytes of an image, read where the browser would have fetched it from.
  */
 const readImageData = async (
   src: string,
   { publicDirectory }: { publicDirectory?: string },
 ): Promise<Uint8Array> => {
-  const dataUrlBytes = decodeDataUrl(src);
-  if (dataUrlBytes) {
-    return dataUrlBytes;
+  const file = await readPublicFile(src, { publicDirectory, label: 'image' });
+  if (file.data) {
+    return file.data;
   }
-
-  const attempted: Array<string> = [];
-
-  if (publicDirectory !== undefined) {
-    const publicPath = path.join(publicDirectory, src);
-    attempted.push(publicPath);
-    const data = await readFileIfExists(publicPath);
-    if (data) {
-      return data;
-    }
-  }
-
-  if (path.isAbsolute(src)) {
-    attempted.push(src);
-    const data = await readFileIfExists(src);
-    if (data) {
-      return data;
-    }
-  }
-
   throw new Error(
     `Cannot read the image "${src}" for the DOCX target. ${
-      attempted.length > 0
-        ? `Looked in ${attempted.join(', ')}.`
+      file.attempted.length > 0
+        ? `Looked in ${file.attempted.join(', ')}.`
         : 'Pass a "publicDirectory" to reactToDocx, an absolute path, or a data URL.'
     }`,
   );
