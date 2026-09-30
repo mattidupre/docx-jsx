@@ -108,9 +108,8 @@ const renderPages = async (
     measureStyles: DocumentStyles;
   },
 ): Promise<HTMLElement> => {
-  const documentObj = mapHtmlToDocument<HTMLElement>(
-    html,
-    nodeToDom,
+  const documentObj = mapHtmlToDocument<HTMLElement>(html, (node) =>
+    nodeToDom(node, { fonts }),
   ) satisfies DocumentDom;
 
   onDocument?.(documentObj);
@@ -128,7 +127,10 @@ const renderPages = async (
   // a consumer's initial stylesheets and before the rest, as before.
   const documentStyleCss = [
     instantiateContentStyles(documentObj),
-    createVariantStyleString(documentObj),
+    createVariantStyleString({
+      ...documentObj,
+      fonts: fonts ?? documentFonts,
+    }),
   ];
 
   // `reactToDom` and `reactToPdf` both render the `pdf` markup in a browser.

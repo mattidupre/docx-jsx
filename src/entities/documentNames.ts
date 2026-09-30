@@ -65,6 +65,30 @@ export const createTypographyVars = ({
 }) => defineAttributes(prefixes.cssVariable, TYPOGRAPHY_VARS_SCHEMA);
 
 /**
+ * The custom properties of a paragraph's text box, which the paragraph rule
+ * reads: `textBox` is the `text-box` a trimmed paragraph declares, and the
+ * `trim` ones carry capsize's pseudo-element trim for browsers without
+ * `text-box` (`trim` is the pseudo-elements' `content`, set only on trimmed
+ * paragraphs).
+ */
+const LINE_BOX_VARS_SCHEMA = {
+  textBox: CSS_VAR,
+  trim: CSS_VAR,
+  trimCapHeight: CSS_VAR,
+  trimBaseline: CSS_VAR,
+} as const;
+
+/**
+ * The line box custom properties under a document's CSS variable prefix,
+ * e.g. `--matti-docs-text-box`.
+ */
+export const createLineBoxVars = ({
+  prefixes,
+}: {
+  prefixes: Pick<PrefixesConfig, 'cssVariable'>;
+}) => defineAttributes(prefixes.cssVariable, LINE_BOX_VARS_SCHEMA);
+
+/**
  * The class every library element carries in the DOM and PDF targets, e.g.
  * `matti-docs-element-grid-container`. The library styles nothing through it:
  * it exists so a consumer's own stylesheet can reach an element the library

@@ -17,6 +17,9 @@ import {
   createFontFaceString,
   createStyleArray,
   createStyleString,
+  createTrimFallbackStyleString,
+  createVariantStyleArray,
+  typographyOptionsToStyleVars,
 } from './styles';
 import type * as stylesModule from './styles';
 
@@ -96,6 +99,79 @@ describe('createFontFaceString', () => {
         '}',
       ].join('\n'),
     );
+  });
+});
+
+describe('the line box', () => {
+  const prefixes = createMockPrefixesConfig();
+
+  /** Merriweather's metrics: capitals 0.743 of the em. */
+  const FONTS = {
+    Merriweather: {
+      fontFaces: [
+        {
+          sources: [{ src: '/Merriweather-Regular.ttf', format: 'truetype' }],
+          metrics: {
+            unitsPerEm: 1000,
+            ascent: 984,
+            descent: -273,
+            lineGap: 0,
+            capHeight: 743,
+          },
+        },
+      ],
+    },
+  } as const;
+
+  it('writes a trimmed text box as the text-box a paragraph reads', () => {
+    expect(
+      typographyOptionsToStyleVars({ prefixes }, { textBoxTrim: 'both' }),
+    ).toEqual({ '--mock-variable-text-box': 'trim-both cap alphabetic' });
+    expect(
+      typographyOptionsToStyleVars({ prefixes }, { textBoxTrim: 'none' }),
+    ).toEqual({ '--mock-variable-text-box': 'normal' });
+  });
+
+  it('sets the default typography on the scoping root', () => {
+    expect(
+      createVariantStyleArray({
+        prefixes,
+        defaultTypography: {
+          fontFamily: 'Merriweather',
+          fontSize: '11pt',
+          lineHeight: '1.5',
+        },
+      })[0],
+    ).toEqual([
+      ':where(:scope)',
+      {
+        '--mock-variable-font-family': 'Merriweather',
+        '--mock-variable-font-size': '11pt',
+        '--mock-variable-line-height': '1.5',
+      },
+    ]);
+  });
+
+  it("writes a cap height as the font size it stands for in the text's face", () => {
+    const [, lead] = createVariantStyleArray({
+      prefixes,
+      fonts: FONTS,
+      defaultTypography: { fontFamily: 'Merriweather' },
+      variants: { lead: { capHeight: '7.43pt' } },
+    });
+    // 7.43pt capitals are 10pt Merriweather.
+    expect(lead[1]).toEqual({ '--mock-variable-font-size': '13.3333px' });
+  });
+
+  it('wraps the pseudo-element trim in a feature query', () => {
+    const css = createTrimFallbackStyleString({ prefixes, root: ':scope' });
+    expect(css).toMatch(
+      /^@supports not \(text-box: trim-both cap alphabetic\) \{/,
+    );
+    expect(css).toContain(
+      'margin-bottom: var(--mock-variable-trim-cap-height, 0);',
+    );
+    expect(css).toContain('content: var(--mock-variable-trim, none);');
   });
 });
 
@@ -352,6 +428,41 @@ describe('createStyleString in a browser', () => {
    * `<a href>`, so the stylesheet has to draw the same line: an `<a>` with no
    * `href` is a `Bookmark`, an anchor target rather than a link.
    */
+  it('trims the text box of paragraphs only', async () => {
+    const computed = await harness.evaluate(async (api) => {
+      const styleSheet = new CSSStyleSheet();
+      await styleSheet.replace(
+        api.createStyleString({
+          prefixes: api.assignPrefixesOptions(),
+          variants: { trimmed: { textBoxTrim: 'both' } },
+        }),
+      );
+      document.adoptedStyleSheets.push(styleSheet);
+
+      document.body.innerHTML =
+        '<div id="wrapper" class="matti-docs-variant-trimmed">' +
+        '<p id="paragraph">text <span id="nested">nested</span></p>' +
+        '</div>';
+
+      const readTrim = (id: string) =>
+        window
+          .getComputedStyle(document.getElementById(id)!)
+          .getPropertyValue('text-box-trim');
+
+      return {
+        wrapper: readTrim('wrapper'),
+        paragraph: readTrim('paragraph'),
+        nested: readTrim('nested'),
+      };
+    });
+
+    expect(computed).toEqual({
+      wrapper: 'none',
+      paragraph: 'trim-both',
+      nested: 'none',
+    });
+  });
+
   it('applies the hyperlink variant to links but not to anchor targets', async () => {
     const computed = await harness.evaluate(async (api) => {
       const styleSheet = new CSSStyleSheet();

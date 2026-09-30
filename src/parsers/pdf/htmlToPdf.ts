@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import type { Browser, Page } from 'puppeteer-core';
 import type { FontsConfig } from '../../entities';
+import { resolveDocumentFonts } from '../../lib/documentFonts';
 import type { DocumentDom } from '../dom';
 import { htmlToScript } from '../script';
 import type { ErrorObject } from '../../utils';
@@ -32,12 +33,18 @@ export const htmlToPdf = async (
     closeBrowser,
     pageStyleSheets = [],
     publicDirectory,
+    fonts,
     ...options
   }: HtmlToPdfOptions,
 ): Promise<ErrorObject | Uint8Array<ArrayBufferLike>> => {
   let pagePromise: undefined | Promise<Page> = undefined;
   try {
-    const script = htmlToScript(html, options);
+    // The page cannot read the font files for their metrics, so they are read
+    // here, from the same public directory the page is served.
+    const script = htmlToScript(html, {
+      ...options,
+      fonts: await resolveDocumentFonts(html, { fonts, publicDirectory }),
+    });
 
     const page = await (pagePromise = browser.newPage());
 

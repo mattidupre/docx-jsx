@@ -85,6 +85,12 @@ exports[`createStyleArray 1`] = `
     },
   ],
   [
+    ":where(p, h1, h2, h3, h4, h5, h6, li, pre)",
+    {
+      "textBox": "var(--mock-variable-text-box, normal)",
+    },
+  ],
+  [
     ":where(h1)",
     {
       "--mock-variable-font-size": "32px",
@@ -267,6 +273,9 @@ exports[`createStyleString 1`] = `
 }
 :where(li) {
   display: list-item;
+}
+:where(p, h1, h2, h3, h4, h5, h6, li, pre) {
+  text-box: var(--mock-variable-text-box, normal);
 }
 :where(h1) {
   --mock-variable-font-weight: bold;

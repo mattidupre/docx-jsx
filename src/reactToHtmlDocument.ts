@@ -1,5 +1,17 @@
+import type { FontsConfig } from './entities';
 import { reactToHtml, type DocumentRootComponent } from './lib/reactToHtml';
+import { resolveDocumentFonts } from './lib/documentFonts';
 import { htmlToScript } from './parsers/script';
+
+export type ReactToHtmlDocumentOptions = {
+  /** Overrides the fonts declared on the document, as in every target. */
+  fonts?: FontsConfig;
+  /**
+   * Where the font files are read from for their metrics, as the PDF target
+   * reads them; the page itself loads them from the same `src`.
+   */
+  publicDirectory?: string;
+};
 
 /**
  * A standalone HTML file that paginates itself in the browser.
@@ -20,11 +32,13 @@ import { htmlToScript } from './parsers/script';
  */
 export const reactToHtmlDocument = async (
   DocumentRoot: DocumentRootComponent,
+  { fonts, publicDirectory }: ReactToHtmlDocumentOptions = {},
 ) => {
   const html = reactToHtml(DocumentRoot, 'pdf');
   const script = htmlToScript(html, {
     pageClassName: 'page',
     targetQuery: '#rendered',
+    fonts: await resolveDocumentFonts(html, { fonts, publicDirectory }),
   });
   return `
 <!doctype html>

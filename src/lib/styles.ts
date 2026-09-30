@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { kebabCase, mapValues, pick } from 'lodash';
+import { kebabCase, mapValues, omit, pick } from 'lodash';
 import {
   TYPOGRAPHY_CSS_KEYS,
   INTRINSIC_TYPOGRAPHY_OPTIONS,
@@ -9,15 +9,24 @@ import {
   INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS,
   INTRINSIC_TAG_TYPOGRAPHY_OPTIONS,
   INTRINSIC_VARIANT_TAG_NAMES,
+  type DefaultTypography,
   type DocumentType,
   type FontsConfig,
   type PrefixesConfig,
   type TypographyOptions,
+  type TypographyOptionsFlat,
+  type UnitsSize,
   type VariantName,
+  assignTypographyOptions,
+  capHeightToFontSize,
+  convertUnits,
+  createLineBoxVars,
   createTypographyVars,
   getFontFaceSource,
   PARAGRAPH_TAG_NAMES,
+  resolveLineBoxFont,
   resolveRemLengths,
+  toUnits,
   typographyOptionsToFlat,
   variantNameToClassName,
 } from '../entities';
@@ -44,6 +53,18 @@ export const resolveStyleRemLengths = <TValue>(
   );
 
 /**
+ * The `text-box` a `textBoxTrim` option declares: `both` trims to the cap
+ * height of the first line and the alphabetic baseline of the last.
+ */
+const TEXT_BOX_BY_TRIM = {
+  both: 'trim-both cap alphabetic',
+  none: 'normal',
+} as const satisfies Record<
+  NonNullable<TypographyOptionsFlat['textBoxTrim']>,
+  string
+>;
+
+/**
  * The custom properties that carry `typographyOptions` to the `*` rule of
  * {@link createStructuralStyleArray}. A fallback array becomes a `var()` chain,
  * and `rem` lengths are resolved here, including the literal at the end of the
@@ -55,13 +76,51 @@ export const typographyOptionsToStyleVars = (
     prefixes: Pick<PrefixesConfig, 'cssVariable'>;
   },
   typographyOptions: undefined | TypographyOptions,
-) =>
-  createTypographyVars(options).encodeCssVars(
-    mapValues(pick(typographyOptions, ...TYPOGRAPHY_CSS_KEYS), (value) => {
-      const declaration = toVarDeclaration(value);
-      return declaration && resolveRemLengths(declaration);
+) => {
+  const { textBoxTrim } = typographyOptionsToFlat(typographyOptions ?? {});
+  return {
+    ...createTypographyVars(options).encodeCssVars(
+      mapValues(pick(typographyOptions, ...TYPOGRAPHY_CSS_KEYS), (value) => {
+        const declaration = toVarDeclaration(value);
+        return declaration && resolveRemLengths(declaration);
+      }),
+    ),
+    ...createLineBoxVars(options).encodeCssVars({
+      textBox: textBoxTrim && TEXT_BOX_BY_TRIM[textBoxTrim],
     }),
+  };
+};
+
+/** A length in points as the `px` the CSS targets write. */
+export const toCssPx = (valuePt: number): UnitsSize =>
+  toUnits(Number(convertUnits(`${valuePt}pt`, 'px').toFixed(4)), 'px');
+
+/**
+ * `typographyOptions` with a `capHeight` turned into the `fontSize` it stands
+ * for in the face the text is set in (its own family, else the document's
+ * default). CSS has no cap height sizing, so a variant or the document's
+ * defaults are written with the font size.
+ */
+const withCapHeightFontSize = (
+  typographyOptions: TypographyOptions,
+  {
+    fonts,
+    defaultTypography,
+  }: { fonts: FontsConfig; defaultTypography: undefined | DefaultTypography },
+): TypographyOptions => {
+  const { capHeight } = typographyOptionsToFlat(typographyOptions);
+  if (capHeight === undefined) {
+    return typographyOptions;
+  }
+  const font = resolveLineBoxFont(
+    fonts,
+    assignTypographyOptions({}, defaultTypography, typographyOptions),
   );
+  return {
+    ...omit(typographyOptions, 'capHeight'),
+    fontSize: toCssPx(capHeightToFontSize(capHeight, font)),
+  };
+};
 
 const DEFAULT_VARS: CssRuleDeclarations = {
   fontSize: `${ROOT_FONT_SIZE_PX}px`,
@@ -216,6 +275,8 @@ export const createStructuralStyleArray = (options: {
 
   const typographyVars = createTypographyVars(options);
 
+  const lineBoxVars = createLineBoxVars(options);
+
   const rules: CssRulesArray = [];
 
   rules.push([
@@ -272,6 +333,13 @@ export const createStructuralStyleArray = (options: {
         display: 'list-item', // Fixes flow-root
       },
     ],
+    [
+      // Only a paragraph trims its text box. The custom property is inherited
+      // on purpose (a variant on a wrapper trims the paragraphs inside it), so
+      // the property itself is kept off every other element.
+      `:where(${PARAGRAPH_TAG_NAMES.join(', ')})`,
+      { textBox: lineBoxVars.ref('textBox', 'normal') },
+    ],
   );
 
   // The library's own `*` and paragraph rules override the user agent's
@@ -315,10 +383,30 @@ export const createStructuralStyleArray = (options: {
 export const createVariantStyleArray = (options: {
   variants?: Variants;
   prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
+  defaultTypography?: DefaultTypography;
+  /**
+   * The fonts a `capHeight` is measured in. Without them (a `web` render,
+   * which has no font metrics) a cap height sizes nothing.
+   */
+  fonts?: FontsConfig;
 }): CssRulesArray => {
-  const { prefixes, variants = {} } = options;
+  const { prefixes, variants = {}, defaultTypography, fonts } = options;
+
+  const toStyleVars = (typographyOptions: undefined | TypographyOptions) =>
+    typographyOptionsToStyleVars(
+      { prefixes },
+      typographyOptions && fonts
+        ? withCapHeightFontSize(typographyOptions, { fonts, defaultTypography })
+        : typographyOptions,
+    );
 
   const rules: CssRulesArray = [];
+
+  if (defaultTypography) {
+    // The scoping root: the page root on screen, the content root while the
+    // Fragmenter measures. Everything below inherits the defaults.
+    rules.push([':where(:scope)', toStyleVars(defaultTypography)]);
+  }
 
   // Variant vars are attached to variant class names .[prefix]-[variant-name]
   for (const variantName in variants) {
@@ -336,7 +424,7 @@ export const createVariantStyleArray = (options: {
     rules.push([
       // Variant tags set variant CSS vars.
       variantSelectorSelf,
-      typographyOptionsToStyleVars({ prefixes }, variants[variantName]),
+      toStyleVars(variants[variantName]),
     ]);
   }
 
@@ -463,6 +551,44 @@ export const createContentStyleArray = ({
   prefixes: Pick<PrefixesConfig, 'cssVariable'>;
   root: string;
 }): CssRulesArray => rootRules(root, createStructuralStyleArray({ prefixes }));
+
+/**
+ * capsize's leading trim, for a browser without `text-box`: an empty table
+ * before and after a trimmed paragraph, pulled in by the negative margins
+ * `nodeToDom` resolves from the font's metrics. Only a trimmed paragraph sets
+ * the `trim` property that gives the pseudo-elements their content. Rooted at
+ * `root`, as {@link createContentStyleArray} is.
+ */
+export const createTrimFallbackStyleString = ({
+  prefixes,
+  root,
+}: {
+  prefixes: Pick<PrefixesConfig, 'cssVariable'>;
+  root: string;
+}): string => {
+  const lineBoxVars = createLineBoxVars({ prefixes });
+  const selector = `:where(${root}) :where(${PARAGRAPH_TAG_NAMES.join(', ')})`;
+  return `@supports not (text-box: trim-both cap alphabetic) {\n${cssRulesArrayToString(
+    [
+      [
+        `${selector}::before`,
+        {
+          content: lineBoxVars.ref('trim', 'none'),
+          display: 'table',
+          marginBottom: lineBoxVars.ref('trimCapHeight', 0),
+        },
+      ],
+      [
+        `${selector}::after`,
+        {
+          content: lineBoxVars.ref('trim', 'none'),
+          display: 'table',
+          marginTop: lineBoxVars.ref('trimBaseline', 0),
+        },
+      ],
+    ],
+  )}\n}`;
+};
 
 export const createVariantStyleString = (
   ...args: Parameters<typeof createVariantStyleArray>
