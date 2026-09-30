@@ -2,11 +2,17 @@ import { DocumentProvider } from '../../reactComponents';
 import { BreakSections } from './breakSections';
 import { ColumnSections } from './columnSections';
 import { FlowSections } from './flowSections';
+import { TrimSections } from './trimSections';
 import { FLOW_PARITY_FONTS } from './shared';
 
 export { FLOW_PARITY_FONTS, FLOW_PARITY_FONT_SRC } from './shared';
 
-export const FLOW_PARITY_SECTIONS = ['flow', 'breaks', 'columns'] as const;
+export const FLOW_PARITY_SECTIONS = [
+  'flow',
+  'breaks',
+  'columns',
+  'trim',
+] as const;
 
 export type FlowParitySection = (typeof FLOW_PARITY_SECTIONS)[number];
 
@@ -20,6 +26,7 @@ export const createFlowParityDocument = (
         {sections.includes('flow') && <FlowSections />}
         {sections.includes('breaks') && <BreakSections />}
         {sections.includes('columns') && <ColumnSections />}
+        {sections.includes('trim') && <TrimSections />}
       </DocumentProvider>
     );
   };
