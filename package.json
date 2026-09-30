@@ -104,6 +104,7 @@
     "@capsizecss/unpack": "^4.0",
     "colorjs.io": "0.7.1",
     "docx": "^9.8.1",
+    "fontkitten": "^1.0.3",
     "hast-util-from-html": "^2.0.1",
     "hast-util-from-html-isomorphic": "^2.0.0",
     "hast-util-to-dom": "^4.0.0",
