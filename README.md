@@ -145,7 +145,10 @@ const pdf = await reactToPdf(Document, {
 });
 
 // A standalone HTML file that paginates itself in the browser -> string
-const html = await reactToHtmlDocument(Document);
+const html = await reactToHtmlDocument(Document, {
+  fonts,
+  publicDirectory,  // where font files are read for their metrics
+});
 
 // A detached, paginated HTMLElement, for a live preview -> HTMLElement
 const element = await reactToDom(Document, {
@@ -250,7 +253,7 @@ sense in one target (an "on the web" call to action, a print-only note).
 
 | Component | Purpose | HTML / DOM / PDF | DOCX | Notes and limits |
 | --- | --- | --- | --- | --- |
-| `DocumentProvider` | Document root: page size, variants, prefixes, fonts, fragmentation | Wrapper element carrying the encoded document config; injects the variant stylesheet when `injectEnvironmentCss` | `Document` with generated `styles` and `numbering` | Defaults to 8.5in × 11in. Nesting a provider with different variants or prefixes throws. `fragmentation` picks the pagination conventions of the DOM and PDF targets: `word` (the default: widow/orphan control, space-before dropped at the top of a continued page, repeated table headers) or `css` (css-break-3), or rules over either. |
+| `DocumentProvider` | Document root: page size, variants, prefixes, fonts, default typography, fragmentation | Wrapper element carrying the encoded document config; injects the variant stylesheet when `injectEnvironmentCss` | `Document` with generated `styles` and `numbering` | Defaults to 8.5in × 11in. Nesting a provider with different variants or prefixes throws. `fragmentation` picks the pagination conventions of the DOM and PDF targets: `word` (the default: widow/orphan control, space-before dropped at the top of a continued page, repeated table headers) or `css` (css-break-3), or rules over either. |
 | `ContentProvider` | Variants and prefixes without a document | Adopted stylesheet when `injectEnvironmentCss` and `documentType === 'web'` | Context only; contributes no content | Use to style library components outside a document (Storybook, a web page). |
 | `Stack` | A page section: margins, columns, running header and footer | One `PageTemplate` per layout; the Fragmenter measures each stack once at the width of the page it starts on and fills pages from the measurements | One `ISectionOptions` per stack (page size, margins, `column`, first/default headers and footers) | `continuous` starts the section on the current page. A page belongs to the stack whose content starts it, and gets that stack's `first` layout only when it also starts the stack. A multi-column stack emits a second, empty continuous section so the columns do not fill the page. |
 | `Typography` | A styled tag plus an optional variant | The tag from `as`, with typography written as CSS custom properties and the variant class | Run properties, or paragraph properties when the tag is a paragraph tag | `as` defaults to `span`. |
@@ -328,6 +331,7 @@ type TypographyOptions = {
   paddingBottom, borderBottomWidth, borderBottomColor,
   whiteSpace,
   highlightColor, superScript, subScript,
+  capHeight, textBoxTrim,
 };
 ```
 
@@ -336,8 +340,33 @@ root in every target, because Word has no cascade to resolve it against: the
 browser targets are given the resolved `px` (in typography variables, component
 styles, fallback literals and page geometry), so a host page with
 `html { font-size: 20px }` no longer scales a preview.
-`lineHeight` may also be a unitless multiplier, which becomes automatic line
-spacing in Word; a length becomes exact line spacing.
+
+**The line model.** Every paragraph's line height is resolved once, to an
+absolute leading L, from its typography and the metrics of its font file
+(`entities/lineBox.ts`): a unitless multiplier times the font size, a length,
+or `normal`, which is the font's own single line (`hhea` ascent + descent +
+line gap, what Word calls single). CSS gets `line-height: L` and Word
+`lineRule="exact"` (`atLeast` for a paragraph holding a picture), the one rule
+under which Word puts the baseline at `0.8 × L + 0.25pt` whatever the font.
+Text that names no line height and has no font metrics keeps each target's own
+`normal`.
+
+- `capHeight` sizes text by its capitals instead of `fontSize` (the later of
+  the two wins): the font size is the cap height over the font's cap height
+  per em.
+- `textBoxTrim: 'both'` trims a paragraph to the cap height of its first line
+  and the baseline of its last (`text-box: trim-both cap alphabetic`, with
+  capsize's pseudo-element trim where that is unsupported), so a margin is
+  the space between the text itself. Word cannot trim: the DOCX moves the
+  trimmed space into the paragraph spacing, and the `word` fragmentation
+  profile places a trimmed line at the top and bottom of a page where Word
+  does (`trim` rules).
+- `normal`, `capHeight` and trimming need the font's metrics, and throw a
+  `MissingFontMetricsError` without them.
+
+`DocumentProvider`'s `defaultTypography` (`fontFamily`, `fontSize`,
+`capHeight`, `lineHeight`, `textBoxTrim`) is the document's body text. The CSS
+targets set it on the content root and the DOCX writes it as `w:docDefaults`.
 
 **Variants** are named `TypographyOptions`, declared once on `DocumentProvider`
 (or `ContentProvider`) and referenced by name:
@@ -421,6 +450,14 @@ const fonts = {
 
 A source with no `documentType` serves both browser targets. A `docx` source
 names a font on the reader's machine and is never used as a file.
+
+A face's `web`/`pdf` source is also its font file for the line model: the
+renderers that run in Node (`reactToDocx`, `reactToPdf`,
+`reactToHtmlDocument`) read its metrics with `@capsizecss/unpack` from
+`publicDirectory` (or an absolute path, or a `data:` URL) and pass them on as
+plain data. A document rendered only in a browser (`reactToDom`, the preview)
+declares them on the face instead:
+`metrics: { unitsPerEm, ascent, descent, lineGap, capHeight }`.
 
 ## Testing
 
