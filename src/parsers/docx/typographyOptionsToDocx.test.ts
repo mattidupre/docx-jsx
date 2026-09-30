@@ -23,9 +23,11 @@ import {
   type TagName,
   type TypographyOptions,
   type UnitsSize,
+  resolveLineBox,
 } from '../../entities';
 import { getValueOf } from '../../utils/object';
 import {
+  parseLineSpacing,
   parseParagraphOptions,
   parseTextRunOptions,
 } from './typographyOptionsToDocx';
@@ -130,51 +132,16 @@ describe('parseParagraphOptions', () => {
     [{ textAlign: 'justify' }, { alignment: AlignmentType.JUSTIFIED }],
     [{ highlightColor: '#ffff00' }, { shading: { fill: 'ffff00' } }],
 
-    // A unitless line-height is a multiple of the font size, which is what
-    // lineRule "auto" means, counted in 240ths of a line.
-    [
-      { lineHeight: '1.2' },
-      { spacing: { line: 288, lineRule: LineRuleType.AUTO } },
-    ],
-    [
-      { lineHeight: '1' },
-      { spacing: { line: 240, lineRule: LineRuleType.AUTO } },
-    ],
-    [
-      { lineHeight: '2' },
-      { spacing: { line: 480, lineRule: LineRuleType.AUTO } },
-    ],
-    // A length is a fixed leading, which is lineRule "exact" in twips.
-    [
-      { lineHeight: '1.5rem' },
-      { spacing: { line: 360, lineRule: LineRuleType.EXACT } },
-    ],
-    [
-      { lineHeight: '18px' },
-      { spacing: { line: 270, lineRule: LineRuleType.EXACT } },
-    ],
-    [
-      { lineHeight: '12pt' },
-      { spacing: { line: 240, lineRule: LineRuleType.EXACT } },
-    ],
-    [
-      { lineHeight: '0.25in' },
-      { spacing: { line: 360, lineRule: LineRuleType.EXACT } },
-    ],
-    [
-      { lineHeight: '1cm' },
-      { spacing: { line: 567, lineRule: LineRuleType.EXACT } },
-    ],
-    // `normal` is font-dependent in CSS: emit nothing and let Word decide.
+    // The line height needs the resolved font size and font, so it is the
+    // line box's (`parseLineSpacing`), never a paragraph option's.
+    [{ lineHeight: '1.2' }, {}],
+    [{ lineHeight: '18px' }, {}],
     [{ lineHeight: 'normal' }, {}],
-    // A lineRule is never emitted without the line it applies to.
     [{ marginTop: '1rem' }, { spacing: { before: 240 } }],
     [{ marginBottom: '0.5rem' }, { spacing: { after: 120 } }],
     [
       { marginTop: '1rem', marginBottom: '1rem', lineHeight: '1.2' },
-      {
-        spacing: { before: 240, after: 240, line: 288, lineRule: 'auto' },
-      },
+      { spacing: { before: 240, after: 240 } },
     ],
     // Twips are integers in OOXML.
     [{ marginTop: '1cm' }, { spacing: { before: 567 } }],
@@ -224,6 +191,45 @@ describe('parseParagraphOptions', () => {
 
   test('with undefined', () => {
     expect(parseParagraphOptions(NO_FONTS, undefined)).toEqual({});
+  });
+});
+
+describe('parseLineSpacing', () => {
+  const NO_FONT = { fontFamily: undefined, metrics: undefined };
+
+  const SUBJECTS: Subjects<ReturnType<typeof parseLineSpacing>> = [
+    // A multiplier scales the resolved font size (CSS's 16px unless set) and
+    // is written as the exact line it comes to, not as Word's `auto`, which
+    // would multiply the font's own single line instead.
+    [{ lineHeight: '1.2' }, { line: 288, lineRule: LineRuleType.EXACT }],
+    [{ lineHeight: '1' }, { line: 240, lineRule: LineRuleType.EXACT }],
+    [
+      { lineHeight: '1.5', fontSize: '20pt' },
+      { line: 600, lineRule: LineRuleType.EXACT },
+    ],
+    // A length is the line, in twips.
+    [{ lineHeight: '1.5rem' }, { line: 360, lineRule: LineRuleType.EXACT }],
+    [{ lineHeight: '18px' }, { line: 270, lineRule: LineRuleType.EXACT }],
+    [{ lineHeight: '12pt' }, { line: 240, lineRule: LineRuleType.EXACT }],
+    [{ lineHeight: '0.25in' }, { line: 360, lineRule: LineRuleType.EXACT }],
+    [{ lineHeight: '1cm' }, { line: 567, lineRule: LineRuleType.EXACT }],
+  ];
+
+  for (const subject of SUBJECTS) {
+    test(subjectToString(subject), () => {
+      const lineBox = resolveLineBox(subject[0], NO_FONT);
+      expect(lineBox && parseLineSpacing(lineBox, { atLeast: false })).toEqual(
+        subject[1],
+      );
+    });
+  }
+
+  test('writes a paragraph holding a picture as at least the line', () => {
+    const lineBox = resolveLineBox({ lineHeight: '18pt' }, NO_FONT);
+    expect(lineBox && parseLineSpacing(lineBox, { atLeast: true })).toEqual({
+      line: 360,
+      lineRule: LineRuleType.AT_LEAST,
+    });
   });
 });
 

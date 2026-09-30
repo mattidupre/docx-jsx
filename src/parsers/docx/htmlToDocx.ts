@@ -37,9 +37,19 @@ import { isValueInArray } from '../../utils/array';
 import {
   INTRINSIC_TAG_TYPOGRAPHY_OPTIONS,
   MONOSPACE_DOCX_FONT_NAME,
+  PARAGRAPH_TAG_NAMES,
+  assignTypographyOptions,
   isChildOfTagName,
+  isTrimmedLineBox,
+  resolveBlockTypography,
   resolveFragmentationRules,
+  resolveLineBox,
+  resolveLineBoxFont,
+  typographyOptionsToFlat,
+  wordSpaceAboveCapHeight,
+  wordSpaceBelowBaseline,
 } from '../../entities';
+import { resolveDocumentFonts } from '../../lib/documentFonts';
 import {
   type HtmlElementNode,
   mapHtmlToDocument,
@@ -50,6 +60,7 @@ import type {
   ElementType,
   FontsConfig,
   FragmentationRules,
+  LineBox,
   PageMargin,
   PageSize,
   TagName,
@@ -57,6 +68,7 @@ import type {
   INTRINSIC_VARIANT_TAG_NAMES,
 } from '../../entities';
 import {
+  parseLineSpacing,
   parseTextRunOptions,
   parseParagraphOptions,
 } from './typographyOptionsToDocx';
@@ -249,11 +261,27 @@ const toImageTransformation = (
 };
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
+
+const LINE_BOX_KEY: unique symbol = Symbol('LineBoxKey');
+
+/**
+ * What the trim pass needs of a text paragraph: the line box it resolved to,
+ * and the margins its typography resolves to (its variant's included), in
+ * twips.
+ */
+type ParagraphLineBox = {
+  lineBox: LineBox;
+  marginTop: number;
+  marginBottom: number;
+};
+
 /**
  * Override paragraph class so options can be changed after instantiation.
  */
 class Paragraph extends DocxParagraph {
   public [PARAGRAPH_OPTIONS_KEY]: IParagraphOptions;
+
+  public [LINE_BOX_KEY]: undefined | ParagraphLineBox;
 
   public static clone(
     paragraph: Paragraph,
@@ -264,14 +292,128 @@ class Paragraph extends DocxParagraph {
       paragraph[PARAGRAPH_OPTIONS_KEY],
       extraOptions,
     );
-    return new Paragraph(newOptions);
+    return new Paragraph(newOptions, paragraph[LINE_BOX_KEY]);
   }
 
-  constructor(options: IParagraphOptions) {
+  constructor(options: IParagraphOptions, lineBox?: ParagraphLineBox) {
     super(options);
     this[PARAGRAPH_OPTIONS_KEY] = options;
+    this[LINE_BOX_KEY] = lineBox;
   }
 }
+
+/** `paragraphOptions` with the exact (or at least) line of `lineBox`. */
+const withLineSpacing = (
+  paragraphOptions: undefined | IParagraphPropertiesOptions,
+  lineBox: undefined | LineBox,
+  { atLeast = false }: { atLeast?: boolean } = {},
+): undefined | IParagraphPropertiesOptions =>
+  lineBox
+    ? {
+        ...paragraphOptions,
+        spacing: {
+          ...paragraphOptions?.spacing,
+          ...parseLineSpacing(lineBox, { atLeast }),
+        },
+      }
+    : paragraphOptions;
+
+/** Whether a paragraph holds a picture, which an exact line would clip. */
+const hasImageRun = (children: ReadonlyArray<unknown>): boolean =>
+  children.flat(Infinity).some((child) => child instanceof ImageRun);
+
+/** `create`, called at most once and only when first asked for. */
+const once = <TValue>(create: () => TValue): (() => TValue) => {
+  let value: undefined | { current: TValue } = undefined;
+  return () => (value ??= { current: create() }).current;
+};
+
+const TWIP_PER_PT = 20;
+
+/** Rounding noise, well under a twip, is not a spacing Word cannot write. */
+const TRIM_SPACING_EPSILON_TWIP = 0.5;
+
+/**
+ * Word cannot trim a text box, so the space a trimmed CSS box leaves out
+ * (above the capitals of its first line, below the baseline of its last) is
+ * taken out of the paragraph spacing instead, pair by pair down a section.
+ * Between a box and the next, where either is trimmed, the collapsed CSS
+ * margin `g` becomes the next paragraph's space before, less what Word keeps
+ * around the lines: `g − (0.2 L₁ − 0.25pt) − (0.8 L₂ + 0.25pt − cap₂)`, with
+ * the first paragraph's space after set to 0. For the first paragraph of a
+ * section the top of the section's content is the box before it.
+ *
+ * Spacing cannot be negative: a pair set closer than Word's own lines is
+ * written 0 apart, with a warning. At the top of a section that is expected
+ * (the PDF places the first line there as Word does, `trim` rules of the
+ * `word` profile), so it goes unreported.
+ */
+const compensateTrimmedSpacing = (
+  blocks: ReadonlyArray<unknown>,
+  adjacent: FragmentationRules['margins']['adjacent'],
+): Array<unknown> => {
+  const result = [...blocks];
+  const START = { index: undefined, trimmed: false, below: 0, after: 0 };
+  let previous: {
+    index: undefined | number;
+    trimmed: boolean;
+    below: number;
+    after: number;
+  } = START;
+  blocks.forEach((block, index) => {
+    if (!(block instanceof Paragraph)) {
+      previous = START;
+      return;
+    }
+    const { spacing } = block[PARAGRAPH_OPTIONS_KEY];
+    const own = block[LINE_BOX_KEY];
+    const lineBox = own?.lineBox;
+    const before = spacing?.before ?? own?.marginTop ?? 0;
+    const after = spacing?.after ?? own?.marginBottom ?? 0;
+    const trimmed = isTrimmedLineBox(lineBox);
+    if (trimmed || previous.trimmed) {
+      const gap =
+        adjacent === 'sum'
+          ? previous.after + before
+          : Math.max(previous.after, before, 0);
+      const needed =
+        previous.below +
+        (isTrimmedLineBox(lineBox)
+          ? wordSpaceAboveCapHeight(lineBox) * TWIP_PER_PT
+          : 0);
+      const compensated = gap - needed;
+      if (
+        compensated < -TRIM_SPACING_EPSILON_TWIP &&
+        previous.index !== undefined
+      ) {
+        console.warn(
+          `A trimmed paragraph is ${gap / TWIP_PER_PT}pt from the paragraph before it, less than the ${needed / TWIP_PER_PT}pt Word keeps around their lines; the DOCX sets them ${-compensated / TWIP_PER_PT}pt further apart than the PDF.`,
+        );
+      }
+      result[index] = Paragraph.clone(block, {
+        spacing: { ...spacing, before: Math.max(Math.round(compensated), 0) },
+      });
+      const previousBlock =
+        previous.index === undefined ? undefined : result[previous.index];
+      if (previous.index !== undefined && previousBlock instanceof Paragraph) {
+        result[previous.index] = Paragraph.clone(previousBlock, {
+          spacing: {
+            ...previousBlock[PARAGRAPH_OPTIONS_KEY].spacing,
+            after: 0,
+          },
+        });
+      }
+    }
+    previous = {
+      index,
+      trimmed,
+      below:
+        lineBox && trimmed ? wordSpaceBelowBaseline(lineBox) * TWIP_PER_PT : 0,
+      after,
+    };
+  });
+  return result;
+};
 
 /**
  * A `w:tab` run together with the tab stop the paragraph holding it has to
@@ -475,16 +617,64 @@ const createDocx = async (
   // in the document is resolved to bytes before the mapping starts.
   const images = await resolveDocumentImages(html, { publicDirectory });
 
+  // The metrics a line box needs are read from the font files up front, for
+  // the same reason. A call-level config overrides the document's.
+  const fonts =
+    (await resolveDocumentFonts(html, {
+      fonts: fontsOption,
+      publicDirectory,
+    })) ?? {};
+
   // Every list declares the numbering it needs while it is mapped, so the
   // document ships exactly the definitions its paragraphs point at.
   const listNumbering = createListNumbering();
 
   const mappedDocument = mapHtmlToDocument(html, (node) => {
     const elementsContext = node.data.elementsContext;
-    // Fonts declared once on `DocumentProvider` ride along on the document
-    // element, so every target resolves the same families.
-    const fonts = fontsOption ?? elementsContext.document?.fonts ?? {};
     const { contentOptions } = elementsContext;
+
+    // What a run inherits from its style and the document's defaults, which
+    // a `capHeight` of its own is measured in.
+    const inheritedTypography = assignTypographyOptions(
+      {},
+      elementsContext.document.defaultTypography,
+      elementsContext.variant === undefined
+        ? undefined
+        : elementsContext.document.variants[elementsContext.variant],
+    );
+
+    /**
+     * The line box of the paragraphs an element makes, resolved from the same
+     * typography the CSS targets resolve it from. Only a paragraph tag trims:
+     * the paragraph a container gathers loose runs into is an anonymous box in
+     * CSS, which is not trimmed.
+     */
+    const resolveElementLineBox = (tagName: TagName) => {
+      const { variants, defaultTypography } = elementsContext.document;
+      const typography = resolveBlockTypography({
+        defaultTypography,
+        variants,
+        tagName,
+        variant: elementsContext.variant,
+        contentOptions,
+      });
+      const lineTypography = isValueInArray(tagName, PARAGRAPH_TAG_NAMES)
+        ? typography
+        : { ...typography, textBoxTrim: 'none' as const };
+      const lineBox = resolveLineBox(
+        lineTypography,
+        resolveLineBoxFont(fonts, lineTypography),
+      );
+      const { marginTop, marginBottom } = typographyOptionsToFlat(typography);
+      return {
+        lineBox,
+        paragraphLineBox: lineBox && {
+          lineBox,
+          marginTop: marginTop === undefined ? 0 : toTwip(marginTop),
+          marginBottom: marginBottom === undefined ? 0 : toTwip(marginBottom),
+        },
+      };
+    };
 
     if (node.type === 'text') {
       const { whiteSpace } = contentOptions;
@@ -497,7 +687,7 @@ const createDocx = async (
         ...(isChildOfTagName(parentTagNames, MONOSPACE_TAG_NAMES) && {
           font: MONOSPACE_DOCX_FONT_NAME,
         }),
-        ...parseTextRunOptions(fonts, contentOptions),
+        ...parseTextRunOptions(fonts, contentOptions, inheritedTypography),
         style: variantNameToCharacterStyleId(
           elementsContext.variant ??
             (elementsContext.isInsideHyperlink
@@ -539,7 +729,34 @@ const createDocx = async (
         contentOptions: { breakInside, breakAfter },
       } = element;
 
-      const paragraphOptions = parseParagraphOptions(fonts, contentOptions);
+      // Only the branches that make paragraphs resolve a line box: an inline
+      // element's would never be written, and may need metrics its font has
+      // not got.
+      const elementLineBox = once(() => resolveElementLineBox(node.tagName));
+
+      const blockParagraphOptions = once(() =>
+        withLineSpacing(
+          parseParagraphOptions(fonts, contentOptions),
+          elementLineBox().lineBox,
+        ),
+      );
+
+      /**
+       * A text paragraph: its line box goes with it to the trim pass, and a
+       * picture among its runs makes its line `atLeast`.
+       */
+      const createTextParagraph = (options: IParagraphOptions) => {
+        const { lineBox, paragraphLineBox } = elementLineBox();
+        return new Paragraph(
+          hasImageRun(node.children)
+            ? {
+                ...options,
+                ...withLineSpacing(options, lineBox, { atLeast: true }),
+              }
+            : options,
+          paragraphLineBox,
+        );
+      };
 
       // The element that carries the break rule may itself be the paragraph,
       // as in `<Typography as="h2" breakAfter="avoid">`. The loop below only
@@ -558,7 +775,7 @@ const createDocx = async (
         isValueInArray(node.tagName, BLOCK_TAG_NAMES) &&
         !isValueInArray(element.elementType, STRUCTURAL_CHILDREN_ELEMENT_TYPES)
       ) {
-        node.children = toBlockChildren(node.children, paragraphOptions);
+        node.children = toBlockChildren(node.children, blockParagraphOptions());
       }
 
       if (breakInside === 'avoid' || breakAfter === 'avoid') {
@@ -621,7 +838,11 @@ const createDocx = async (
         return elementsContext.isInsideParagraph
           ? imageRun
           : new Paragraph({
-              ...paragraphOptions,
+              ...withLineSpacing(
+                blockParagraphOptions(),
+                elementLineBox().lineBox,
+                { atLeast: true },
+              ),
               ...(align && { alignment: DOCX_ALIGNMENT[align] }),
               children: [imageRun],
             });
@@ -855,7 +1076,7 @@ const createDocx = async (
 
       if (element.elementType === 'pagenumber') {
         return new TextRun({
-          ...parseTextRunOptions(fonts, contentOptions),
+          ...parseTextRunOptions(fonts, contentOptions, inheritedTypography),
           style: variantNameToCharacterStyleId(elementsContext.variant),
           children: [PageNumber.CURRENT],
         });
@@ -863,7 +1084,7 @@ const createDocx = async (
 
       if (element.elementType === 'pagecount') {
         return new TextRun({
-          ...parseTextRunOptions(fonts, contentOptions),
+          ...parseTextRunOptions(fonts, contentOptions, inheritedTypography),
           style: variantNameToCharacterStyleId(elementsContext.variant),
           children: [PageNumber.TOTAL_PAGES],
         });
@@ -890,7 +1111,7 @@ const createDocx = async (
                   },
                   borders: TABLE_BORDERS_RESET,
                   children: toCellChildren([leftChild], {
-                    paragraphOptions,
+                    paragraphOptions: blockParagraphOptions(),
                     keepLines: keepChildrenTogether,
                   }),
                 }),
@@ -900,7 +1121,7 @@ const createDocx = async (
                   },
                   borders: TABLE_BORDERS_RESET,
                   children: toCellChildren([rightChild], {
-                    paragraphOptions,
+                    paragraphOptions: blockParagraphOptions(),
                     keepLines: keepChildrenTogether,
                   }),
                 }),
@@ -935,8 +1156,8 @@ const createDocx = async (
 
       if (node.tagName === 'li') {
         const { list } = elementsContext;
-        return new Paragraph({
-          ...paragraphOptions,
+        return createTextParagraph({
+          ...blockParagraphOptions(),
           ...ownKeepOptions,
           // The declared numbering, rather than `bullet`: `bullet` always
           // writes Word's own `ListParagraph` style, and `w:pPr` holds at most
@@ -957,8 +1178,8 @@ const createDocx = async (
       }
 
       if (node.tagName === 'p') {
-        return new Paragraph({
-          ...paragraphOptions,
+        return createTextParagraph({
+          ...blockParagraphOptions(),
           ...ownKeepOptions,
           style: variantNameToParagraphStyleId(elementsContext.variant),
           tabStops: toTabStops(node.children),
@@ -967,12 +1188,16 @@ const createDocx = async (
       }
 
       if (node.tagName === 'pre') {
-        return new Paragraph({
+        return createTextParagraph({
           // A `pre` is one paragraph holding the line breaks its text carried,
           // so the intrinsic margins are its own. An author's options are
           // assigned after them and still win.
           ...PRE_PARAGRAPH_OPTIONS,
-          ...paragraphOptions,
+          ...blockParagraphOptions(),
+          spacing: {
+            ...PRE_PARAGRAPH_OPTIONS?.spacing,
+            ...blockParagraphOptions()?.spacing,
+          },
           ...ownKeepOptions,
           style: variantNameToParagraphStyleId(elementsContext.variant),
           tabStops: toTabStops(node.children),
@@ -983,7 +1208,7 @@ const createDocx = async (
       if (node.tagName === 'blockquote') {
         const quoteIndent = BLOCKQUOTE_PARAGRAPH_OPTIONS?.indent;
         const quoteSpacing = BLOCKQUOTE_PARAGRAPH_OPTIONS?.spacing;
-        const blocks = toBlockChildren(node.children, paragraphOptions);
+        const blocks = toBlockChildren(node.children, blockParagraphOptions());
         return blocks.map((child, index) => {
           // A `w:tbl` inside a quote carries its own indent and is left alone.
           if (!(child instanceof Paragraph)) {
@@ -1008,8 +1233,8 @@ const createDocx = async (
       }
 
       if (node.tagName in DOCX_HEADING) {
-        return new Paragraph({
-          ...paragraphOptions,
+        return createTextParagraph({
+          ...blockParagraphOptions(),
           ...ownKeepOptions,
           // `heading` is only a shorthand for a built-in style id and `w:pPr`
           // holds at most one `w:pStyle`: an explicit variant wins over the tag.
@@ -1048,7 +1273,10 @@ const createDocx = async (
     if (node.type === 'root') {
       const rootChildren = toBlockChildren(
         node.children,
-        parseParagraphOptions(fonts, contentOptions),
+        withLineSpacing(
+          parseParagraphOptions(fonts, contentOptions),
+          resolveElementLineBox(node.tagName).lineBox,
+        ),
       );
 
       if (element.elementType === 'header') {
@@ -1103,15 +1331,18 @@ const createDocx = async (
       index,
     ) => {
       const currentSections: Array<ISectionOptions> = [];
+      const blocks = Array.isArray(content)
+        ? compensateTrimmedSpacing(content, rules.margins.adjacent)
+        : content;
       const children =
         startsWithPageBreak[index] &&
-        Array.isArray(content) &&
-        content[0] instanceof Paragraph
+        Array.isArray(blocks) &&
+        blocks[0] instanceof Paragraph
           ? [
-              Paragraph.clone(content[0], { pageBreakBefore: true }),
-              ...content.slice(1),
+              Paragraph.clone(blocks[0], { pageBreakBefore: true }),
+              ...blocks.slice(1),
             ]
-          : content;
+          : blocks;
       currentSections.push({
         properties: {
           titlePage: true,
@@ -1171,8 +1402,9 @@ const createDocx = async (
   );
 
   const styles = parseVariants(
-    fontsOption ?? mappedDocument.fonts ?? {},
+    fonts,
     variants,
+    mappedDocument.defaultTypography,
   );
 
   // const fontsWithBuffers = await fontsStore.loadFontsWithBuffers();
