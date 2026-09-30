@@ -5,19 +5,18 @@ import { MOCK_BOOKMARK_ID, MockDocument } from './fixtures/mockDocument';
 import { MOCK_IMAGE_DATA_URL } from './fixtures/mockImage';
 import { writeTestFile } from './fixtures/writeTestFile';
 import { mapHtml } from './utils/mapHtml/mapHtml';
-import { encodeDataAttributeKey } from './utils/dataAttributes';
-import { DEFAULT_PREFIX } from './entities/options';
+import { ELEMENT_DATA_ATTRIBUTES } from './entities/documentNames';
 
 const RAW_CONTAINER_OPEN = '<div id="raw" style="display: none;">';
 
-const dataAttributeName = (key: string) =>
-  encodeDataAttributeKey(key, { prefix: DEFAULT_PREFIX });
+const ELEMENT_TYPE_ATTRIBUTE =
+  ELEMENT_DATA_ATTRIBUTES.dataAttribute('elementType');
 
-const ELEMENT_TYPE_ATTRIBUTE = dataAttributeName('elementType');
+const ELEMENT_OPTIONS_ATTRIBUTE =
+  ELEMENT_DATA_ATTRIBUTES.dataAttribute('elementOptions');
 
-const ELEMENT_OPTIONS_ATTRIBUTE = dataAttributeName('elementOptions');
-
-const CONTENT_OPTIONS_ATTRIBUTE = dataAttributeName('contentOptions');
+const CONTENT_OPTIONS_ATTRIBUTE =
+  ELEMENT_DATA_ATTRIBUTES.dataAttribute('contentOptions');
 
 // HAST transforms data-attribute to dataAttribute.
 const ELEMENT_TYPE_PROPERTY = camelCase(ELEMENT_TYPE_ATTRIBUTE);

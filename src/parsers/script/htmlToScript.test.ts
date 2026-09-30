@@ -54,3 +54,15 @@ describe('htmlToScript', () => {
     expect(readLiteral(script, 'html')).toBe('<p>closing </script> tag</p>');
   });
 });
+
+/**
+ * Every `reactToHtmlDocument` file carries this script, and the compiled
+ * content stylesheet rides inside it. Raise the budget deliberately, with the
+ * reason in the commit, rather than letting it drift: it was about 630 KB
+ * when the stylesheet moved to Panda.
+ */
+const SCRIPT_BUDGET_BYTES = 660_000;
+
+test('keeps the inlined pipeline within its size budget', () => {
+  expect(htmlToScript('<div></div>').length).toBeLessThan(SCRIPT_BUDGET_BYTES);
+});

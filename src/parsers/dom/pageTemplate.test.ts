@@ -8,11 +8,16 @@ import {
   type BrowserHarness,
 } from '../../fixtures/browserHarness';
 import type * as entitiesModule from '../../entities';
+import type * as generatedStylesModule from '../../generated/styles';
 import type * as pageTemplateModule from './pageTemplate';
+import type * as documentStylesModule from './documentStyles';
 
 const RESOLVE_DIR = path.dirname(fileURLToPath(import.meta.url));
 
-type PageTemplateApi = typeof pageTemplateModule & typeof entitiesModule;
+type PageTemplateApi = typeof pageTemplateModule &
+  typeof entitiesModule &
+  typeof documentStylesModule &
+  typeof generatedStylesModule;
 
 describe('PageTemplate', () => {
   let browser: Browser;
@@ -21,7 +26,12 @@ describe('PageTemplate', () => {
   beforeAll(async () => {
     browser = await launchTestBrowser();
     harness = await createBrowserHarness<PageTemplateApi>(browser, {
-      modules: ['./pageTemplate', '../../entities'],
+      modules: [
+        './pageTemplate',
+        '../../entities',
+        './documentStyles',
+        '../../generated/styles',
+      ],
       resolveDir: RESOLVE_DIR,
     });
   });
@@ -79,9 +89,15 @@ describe('PageTemplate', () => {
 
       template.replaceCounters({ pageNumber: 3, pageCount: 7 });
 
+      const textOfSlot = (slot: string) =>
+        Array.from(
+          template.element.querySelectorAll(`:scope > [slot="${slot}"]`),
+          (node) => node.textContent,
+        ).join('');
+
       return {
-        header: template.headerEl.textContent,
-        footer: template.footerEl.textContent,
+        header: textOfSlot('header'),
+        footer: textOfSlot('footer'),
       };
     });
 
@@ -112,16 +128,21 @@ describe('PageTemplate', () => {
         footer: createEl('div', 'FOOTER'),
       });
 
+      // Header and footer are slotted by name; content takes the default slot.
       const readTemplate = ({
-        headerEl,
-        contentEl,
-        footerEl,
-      }: InstanceType<typeof api.PageTemplate>) => ({
-        header: headerEl.textContent,
-        content: contentEl.textContent,
-        footer: footerEl.textContent,
-        contentChildCount: contentEl.children.length,
-      });
+        element,
+      }: InstanceType<typeof api.PageTemplate>) => {
+        const children = Array.from(element.children);
+        const textOf = (nodes: ReadonlyArray<Element>) =>
+          nodes.map((node) => node.textContent).join('');
+        const content = children.filter((child) => !child.slot);
+        return {
+          header: textOf(children.filter((child) => child.slot === 'header')),
+          content: textOf(content),
+          footer: textOf(children.filter((child) => child.slot === 'footer')),
+          contentChildCount: content.length,
+        };
+      };
 
       return {
         original: readTemplate(template),
@@ -129,8 +150,16 @@ describe('PageTemplate', () => {
           template.extend({ content: createEl('div', 'SECOND PAGE') }),
         ),
         withoutContent: readTemplate(template.extend({})),
+        // The light DOM order is the reading order: header, content, footer.
+        order: Array.from(
+          template.extend({ content: createEl('div', 'SECOND PAGE') }).element
+            .children,
+          (child) => child.slot || 'content',
+        ),
       };
     });
+
+    expect(templates.order).toEqual(['header', 'content', 'footer']);
 
     expect(templates.original).toEqual({
       header: 'HEADER',
@@ -175,6 +204,8 @@ describe('PageTemplate', () => {
       styleSheet.replaceSync(
         ':host { color: rgb(1, 2, 3); } .style-probe { font-style: italic; }',
       );
+      const documentStyles = api.createDocumentStyles(document);
+      documentStyles.adopt(styleSheet, `.${api.PageTemplate.rootClassName}`);
 
       const template = new api.PageTemplate({
         prefixes: api.assignPrefixesOptions(),
@@ -188,7 +219,6 @@ describe('PageTemplate', () => {
           footer: '0.5in',
         },
         content: contentEl,
-        styles: [styleSheet],
       });
 
       document.body.appendChild(template.element);
@@ -201,6 +231,7 @@ describe('PageTemplate', () => {
       } finally {
         template.element.remove();
         outsideEl.remove();
+        documentStyles.dispose();
       }
     });
 
@@ -211,5 +242,63 @@ describe('PageTemplate', () => {
     // Nothing outside the page is styled, which is the containment the shadow
     // root used to provide.
     expect(styles.outside).toBe('normal');
+  });
+
+  it('lays out the chrome in a shadow root that a stylesheet reaches through its parts', async () => {
+    const result = await harness.evaluate((api) => {
+      const styleSheet = new CSSStyleSheet();
+      styleSheet.replaceSync(
+        [
+          // A host page reset must not reach the page regions...
+          'div { padding: 50px !important; box-sizing: border-box; }',
+          // ...while a deliberate `::part` rule does.
+          'matti-docs-page::part(content) { background-color: rgb(4, 5, 6); }',
+        ].join('\n'),
+      );
+      document.adoptedStyleSheets = [
+        ...document.adoptedStyleSheets,
+        styleSheet,
+      ];
+
+      const shadowStyleSheet = new CSSStyleSheet();
+      shadowStyleSheet.replaceSync(api.PAGE_SHADOW_STYLES);
+
+      const template = new api.PageTemplate({
+        prefixes: api.assignPrefixesOptions(),
+        size: { width: '8in', height: '10in' },
+        margin: {
+          top: '1in',
+          right: '0.5in',
+          bottom: '1in',
+          left: '0.5in',
+          header: '0.5in',
+          footer: '0.5in',
+        },
+        shadowStyleSheets: [shadowStyleSheet],
+      });
+      document.body.appendChild(template.element);
+      try {
+        const content =
+          template.element.shadowRoot?.querySelector('[part="content"]');
+        if (!content) {
+          throw new Error('The page has no content part.');
+        }
+        return {
+          tagName: template.element.localName,
+          contentBackground: window.getComputedStyle(content).backgroundColor,
+          contentSize: template.getContentSize(),
+        };
+      } finally {
+        template.element.remove();
+        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(
+          (sheet) => sheet !== styleSheet,
+        );
+      }
+    });
+
+    expect(result.tagName).toBe('matti-docs-page');
+    expect(result.contentBackground).toBe('rgb(4, 5, 6)');
+    // 8in less 2 * 0.5in, and 10in less 2 * 1in: unaffected by the reset.
+    expect(result.contentSize).toEqual({ width: '7in', height: '8in' });
   });
 });

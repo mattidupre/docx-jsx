@@ -7,8 +7,17 @@ import type {
 import { Pager } from '../../utils/pager';
 import { toCssStyleSheets } from '../../utils/css';
 import { mapHtmlToDocument } from '../../lib/mapHtmlToDocument';
-import { createFontFaceString, createStyleString } from '../../lib/styles';
+import { PAGE_CLASS_NAMES, PAGE_DATA_ATTRIBUTES } from '../../entities';
+import { instantiateContentStyles } from '../../lib/contentStyles';
+import { NEUTRAL_STYLES, PAGE_SHADOW_STYLES } from '../../generated/styles';
+import {
+  createFontFaceString,
+  createVariantStyleString,
+} from '../../lib/styles';
+import { hashString } from '../../utils/string';
 import { PageTemplate } from './pageTemplate';
+import { toCssText, toScopedStyleSheet } from './scopedStyleSheets';
+import { createDocumentStyles, type DocumentStyles } from './documentStyles';
 import { stacksToFragment } from './stacksToFragment';
 import { nodeToDom } from './nodeToDom';
 import { DATA_STACK_INDEX } from './constants';
@@ -40,30 +49,17 @@ const isStartOfStack = (stackEl: Element, node: Node): boolean => {
 };
 
 /**
- * `@font-face` is ignored inside a shadow root, so custom fonts are registered
- * on the document itself. The same configuration is reused across renders (a
- * live preview re-renders on every edit), so each stylesheet is adopted once.
+ * Pagination measures text, so every face registered on `targetDocument` has
+ * to be fetched before the first layout rather than after it.
  */
-const adoptedFontFaceStyleSheets = new Map<string, CSSStyleSheet>();
-
-const adoptFontFaces = async (css: string): Promise<void> => {
-  if (!adoptedFontFaceStyleSheets.has(css)) {
-    const styleSheet = new CSSStyleSheet();
-    adoptedFontFaceStyleSheets.set(css, styleSheet);
-    await styleSheet.replace(css);
-    document.adoptedStyleSheets.push(styleSheet);
-  }
-
-  // Pagination measures text, so every registered face has to be fetched
-  // before the first layout rather than after it.
-  await Promise.all(
-    Array.from(document.fonts, (fontFace) =>
+const loadFontFaces = (targetDocument: Document) =>
+  Promise.all(
+    Array.from(targetDocument.fonts, (fontFace) =>
       fontFace.load().catch((error: unknown) => {
         console.error(`Could not load the font ${fontFace.family}`, error);
       }),
     ),
   );
-};
 
 export type HtmlToDomOptions = {
   initialStyleSheets?: ReadonlyArray<StyleSheetsValue>;
@@ -71,6 +67,13 @@ export type HtmlToDomOptions = {
   pageClassName?: string;
   fonts?: FontsConfig;
   onDocument?: (document: DocumentDom) => void;
+  /**
+   * Where the rendered pages' stylesheets are adopted, which is the document
+   * the pages will be shown in. Defaults to a registry of its own on the
+   * current document, kept for the life of the page; a preview passes one it
+   * disposes when the pages go away.
+   */
+  documentStyles?: DocumentStyles;
 };
 
 export const htmlToDom = async (
@@ -81,7 +84,53 @@ export const htmlToDom = async (
     pageClassName,
     fonts,
     onDocument,
+    documentStyles = createDocumentStyles(document),
   }: HtmlToDomOptions = {},
+): Promise<HTMLElement> => {
+  // Pages are laid out and measured in the current document, then shown in
+  // the one `documentStyles` belongs to. When those differ (a preview in an
+  // iframe) the measuring document gets the same stylesheets for as long as
+  // the render takes.
+  const measureStyles =
+    documentStyles.document === document
+      ? documentStyles
+      : createDocumentStyles(document);
+  try {
+    return await renderPages(html, {
+      initialStyleSheetsOption,
+      styleSheetsOption,
+      pageClassName,
+      fonts,
+      onDocument,
+      documentStyles,
+      measureStyles,
+    });
+  } finally {
+    if (measureStyles !== documentStyles) {
+      measureStyles.dispose();
+    }
+  }
+};
+
+const renderPages = async (
+  html: string,
+  {
+    initialStyleSheetsOption,
+    styleSheetsOption,
+    pageClassName,
+    fonts,
+    onDocument,
+    documentStyles,
+    measureStyles,
+  }: {
+    initialStyleSheetsOption: ReadonlyArray<StyleSheetsValue>;
+    styleSheetsOption: ReadonlyArray<StyleSheetsValue>;
+    pageClassName: undefined | string;
+    fonts: undefined | FontsConfig;
+    onDocument: HtmlToDomOptions['onDocument'];
+    documentStyles: DocumentStyles;
+    measureStyles: DocumentStyles;
+  },
 ): Promise<HTMLElement> => {
   const documentObj = mapHtmlToDocument<HTMLElement>(
     html,
@@ -97,7 +146,13 @@ export const htmlToDom = async (
     fonts: documentFonts,
   } = documentObj;
 
-  const documentStyleCss = createStyleString(documentObj);
+  // The library's own rules (compiled at build time, instantiated for this
+  // document's CSS variable prefix) and its variants (runtime data) come after
+  // a consumer's initial stylesheets and before the rest, as before.
+  const documentStyleCss = [
+    instantiateContentStyles(documentObj),
+    createVariantStyleString(documentObj),
+  ];
 
   // `reactToDom` and `reactToPdf` both render the `pdf` markup in a browser.
   // Fonts declared once on `DocumentProvider` reach every target through the
@@ -107,12 +162,62 @@ export const htmlToDom = async (
     documentType: 'pdf',
   });
   if (fontFaceCss) {
-    await adoptFontFaces(fontFaceCss);
+    // `@font-face` is ignored inside a shadow root, so custom fonts are
+    // registered on the documents themselves.
+    for (const styles of new Set([measureStyles, documentStyles])) {
+      styles.adopt(fontFaceCss);
+    }
+    await loadFontFaces(document);
   }
 
-  const styleSheets = await toCssStyleSheets(
-    ...[...initialStyleSheetsOption, documentStyleCss, ...styleSheetsOption],
+  const [
+    neutralStyleSheets,
+    initialStyleSheets,
+    documentStyleSheets,
+    finalStyleSheets,
+  ] = await Promise.all(
+    [
+      [NEUTRAL_STYLES],
+      initialStyleSheetsOption,
+      documentStyleCss,
+      styleSheetsOption,
+    ].map((styles) => toCssStyleSheets(...styles)),
   );
+  // The neutral rules undo what the host page leaks in by accident, so they
+  // come first: a consumer's initial stylesheets may still reset content on
+  // purpose, and the document's own rules come after those.
+  const styleSheets = [
+    ...neutralStyleSheets,
+    ...initialStyleSheets,
+    ...documentStyleSheets,
+    ...finalStyleSheets,
+  ];
+
+  // On screen every page is a root in the one document, and a preview is
+  // rarely the only one. Each render's whole cascade is scoped to its own
+  // pages, named after the CSS it is made of, so no render's rules reach
+  // another's pages: a later render cannot undo an override an earlier one
+  // was paginated with. Two renders of identical CSS share a scope, and each
+  // applies the same cascade in the same order, so neither changes the other.
+  const renderStylesKey = hashString(
+    styleSheets.map((styleSheet) => toCssText(styleSheet)).join('\n'),
+  );
+  const renderPageScope = `.${PageTemplate.rootClassName}${PAGE_DATA_ATTRIBUTES.selector(
+    { documentStyles: renderStylesKey },
+  )}`;
+  // The page templates are measured in the current document before they are
+  // shown in `documentStyles.document`, and a consumer rule on the page or
+  // its parts changes the room there is to fill, so both documents get them.
+  for (const styles of new Set([measureStyles, documentStyles])) {
+    for (const styleSheet of styleSheets) {
+      styles.adopt(styleSheet, renderPageScope);
+    }
+  }
+
+  // The page chrome lives in each page element's shadow root, which the
+  // stylesheets above cannot reach, and has one stylesheet of its own.
+  const shadowStyleSheet = new CSSStyleSheet();
+  shadowStyleSheet.replaceSync(PAGE_SHADOW_STYLES);
 
   // const perf = performance.now();
 
@@ -130,7 +235,16 @@ export const htmlToDom = async (
 
   // renderEl.appendChild(mergedStacksEl);
 
-  const pager = new Pager({ styles: styleSheets });
+  // Pagination measures the content under the same rules it is displayed
+  // with: every stylesheet is scoped to the content root there exactly as it
+  // is scoped to the page root on screen.
+  const contentClassName = PAGE_CLASS_NAMES.name('contentRoot');
+  const pager = new Pager({
+    styles: styleSheets.map((styleSheet) =>
+      toScopedStyleSheet(styleSheet, `.${contentClassName}`),
+    ),
+    contentClassName,
+  });
 
   // A page belongs to the stack whose content starts it: that stack's header,
   // footer, margins and page size apply, and its `first` layout is used only
@@ -165,12 +279,17 @@ export const htmlToDom = async (
             margin,
             header: layouts[layoutType]?.header,
             footer: layouts[layoutType]?.footer,
-            styles: styleSheets,
             outerClassName: [outerPageClassName, pageClassName]
               .filter(Boolean)
               .join(' '),
             innerClassName: innerPageClassName,
-            outerDataAttributes: outerPageDataAttributes,
+            shadowStyleSheets: [shadowStyleSheet],
+            outerDataAttributes: {
+              ...outerPageDataAttributes,
+              ...PAGE_DATA_ATTRIBUTES.encodeDataAttributes({
+                documentStyles: renderStylesKey,
+              }),
+            },
             innerDataAttributes: innerPageDataAttributes,
           });
 

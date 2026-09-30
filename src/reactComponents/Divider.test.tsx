@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react';
 import { describe, expect, test } from 'vitest';
-import { decodeElementData } from '../entities';
+import { decodeElementData, resolveRemSize } from '../entities';
 import { reactToHtml } from '../lib/reactToHtml';
 import { ContentProvider } from './ContentProvider';
 import { DEFAULT_DIVIDER_OPTIONS, Divider, type DividerProps } from './Divider';
@@ -38,8 +38,10 @@ describe('Divider', () => {
     expect(html).toContain('border-top-width:2px');
     expect(html).toContain('border-top-style:solid');
     expect(html).toContain('border-top-color:#ff0000');
-    expect(html).toContain('margin-top:1rem');
-    expect(html).toContain('margin-bottom:0.5rem');
+    // `rem` is resolved against the 16px root the DOCX target uses, so a host
+    // page's root font size cannot move the rule.
+    expect(html).toContain('margin-top:16px');
+    expect(html).toContain('margin-bottom:8px');
   });
 
   test('falls back to the documented defaults', () => {
@@ -49,9 +51,11 @@ describe('Divider', () => {
       `border-top-width:${DEFAULT_DIVIDER_OPTIONS.thickness}`,
     );
     expect(html).toContain(`border-top-color:${DEFAULT_DIVIDER_OPTIONS.color}`);
-    expect(html).toContain(`margin-top:${DEFAULT_DIVIDER_OPTIONS.spaceBefore}`);
     expect(html).toContain(
-      `margin-bottom:${DEFAULT_DIVIDER_OPTIONS.spaceAfter}`,
+      `margin-top:${resolveRemSize(DEFAULT_DIVIDER_OPTIONS.spaceBefore)}`,
+    );
+    expect(html).toContain(
+      `margin-bottom:${resolveRemSize(DEFAULT_DIVIDER_OPTIONS.spaceAfter)}`,
     );
   });
 

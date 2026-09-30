@@ -230,7 +230,9 @@ export const INTRINSIC_BLOCK_TAG_NAMES = [
 
 /**
  * Map certain HTML tags to their respective typography styles.
- * Creates consistency between HTML and Docx.
+ * Creates consistency between HTML and Docx: the DOCX mapper applies these as
+ * run properties and `lib/styles.ts` generates the browser's tag rules from
+ * the same entries.
  *
  * Headings are deliberately absent: their scale is registered as a style
  * (Word) and as a tag rule (CSS) instead, because everything in this map is
@@ -241,6 +243,7 @@ export const INTRINSIC_TYPOGRAPHY_OPTIONS = {
   b: { fontWeight: 'bold' },
   strong: { fontWeight: 'bold' },
   em: { fontStyle: 'italic' },
+  i: { fontStyle: 'italic' },
   u: { textDecoration: 'underline' },
   s: { textDecoration: 'line-through' },
   sup: { superScript: true },

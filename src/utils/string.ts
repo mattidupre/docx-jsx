@@ -1,26 +1,17 @@
-import { toLower, kebabCase } from 'lodash';
-import { joinArrayStrings } from './array';
+import { toLower } from 'lodash';
 
 export const toLowercase = <T extends string>(string: T) =>
   toLower(string) as Lowercase<T>;
 
 /**
- * Converts everything to Kebab Case and joins.
+ * A short, stable, non-cryptographic hash of `value` (32-bit FNV-1a, base 36),
+ * for naming things after their content.
  */
-export const joinKebab = (...args: ReadonlyArray<undefined | string>) =>
-  joinArrayStrings(
-    args.map((value) => value && kebabCase(value)),
-    '-',
-  );
-
-/**
- * Converts everything except prefix to Kebab Case and joins.
- */
-export const prefixKebab = (
-  prefixArg?: string,
-  ...args: ReadonlyArray<undefined | string>
-) =>
-  joinArrayStrings(
-    [prefixArg, ...args.map((value) => value && kebabCase(value))],
-    '-',
-  );
+export const hashString = (value: string): string => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(36);
+};

@@ -1,7 +1,10 @@
 import type { HtmlToDomOptions } from '../dom';
 import htmlToDomCodeCjs from '../dom?source';
 
-export type HtmlToScriptOptions = Omit<HtmlToDomOptions, 'onDocument'> & {
+export type HtmlToScriptOptions = Omit<
+  HtmlToDomOptions,
+  'onDocument' | 'documentStyles'
+> & {
   targetQuery?: string;
   functionName?: string;
 };

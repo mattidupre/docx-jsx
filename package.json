@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@optimize-lodash/rollup-plugin": "^6.0.0",
+    "@pandacss/dev": "2.0.0-beta.18",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
@@ -52,6 +53,7 @@
     "pdfjs-dist": "^6.3.289",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
+    "postcss": "^8.5.28",
     "prettier": "^3.9.9",
     "rollup": "^4.63.5",
     "rollup-plugin-cleanup": "^3.2.1",
@@ -67,12 +69,16 @@
     "yalc": "1.0.0-pre.53"
   },
   "peerDependencies": {
+    "@pandacss/dev": "2.0.0-beta.18",
     "@types/react": "19.x",
     "@types/react-dom": "19.x",
     "react": "19.x",
     "react-dom": "19.x"
   },
   "peerDependenciesMeta": {
+    "@pandacss/dev": {
+      "optional": true
+    },
     "@types/react": {
       "optional": true
     },
@@ -101,16 +107,20 @@
     "clean": "rm -rf dist/*",
     "build": "pnpm clean && pnpm build:all",
     "dev": "pnpm clean && nodemon --exec pnpm run build:all",
-    "build:all": "pnpm run \"/^build:(src|types)$/\" && pnpm link:push",
+    "build:all": "pnpm build:styles && pnpm run \"/^build:(src|types)$/\" && pnpm link:push",
+    "build:styles": "node scripts/buildStyles.ts",
     "build:src": "vite build",
     "build:types": "tsc --declaration --emitdeclarationonly --preservewatchoutput",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:visual": "vitest run src/visual",
     "test:visual:update": "UPDATE_SNAPSHOTS=1 vitest run src/visual",
+    "pretypecheck": "pnpm build:styles",
     "typecheck": "tsc --noEmit",
+    "prelint": "pnpm build:styles",
     "lint": "eslint ./src",
     "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push publish && rm -rf ./publish",
+    "prestorybook": "pnpm build:styles",
     "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
   },
   "nodemonConfig": {

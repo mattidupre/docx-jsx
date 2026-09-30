@@ -36,15 +36,19 @@ type PageSummary = {
 const readPages = (harness: BrowserHarness<DomApi>, html: string) =>
   harness.evaluate(async (api, pageHtml: string): Promise<PageSummary[]> => {
     const pagesEl = await api.htmlToDom(pageHtml);
-    return Array.from(pagesEl.children).map((pageRootEl) => {
-      const textOf = (className: string) =>
-        (pageRootEl.querySelector(`.${className}`)?.textContent ?? '')
+    return Array.from(pagesEl.children).map((pageEl) => {
+      // Header and footer are slotted by name; content takes the default slot.
+      const textOf = (slot: string) =>
+        Array.from(pageEl.children)
+          .filter((child) => child.slot === slot)
+          .map((child) => child.textContent)
+          .join('')
           .replace(/\s+/g, ' ')
           .trim();
       return {
-        header: textOf(api.PageTemplate.headerClassName),
-        footer: textOf(api.PageTemplate.footerClassName),
-        content: textOf(api.PageTemplate.contentClassName),
+        header: textOf('header'),
+        footer: textOf('footer'),
+        content: textOf(''),
       };
     });
   }, html);

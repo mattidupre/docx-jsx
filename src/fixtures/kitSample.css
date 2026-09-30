@@ -1,0 +1,206 @@
+/*
+ * A trimmed sample of the CSS a matti-kit app puts on every page, used to test
+ * that a rendered document is isolated from it. Generated from matti-kit
+ * a90a660 `.styled-system/panda.config.ts` (the shared preset with preflight):
+ * the `reset` and `base` layers in full, and only the `tokens` custom
+ * properties those two layers reference, for `:root` and `.dark`.
+ */
+@layer reset, base, tokens, recipes, utilities;
+@layer reset {
+  html, :host {
+    line-height: 1.5;
+    --font-fallback: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -moz-tab-size: 4;
+    tab-size: 4;
+    font-family: var(--global-font-body, var(--font-fallback));
+    -webkit-tap-highlight-color: transparent;
+  }
+  *, ::before, ::after, ::backdrop, ::file-selector-button {
+    margin: 0px;
+    padding: 0px;
+    box-sizing: border-box;
+    border-width: 0px;
+    border-style: solid;
+    border-color: var(--global-color-border, currentcolor);
+  }
+  hr {
+    height: 0px;
+    color: inherit;
+    border-top-width: 1px;
+  }
+  body {
+    height: 100%;
+    line-height: inherit;
+  }
+  img {
+    border-style: none;
+  }
+  img, svg, video, canvas, audio, iframe, embed, object {
+    display: block;
+    vertical-align: middle;
+  }
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-size: inherit;
+    font-weight: inherit;
+    text-wrap: balance;
+  }
+  p, h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: break-word;
+  }
+  ol, ul, menu {
+    list-style: none;
+  }
+  button, input:where([type='button'], [type='reset'], [type='submit']), ::file-selector-button {
+    appearance: button;
+  }
+  button, input, optgroup, select, textarea, ::file-selector-button {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    background: transparent;
+  }
+  ::placeholder {
+    opacity: 1;
+    --placeholder-fallback: rgba(0, 0, 0, 0.5);
+    color: var(--global-color-placeholder, var(--placeholder-fallback));
+  }
+  ::selection {
+    background-color: var(--global-color-selection, rgba(0, 115, 255, 0.3));
+  }
+  textarea {
+    resize: vertical;
+  }
+  table {
+    text-indent: 0px;
+    border-color: inherit;
+    border-collapse: collapse;
+  }
+  summary {
+    display: list-item;
+  }
+  small {
+    font-size: 80%;
+  }
+  sub, sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+  }
+  sub {
+    bottom: -0.25em;
+  }
+  sup {
+    top: -0.5em;
+  }
+  dialog {
+    padding: 0px;
+  }
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
+  abbr:where([title]) {
+    text-decoration: underline dotted;
+  }
+  b, strong {
+    font-weight: bolder;
+  }
+  code, kbd, samp, pre {
+    --font-mono-fallback: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New';
+    font-family: var(--global-font-mono, var(--font-mono-fallback));
+    font-size: 1em;
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+  }
+  progress {
+    vertical-align: baseline;
+  }
+  ::-webkit-search-decoration, ::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+  }
+  ::-webkit-inner-spin-button, ::-webkit-outer-spin-button {
+    height: auto;
+  }
+  :-moz-ui-invalid {
+    box-shadow: none;
+  }
+  :-moz-focusring {
+    outline: auto;
+  }
+  [hidden]:where(:not([hidden='until-found'])) {
+    display: none !important;
+  }
+  @supports (not (-webkit-appearance: -apple-pay-button)) or (contain-intrinsic-size: 1px) {
+    ::placeholder {
+      --placeholder-fallback: color-mix(in oklab, currentcolor 50%, transparent);
+    }
+  }
+}
+@layer base {
+  :root {
+    --made-with-panda: '🐼';
+  }
+  body {
+    background: var(--colors-bg-canvas);
+    color: var(--colors-fg);
+  }
+  .dark body {
+    color-scheme: dark;
+  }
+  *, *::before, *::after {
+    border-color: var(--colors-border-subtle);
+    border-style: solid;
+    box-sizing: border-box;
+  }
+  *::placeholder {
+    opacity: 1;
+    color: var(--colors-fg-subtle);
+  }
+  *::selection {
+    background: var(--colors-red-a3);
+  }
+}
+@layer tokens {
+  :where(:root, :host) {
+    --colors-red-light-a3: #f3000d14;
+    --colors-red-dark-a3: #ff173f2d;
+    --colors-slate-light-1: #fcfcfd;
+    --colors-slate-light-4: #e8e8ec;
+    --colors-slate-light-10: #80838d;
+    --colors-slate-light-12: #1c2024;
+    --colors-slate-dark-1: #111113;
+    --colors-slate-dark-4: #272a2d;
+    --colors-slate-dark-10: #777b84;
+    --colors-slate-dark-12: #edeef0;
+    --colors-gray-1: var(--colors-slate-light-1);
+    --colors-gray-4: var(--colors-slate-light-4);
+    --colors-gray-10: var(--colors-slate-light-10);
+    --colors-gray-12: var(--colors-slate-light-12);
+    --colors-bg-canvas: var(--colors-gray-1);
+    --colors-fg: var(--colors-gray-12);
+    --colors-fg-subtle: var(--colors-gray-10);
+    --colors-border-subtle: var(--colors-gray-4);
+    --colors-red-a3: var(--colors-red-light-a3);
+  }
+  .dark {
+    --colors-gray-1: var(--colors-slate-dark-1);
+    --colors-gray-4: var(--colors-slate-dark-4);
+    --colors-gray-10: var(--colors-slate-dark-10);
+    --colors-gray-12: var(--colors-slate-dark-12);
+    --colors-bg-canvas: var(--colors-gray-1);
+    --colors-fg: var(--colors-gray-12);
+    --colors-fg-subtle: var(--colors-gray-10);
+    --colors-border-subtle: var(--colors-gray-4);
+    --colors-red-a3: var(--colors-red-dark-a3);
+  }
+}

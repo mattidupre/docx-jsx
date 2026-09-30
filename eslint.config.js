@@ -148,6 +148,13 @@ export default defineConfig([
     },
   },
   {
+    // Panda loads its config from the default export.
+    files: ['**/panda.config.ts'],
+    rules: {
+      'import-x/no-default-export': 'off',
+    },
+  },
+  {
     // Storybook's Component Story Format requires a default export.
     files: ['**/*.stories.tsx'],
     rules: {

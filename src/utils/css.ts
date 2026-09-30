@@ -1,7 +1,5 @@
 import type { CSSProperties } from 'react';
 import { kebabCase, transform } from 'lodash';
-import { type KeyedObject, assignDefined, isKeyedObject } from './object';
-import { prefixKebab } from './string';
 
 export type CssVarName = `--${string}`;
 
@@ -11,12 +9,21 @@ export type CssRulesArray = Array<CssRuleTuple>;
 
 export type CssRuleDeclarations = CSSProperties & Record<CssVarName, string>;
 
-const parseCssProperty = (property: string) => {
-  const base = kebabCase(property);
+/** React spells vendor properties `WebkitFontSmoothing` and `msTransform`. */
+const VENDOR_PROPERTY_EXP = /^(Webkit|Moz|ms)[A-Z]/;
+
+/**
+ * The CSS name of a property in React's spelling: `fontSize` is `font-size`,
+ * `WebkitFontSmoothing` is `-webkit-font-smoothing`, and a custom property is
+ * left exactly as it was written.
+ */
+export const toCssPropertyName = (property: string) => {
+  // Custom property names are case sensitive and written as they are meant.
   if (property.startsWith('--')) {
-    return `--${base}`;
+    return property;
   }
-  if (property.startsWith('-')) {
+  const base = kebabCase(property);
+  if (property.startsWith('-') || VENDOR_PROPERTY_EXP.test(property)) {
     return `-${base}`;
   }
   return base;
@@ -81,44 +88,6 @@ export const toVarDeclaration = (value: unknown): undefined | string => {
 };
 
 /**
- * Create CSS variable values from an object.
- * @example
- * objectToCssVars({ foo: 'bar' });
- * // {'--foo': 'bar'}
- * objectToCssVars({ foo: { bar: 'baz' } });
- * // {'--foo-bar': 'baz'}
- * objectToCssVars({ foo: 'bar' }, 'PreFix-');
- * // {'--PreFix-foo': 'bar'}
- */
-export const objectToVarValues = <TObject extends KeyedObject>(
-  object?: TObject,
-  {
-    prefix,
-  }: {
-    prefix?: string;
-  } = {},
-): Record<CssVarName, string> => {
-  if (!object) {
-    return {};
-  }
-
-  return Object.entries(object).reduce((obj, [key, value]) => {
-    const keyBase = prefixKebab(prefix, key);
-    if (!value) {
-      return obj;
-    }
-    if (isKeyedObject(value)) {
-      assignDefined(obj, objectToVarValues(value, { prefix: keyBase }));
-    } else {
-      assignDefined(obj, {
-        [`--${keyBase}`]: toVarDeclaration(value),
-      });
-    }
-    return obj;
-  }, {});
-};
-
-/**
  * Convert an object of CSS styles to a DOM-compatible string of declarations.
  */
 export const styleObjectToString = (
@@ -128,7 +97,7 @@ export const styleObjectToString = (
   const styleStrings: Array<string> = [];
   for (const property in cssObject) {
     styleStrings.push(
-      `${parseCssProperty(property)}: ${
+      `${toCssPropertyName(property)}: ${
         cssObject[property as keyof CSSProperties]
       };`,
     );

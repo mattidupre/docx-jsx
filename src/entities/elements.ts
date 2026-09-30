@@ -1,17 +1,16 @@
-import { intersection } from 'lodash';
-import type { JsonObject } from 'type-fest';
+import { intersection, mapValues } from 'lodash';
+import type { JsonValue } from 'type-fest';
 import {
-  selectByDataAttributes,
-  encodeDataAttributes,
-  decodeDataAttributes,
+  decodeDataAttributeValue,
+  encodeDataAttributeValue,
 } from '../utils/dataAttributes';
-import {
-  DEFAULT_PREFIX,
-  type DocumentConfig,
-  type LayoutType,
-  type StackConfig,
-  type LayoutConfig,
-  type Color,
+import { ELEMENT_DATA_ATTRIBUTES } from './documentNames';
+import type {
+  DocumentConfig,
+  LayoutType,
+  StackConfig,
+  LayoutConfig,
+  Color,
 } from './options';
 import type { TagName } from './html';
 import type { TypographyOptions, VariantName } from './typography';
@@ -200,38 +199,40 @@ export type ElementData<
 export type ContentElementOptions = TypographyOptions; // TODO: Rename to typography
 
 /**
- * The data attribute prefix is deliberately the constant `DEFAULT_PREFIX` and
- * not the user's `PrefixesConfig`: the document element itself carries the
- * prefixes, so its attributes have to be decodable before any user
- * configuration is known. `PrefixesConfig` only names class name and CSS
- * variable prefixes.
+ * `undefined` rather than a falsy value, so that `variant: ''` is left out
+ * exactly as it was before the attribute names moved into a handle.
+ */
+const encodeTruthy = (value: unknown): undefined | string =>
+  value ? encodeDataAttributeValue(value) : undefined;
+
+/**
+ * The element's data attributes, named by {@link ELEMENT_DATA_ATTRIBUTES}.
+ * Every payload is a JSON value written through `encodeURI`; a falsy one
+ * (a missing variant) is left out.
  */
 export const encodeElementData = ({
   elementType,
   elementOptions,
   contentOptions,
   variant,
-}: ElementData<ElementType>) =>
-  encodeDataAttributes(
-    { elementType, elementOptions, contentOptions, variant } as JsonObject,
-    {
-      prefix: DEFAULT_PREFIX,
-    },
-  ) as Record<string, unknown>;
+}: ElementData<ElementType>): Record<string, unknown> =>
+  ELEMENT_DATA_ATTRIBUTES.encodeDataAttributes({
+    elementType: encodeTruthy(elementType),
+    elementOptions: encodeTruthy(elementOptions),
+    contentOptions: encodeTruthy(contentOptions),
+    variant: encodeTruthy(variant),
+  });
 
 export const decodeElementData = ({
   properties,
 }: {
   properties: Record<string, unknown>;
 }): ElementData => {
-  const {
-    elementType,
-    elementOptions,
-    contentOptions = {},
-    variant,
-  } = decodeDataAttributes(properties, {
-    prefix: DEFAULT_PREFIX,
-  });
+  const decoded: Partial<Record<string, JsonValue>> = mapValues(
+    ELEMENT_DATA_ATTRIBUTES.decodeDataAttributes(properties),
+    decodeDataAttributeValue,
+  );
+  const { elementType, elementOptions, contentOptions = {}, variant } = decoded;
   if (!elementType && !elementOptions) {
     // Default to element type htmltag.
     return {
@@ -252,18 +253,15 @@ export const decodeElementData = ({
   } as ElementData;
 };
 
-export const selectDomElement = <TElementType extends ElementType>(
+export const selectDomElement = (
   rootDomElement: Element,
-  elementType: TElementType,
-  elementConfig?: Partial<ConfigByElementType[TElementType]> &
-    Record<string, undefined | string>,
-) => {
-  return selectByDataAttributes(
-    rootDomElement,
-    { elementType, ...elementConfig },
-    { prefix: DEFAULT_PREFIX },
+  elementType: ElementType,
+) =>
+  rootDomElement.querySelectorAll(
+    ELEMENT_DATA_ATTRIBUTES.selector({
+      elementType: encodeDataAttributeValue(elementType),
+    }),
   );
-};
 
 const isIntersection = (...arrays: ReadonlyArray<ReadonlyArray<any>>) => {
   return !!intersection(...arrays).length;

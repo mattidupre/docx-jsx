@@ -1,6 +1,10 @@
 import { type ReactNode, createElement, useMemo } from 'react';
 import { compact } from 'lodash';
-import { encodeElementData } from '../entities';
+import {
+  elementTypeToClassName,
+  encodeElementData,
+  variantNameToClassName,
+} from '../entities';
 import type {
   TypographyOptions,
   ElementData,
@@ -8,9 +12,8 @@ import type {
   VariantName,
 } from '../entities';
 import {
-  elementTypeToClassName,
+  resolveStyleRemLengths,
   typographyOptionsToStyleVars,
-  variantNameToClassName,
 } from '../lib/styles';
 import type { ExtendableProps } from './entities';
 import { useEnvironment } from './useEnvironment';
@@ -72,10 +75,12 @@ export function InternalElement({
   const baseAttributes = {
     ...htmlAttributes,
     className: classNames.length > 0 ? classNames.join(' ') : undefined,
-    style: {
+    // Components compute their inline styles from lengths the author wrote,
+    // so a `rem` gap or height is resolved here once for all of them.
+    style: resolveStyleRemLengths({
       ...optionsStyle,
       ...styleProp,
-    },
+    }),
   };
 
   if (isWeb) {

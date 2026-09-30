@@ -50,7 +50,13 @@ import { reactToHtmlDocument } from 'matti-docs/reactToHtmlDocument';
 import { reactToPdf } from 'matti-docs/reactToPdf';
 import { reactToScript } from 'matti-docs/reactToScript';
 import { isErrorObject } from 'matti-docs/utils';
+import { definePreviewElement } from 'matti-docs/previewElement';
+import { createMattiDocsPreset } from 'matti-docs/panda-preset';
 ```
+
+`matti-docs/previewElement` imports no React, and `matti-docs/panda-preset`
+needs `@pandacss/dev` (an optional peer, pinned to `2.0.0-beta.18` to match
+matti-kit).
 
 ### Chrome is required for PDF
 
@@ -172,9 +178,57 @@ import { Preview, usePreview } from 'matti-docs/reactComponents';
 
 `Preview` is a thin component over `usePreview(children, options)`, which returns
 `{ isLoading, previewElRef }` and accepts everything `reactToDom` accepts plus
-`autoscale`. Pages are rendered into the light DOM with `@scope`d stylesheets and
-carry the class `matti-docs-page` (`matti-docs-page__header`, `__content`,
-`__footer` for the three regions), so a consumer stylesheet can reach them.
+`autoscale`. Each render adopts its stylesheets into the preview's own document
+(an iframe's, if that is where it is mounted) and takes them out again when a
+newer render replaces it or the preview unmounts.
+
+Without React, `<matti-docs-preview>` does the same for markup rendered
+elsewhere (`reactToHtml(Document, 'pdf')` on a server, or in a federated remote):
+
+```ts
+definePreviewElement();
+const preview = document.createElement('matti-docs-preview');
+preview.toggleAttribute('autoscale', true);
+container.append(preview);
+await preview.render(html, { styleSheets }); // false if a later render won
+```
+
+Each page is a `<matti-docs-page>` element carrying the classes
+`matti-docs-page`, `matti-docs-page-root`, `matti-docs-content-root` and your
+`pageClassName`. The page box and its header, content and footer regions are
+drawn in the element's shadow root, which no rule of the host page reaches; a
+stylesheet styles them as `matti-docs-page::part(header)`, `::part(content)` and
+`::part(footer)` — or, in the `styleSheets` passed to the renderer, which are
+scoped to the page, as `:host::part(content)`. Pagination measures the pages
+with those rules applied, so they may change the room the content has. The document content stays in the light DOM (a PDF link
+annotation and the page counters both need it there), slotted into the regions,
+so a consumer stylesheet still reaches it.
+
+**Breaking:** the `matti-docs-page__header`, `__content` and `__footer` classes
+are gone; use the parts above. The inner and outer page class names and data
+attributes of a `Stack` now land on the one page element.
+
+**Isolation from the host page.** A preview lives inside an application whose
+own CSS must not change it: a page lays out and computes exactly as on a blank
+page, the page the PDF is printed from. The content root starts from
+`all: initial` and `direction: ltr` (so nothing is inherited from the
+application's `html` or `body`, and paper is white under a dark theme), and the user-agent defaults a
+reset removes (Panda's preflight, a `*` rule) are restored at zero specificity.
+That covers resets in cascade layers and unlayered rules of zero specificity;
+an unlayered rule that selects a tag (`ul { padding: 0 }`) still outranks the
+library's `:where()` rules, as it outranks nothing a consumer can do without
+raising specificity either. A document that asks for a host variable on
+purpose (`color: ['--brand', '#00dddd']`) still gets it in the browser; DOCX
+takes the last literal.
+
+Stylesheets are applied in this order: the library's neutral rules,
+`initialStyleSheets` (so a consumer's reset still applies), the document's own
+rules and variants, then `styleSheets`. Each render's sheets are scoped with
+`@scope` to that render's own pages, so previews with different prefixes,
+variants or stylesheets can share a page without reaching each other — a
+consumer's `styleSheets` style the pages of the render they were passed to, not
+every page on the document. Pagination measures the content under the same
+sheets, scoped to the element pagedjs flows it into.
 
 ## Targets and environments
 
@@ -277,7 +331,10 @@ type TypographyOptions = {
 ```
 
 Lengths are `px`, `pt`, `rem`, `in` or `cm`. `rem` resolves against a fixed 16px
-root in every target, because Word has no cascade to resolve it against.
+root in every target, because Word has no cascade to resolve it against: the
+browser targets are given the resolved `px` (in typography variables, component
+styles, fallback literals and page geometry), so a host page with
+`html { font-size: 20px }` no longer scales a preview.
 `lineHeight` may also be a unitless multiplier, which becomes automatic line
 spacing in Word; a length becomes exact line spacing.
 
@@ -316,6 +373,21 @@ or a partial object:
 | `cssVariable` | `matti-docs` | `--matti-docs-font-size` |
 
 Class order on an element is author → element → variant.
+
+**A Panda preset.** An application built on Panda (matti-kit) can compile the
+library's content rules into its own `base` layer instead of relying only on the
+copy the library installs itself:
+
+```ts
+// panda.config.ts
+import { createMattiDocsPreset } from 'matti-docs/panda-preset';
+
+export default defineConfig({ presets: [createMattiDocsPreset(prefixes)] });
+```
+
+The rules are rooted at `.matti-docs-content-root` at zero specificity and are
+generated from the same tables the DOCX mapper reads. Pass the `prefixes` the
+documents are rendered with.
 
 **The intrinsic heading scale.** `h1`..`h6` are resolved once, in
 `entities/typography.ts`, from the user-agent `em` ratios against the 16px root,
@@ -428,7 +500,8 @@ Node 26 for development: `.nvmrc` pins the major, and `engines.node` records the
 `.nvmrc` version is exercised by the test suite.
 
 ```sh
-pnpm build        # clean, vite build, emit types, then link:push
+pnpm build:styles # compile the Panda configs into src/generated/styles.ts
+pnpm build        # clean, build:styles, vite build, emit types, then link:push
 pnpm dev          # the same, on watch via nodemon
 pnpm build:src    # vite build only
 pnpm build:types  # declaration emit only
@@ -452,6 +525,22 @@ replaced by the fully bundled, minified CJS of that module as a string literal,
 which `reactToScript` and `reactToPdf` evaluate inside the page. The nested
 bundle runs once per output format; a `load` hook filter keeps Rolldown from
 calling into the plugin for every other module in the graph.
+
+The library's stylesheets are compiled with Panda (`2.0.0-beta.18`, matti-kit's
+pin) by `scripts/buildStyles.ts`, following matti-kit's shadow stylesheet build
+(`createNodeDriver`, `getLayerCss`, `stripLayerOrderStatements`):
+
+| Config | Output | Used for |
+| --- | --- | --- |
+| `panda.neutral.config.ts` | `NEUTRAL_STYLES` | Undoing the host page's reset; pagedjs's split rules |
+| `panda.config.ts` | `CONTENT_STYLES_TEMPLATE` | The structural rules, with the CSS variable prefix left as a token and instantiated per document |
+| `panda.shadow.config.ts` | `PAGE_SHADOW_STYLES` | The page chrome, in each page's shadow root, with preflight minus its `html, :host` rule |
+
+The light DOM sheets have their `@layer` blocks unwrapped, since a layered rule
+loses to any unlayered rule of the host. `src/generated/` is ignored by git and
+rebuilt by the test setup and before `typecheck`, `lint`, `storybook` and
+`build`; it is a TypeScript string module because the `?source` bundle cannot
+import CSS.
 
 `src/demo/` holds full documents built to `dist-demo/` in every target;
 `src/demo.test.ts` runs that build and asserts nothing errored.

@@ -1,9 +1,7 @@
 import { styleObjectToString } from '../../utils/css';
+import { resolveRemSize, variantNameToClassName } from '../../entities';
 import type { HtmlNode } from '../../lib/mapHtmlToDocument';
-import {
-  variantNameToClassName,
-  typographyOptionsToStyleVars,
-} from '../../lib/styles';
+import { typographyOptionsToStyleVars } from '../../lib/styles';
 import { extendHtmlAttributes } from './extendHtmlAttributes';
 import { applyHtmlAttributes } from './applyHtmlAttributes';
 
@@ -68,7 +66,7 @@ export const nodeToDom = (node: HtmlNode) => {
     if (columnCount > 1) {
       const columnsEl = document.createElement('div');
       columnsEl.style.setProperty('column-count', String(columnCount));
-      columnsEl.style.setProperty('column-gap', columnGap);
+      columnsEl.style.setProperty('column-gap', resolveRemSize(columnGap));
       columnsEl.style.setProperty('column-fill', 'balance');
       columnsEl.append(...children);
       element.append(columnsEl);
