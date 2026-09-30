@@ -2,6 +2,7 @@ import { createStyleObject } from '@capsizecss/core';
 import { styleObjectToString } from '../../utils/css';
 import { isValueInArray } from '../../utils/array';
 import {
+  COLUMNS_DATA_ATTRIBUTES,
   type FontsConfig,
   PARAGRAPH_TAG_NAMES,
   capHeightToFontSize,
@@ -150,7 +151,7 @@ export const nodeToDom = (
 
     const {
       stack: {
-        columns: { columnCount, columnGap },
+        columns: { columnCount, columnGap, fill },
       },
     } = elementsContext;
 
@@ -160,6 +161,12 @@ export const nodeToDom = (
       columnsEl.style.setProperty('column-count', String(columnCount));
       columnsEl.style.setProperty('column-gap', resolveRemSize(columnGap));
       columnsEl.style.setProperty('column-fill', 'balance');
+      if (fill === 'masonry') {
+        columnsEl.setAttribute(
+          COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill'),
+          fill,
+        );
+      }
       columnsEl.append(...children);
       element.append(columnsEl);
     } else {

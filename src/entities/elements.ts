@@ -30,6 +30,7 @@ export type ConfigByElementType = {
   pagenumber: Record<string, never>;
   pagecount: Record<string, never>;
   split: Record<string, never>;
+  masonryGroup: Record<string, never>;
   positionalTab: { alignment: 'left' | 'right' | 'center' };
   gridContainer: { columnGap: UnitsSize; columnCount: number };
   gridItem: {
