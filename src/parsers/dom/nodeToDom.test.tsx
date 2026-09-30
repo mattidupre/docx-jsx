@@ -132,8 +132,11 @@ describe('nodeToDom', () => {
     );
 
     expect(html).toContain('--matti-docs-color: #ff0000;');
-    expect(html).toContain('--matti-docs-font-size: 2rem;');
-    expect(html).toContain('--matti-docs-margin-top: 1rem;');
+    // The markup keeps the lengths the author wrote; the variables the browser
+    // reads have `rem` resolved against the 16px root DOCX uses.
+    expect(html).toContain('--matti-docs-font-size: 32px;');
+    expect(html).toContain('--matti-docs-margin-top: 16px;');
+    expect(html).toContain('%22fontSize%22:%222rem%22');
   });
 
   it('writes the variant class name', async () => {

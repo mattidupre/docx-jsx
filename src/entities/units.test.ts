@@ -5,6 +5,8 @@ import {
   convertUnits,
   mathUnits,
   parseUnitsSize,
+  resolveRemLengths,
+  resolveRemSize,
   toUnits,
 } from './units';
 
@@ -261,6 +263,55 @@ describe('mathUnits', () => {
   for (const args of ERROR_SUBJECTS) {
     test(throwsToString(args), () => {
       expect(() => mathUnits(...args)).toThrow(TypeError);
+    });
+  }
+});
+
+describe('resolveRemLengths', () => {
+  const SUBJECTS: Subjects<typeof resolveRemLengths> = [
+    [['2rem'], '32px'],
+    [['0.25rem'], '4px'],
+    [['.5rem'], '8px'],
+    [['-1rem'], '-16px'],
+    [['1.1rem'], '17.6px'],
+    [['1REM'], '16px'],
+    [['calc(100% - 2rem)'], 'calc(100% - 32px)'],
+    [['calc(-1 * (1rem / 2))'], 'calc(-1 * (16px / 2))'],
+    [['var(--brand-gap, 0.5rem)'], 'var(--brand-gap, 8px)'],
+    [['var(--a, var(--b, 1rem))'], 'var(--a, var(--b, 16px))'],
+    [['1rem 2rem'], '16px 32px'],
+    // Identifiers and other units are not lengths in `rem`.
+    [['var(--gap-2rem)'], 'var(--gap-2rem)'],
+    // Strings and URLs are not lengths either, whatever they spell.
+    [['url("/2rem.png")'], 'url("/2rem.png")'],
+    [["url('/2rem.png') 1rem"], "url('/2rem.png') 16px"],
+    [['url(/icons/2rem.svg)'], 'url(/icons/2rem.svg)'],
+    [['"2rem", serif'], '"2rem", serif'],
+    [["'Say \\'2rem\\'', 1rem"], "'Say \\'2rem\\'', 16px"],
+    [['1em'], '1em'],
+    [['2remx'], '2remx'],
+    [['12px'], '12px'],
+    [['bold'], 'bold'],
+  ];
+
+  for (const [args, result] of SUBJECTS) {
+    test(subjectToString([args, result]), () => {
+      expect(resolveRemLengths(...args)).toBe(result);
+    });
+  }
+});
+
+describe('resolveRemSize', () => {
+  const SUBJECTS: Subjects<typeof resolveRemSize> = [
+    [['2rem'], '32px'],
+    [['0.1rem'], '1.6px'],
+    [['1in'], '1in'],
+    [['12pt'], '12pt'],
+  ];
+
+  for (const [args, result] of SUBJECTS) {
+    test(subjectToString([args, result]), () => {
+      expect(resolveRemSize(...args)).toBe(result);
     });
   }
 });

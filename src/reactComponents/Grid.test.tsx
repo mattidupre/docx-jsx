@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import { reactToHtml } from '../lib/reactToHtml';
 import { DocumentProvider } from './DocumentProvider';
@@ -9,7 +10,7 @@ import { Stack } from './Stack';
  * which is what a grid item is styled with. The grid container's own
  * `calc(100% + gap)` has no division in it.
  */
-const itemWidths = (grid: JSX.Element): ReadonlyArray<string> =>
+const itemWidths = (grid: ReactElement): ReadonlyArray<string> =>
   Array.from(
     reactToHtml(
       () => (

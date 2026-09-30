@@ -47,6 +47,8 @@ export default defineConfig({
     emptyOutDir: false,
     lib: {
       entry: [
+        'src/panda-preset.ts',
+        'src/previewElement.ts',
         'src/reactComponents.ts',
         'src/reactToDocx.ts',
         'src/reactToDom.ts',
@@ -63,6 +65,7 @@ export default defineConfig({
   plugins: [pluginSourceLoader() as PluginOption, pluginLodash()],
   test: {
     include: ['./src/**/*.test.{js,jsx,ts,tsx}'],
+    globalSetup: ['./scripts/vitestGlobalSetup.ts'],
     // includeSource: ['./src/**/*.{js,jsx,ts,tsx}'],
     // Launching Chrome and paginating the mock document is slow.
     testTimeout: 60_000,
@@ -80,6 +83,7 @@ export default defineConfig({
         'src/fixtures/**',
         // Test harness, not library code.
         'src/visual/**',
+        'src/generated/**',
       ],
       reporter: ['text', 'json-summary'],
       // Coverage of a partially failing run is still worth reading.

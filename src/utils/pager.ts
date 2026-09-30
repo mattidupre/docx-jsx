@@ -27,6 +27,11 @@ export type OnPagesRendered = (context: { pagesElement: HTMLElement }) => void;
 export type PagerOptions = {
   styles?: Array<HTMLStyleElement | CSSStyleSheet>;
   vars?: PageVars;
+  /**
+   * A class for the element pagedjs flows content into, the root the content
+   * is laid out under while it is measured.
+   */
+  contentClassName?: string;
 };
 
 export type ToPagesOptions = {
@@ -60,7 +65,11 @@ export class Pager {
 
   readonly allStyleElements: Array<HTMLStyleElement>;
 
-  constructor({ styles = [], vars }: PagerOptions = {}) {
+  readonly contentClassName: undefined | string;
+
+  constructor({ styles = [], vars, contentClassName }: PagerOptions = {}) {
+    this.contentClassName = contentClassName;
+
     const instanceStyleSheets = [Pager.varsToStyleSheet(vars) ?? []].flat();
 
     const styleSheets: Array<CSSStyleSheet> = [
@@ -103,6 +112,9 @@ export class Pager {
     shadowElement.append(...this.allStyleElements);
 
     const chunkerElement = document.createElement('div');
+    if (this.contentClassName) {
+      chunkerElement.classList.add(this.contentClassName);
+    }
     Pager.applyVarsToElement(vars, chunkerElement);
     shadowElement.appendChild(chunkerElement);
 

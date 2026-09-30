@@ -166,3 +166,57 @@ export const mathUnits = (
   }
   throw new TypeError(`Invalid math method "${method}".`);
 };
+
+/**
+ * A `rem` length inside any CSS value: a declaration, a `calc()` expression or
+ * the literal fallback of a `var()` chain. The lookbehind keeps it from
+ * matching the tail of an identifier such as `--gap-2rem`.
+ *
+ * Quoted strings and `url()` are matched first, as alternatives that are put
+ * back unchanged: a file named `2rem.png` or a font family named `"2rem"` is
+ * not a length.
+ */
+const REM_LENGTH_EXP =
+  /("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\burl\([^)]*\))|(?<![\w.-])(-?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)rem\b/gi;
+
+/**
+ * Enough significant digits for any length a document declares, few enough to
+ * drop the binary floating point noise of the multiplication.
+ */
+const REM_PRECISION = 12;
+
+const remToPx = (amount: number) =>
+  Number((amount * ROOT_FONT_SIZE_PX).toPrecision(REM_PRECISION));
+
+/**
+ * `value` with every `rem` length resolved to `px` against
+ * {@link ROOT_FONT_SIZE_PX}.
+ *
+ * The DOCX target always resolves `rem` against that constant, but a browser
+ * resolves it against the root element of whatever page the document is shown
+ * in, so a host with `html { font-size: 20px }` would scale a preview and
+ * nothing else. Every length the library writes into the browser targets goes
+ * through here, which is what keeps `1rem` meaning the same thing everywhere.
+ *
+ * @example
+ * resolveRemLengths('calc(100% - 2rem)'); // 'calc(100% - 32px)'
+ * resolveRemLengths('var(--gap, 0.5rem)'); // 'var(--gap, 8px)'
+ */
+export const resolveRemLengths = (value: string): string =>
+  value.replace(
+    REM_LENGTH_EXP,
+    (_match, unchanged: undefined | string, amount: string) =>
+      unchanged ?? `${remToPx(Number.parseFloat(amount))}px`,
+  );
+
+/**
+ * {@link resolveRemLengths} for a single typed length, keeping its type.
+ *
+ * @example
+ * resolveRemSize('2rem'); // '32px'
+ * resolveRemSize('1in'); // '1in'
+ */
+export const resolveRemSize = (value: UnitsSize): UnitsSize => {
+  const [amount, units] = parseUnitsSize(value);
+  return units === 'rem' ? toUnits(remToPx(amount), 'px') : value;
+};

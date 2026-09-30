@@ -61,9 +61,9 @@ export const Preview = memo(function Preview({
       className={className}
       style={style}
       ref={(el) => {
-        (previewElRef.current as typeof el) = el;
+        previewElRef.current = el;
         if (elRef) {
-          (elRef.current as typeof el) = el;
+          elRef.current = el;
         }
       }}
     >

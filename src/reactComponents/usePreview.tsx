@@ -6,32 +6,34 @@ import {
   type ReactElement,
   useCallback,
 } from 'react';
-import { reactToDom, type ReactToDomOptions } from '../reactToDom';
-import { getElementInnerSize, getElementOuterSize } from '../utils/elements';
+import { reactToHtml } from '../lib/reactToHtml';
+import {
+  createPreviewController,
+  type PreviewController,
+  type PreviewRenderOptions,
+} from '../parsers/dom/previewController';
 import { InternalEnvironmentProvider } from './InternalEnvironmentProvider';
 
 type PreviewHandle = {
-  previewElRef: RefObject<HTMLDivElement>;
+  previewElRef: RefObject<null | HTMLDivElement>;
   isLoading: boolean;
 };
 
-export type UsePreviewOptions = ReactToDomOptions & {
+export type UsePreviewOptions = PreviewRenderOptions & {
   autoscale?: boolean;
 };
 
+/**
+ * React's binding of the framework-free preview controller (the one
+ * `<matti-docs-preview>` wraps) to the element `previewElRef` is attached to.
+ */
 export const usePreview = (
   children: ReactElement | Array<ReactElement>,
   { initialStyleSheets, styleSheets, onDocument, autoscale }: UsePreviewOptions,
 ): PreviewHandle => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const previewElRef = useRef<HTMLDivElement>(null);
-  const documentElRef = useRef<HTMLElement>();
-  const documentSizeRef = useRef<
-    undefined | { width: number; height: number }
-  >();
-  const [documentElState, setDocumentElState] = useState<
-    undefined | HTMLElement
-  >(undefined);
+  const controllerRef = useRef<PreviewController>(undefined);
 
   const WrappedDocumentRoot = useCallback(() => {
     return (
@@ -41,93 +43,39 @@ export const usePreview = (
     );
   }, [children]);
 
+  // Declared first so that it runs first: the effects below use the
+  // controller. Clearing on unmount abandons a render in progress and takes
+  // the pages and their stylesheets out of the document.
   useEffect(() => {
-    // Only attach to DOM if this useEffect is still active. If the component
-    // has been unmounted or if a new resume prop has been provided, interrupt
-    // the operation before the preview is attached to the DOM.
-    let isInterrupted = false;
-
-    // reactToPreview is a React-less async operation resolving to a detached
-    // element.
-    reactToDom(WrappedDocumentRoot, {
-      initialStyleSheets,
-      styleSheets,
-      onDocument,
-    }).then((resumeEl) => {
-      if (isInterrupted) {
-        return;
-      }
-      setIsLoading(false);
-      setDocumentElState(resumeEl);
-    });
-
+    const { current: previewEl } = previewElRef;
+    if (!previewEl) {
+      return;
+    }
+    const controller = createPreviewController(previewEl);
+    controllerRef.current = controller;
     return () => {
-      isInterrupted = true;
+      controller.clear();
+      controllerRef.current = undefined;
     };
+  }, []);
+
+  useEffect(() => {
+    controllerRef.current
+      ?.render(reactToHtml(WrappedDocumentRoot, 'pdf'), {
+        initialStyleSheets,
+        styleSheets,
+        onDocument,
+      })
+      .then((isApplied) => {
+        if (isApplied) {
+          setIsLoading(false);
+        }
+      });
   }, [initialStyleSheets, styleSheets, onDocument, WrappedDocumentRoot]);
 
   useEffect(() => {
-    const { current: previewEl } = previewElRef;
-    if (!previewEl || !documentElState) {
-      return;
-    }
-
-    documentElRef.current?.remove();
-    previewEl.append(documentElState);
-    documentElRef.current = documentElState;
-
-    documentSizeRef.current = getElementOuterSize(documentElState);
-
-    return () => {
-      if (!documentElState.isConnected) {
-        documentElState.remove();
-      }
-      documentSizeRef.current = undefined;
-    };
-  }, [documentElState]);
-
-  // `documentElState` is a dependency because the effect above attaches the
-  // document element and measures it; re-running here observes the preview
-  // element against the size of the document currently attached to it.
-  useEffect(() => {
-    const { current: previewEl } = previewElRef;
-    if (!previewEl || !autoscale) {
-      return;
-    }
-
-    previewEl.style.setProperty('width', '100%');
-    previewEl.style.setProperty('display', 'flex');
-    previewEl.style.setProperty('justify-content', 'center');
-    previewEl.style.setProperty('align-items', 'center');
-
-    const observer = new ResizeObserver((entries) => {
-      const { current: documentEl } = documentElRef;
-      const { current: documentSize } = documentSizeRef;
-      const previewSize = getElementInnerSize(previewEl);
-      if (!documentEl || !documentSize || !previewSize) {
-        return;
-      }
-      for (const entry of entries) {
-        if (!entry.contentBoxSize) {
-          continue;
-        }
-
-        const { width: previewWidth } = previewSize;
-        const { width: documentWidth, height: documentHeight } = documentSize;
-        const scale = previewWidth / documentWidth;
-        const overflowY = (1 - scale) * documentHeight;
-        documentEl.style.transformOrigin = 'top center';
-        documentEl.style.transform = `scale(${scale})`;
-        documentEl.style.marginBottom = `-${overflowY}px`;
-      }
-    });
-
-    observer.observe(previewEl);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [autoscale, documentElState]);
+    controllerRef.current?.setAutoscale(Boolean(autoscale));
+  }, [autoscale]);
 
   return {
     isLoading,

@@ -1,90 +1,70 @@
+import type { CSSProperties } from 'react';
 import { kebabCase, mapValues, pick } from 'lodash';
 import {
   TYPOGRAPHY_CSS_KEYS,
+  INTRINSIC_TYPOGRAPHY_OPTIONS,
+  ROOT_FONT_SIZE_PX,
   type Variants,
   INTRINSIC_BLOCK_TAG_NAMES,
   INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS,
   INTRINSIC_TAG_TYPOGRAPHY_OPTIONS,
   INTRINSIC_VARIANT_TAG_NAMES,
   type DocumentType,
-  type ElementType,
   type FontsConfig,
   type PrefixesConfig,
   type TypographyOptions,
   type VariantName,
+  createTypographyVars,
   getFontFaceSource,
   PARAGRAPH_TAG_NAMES,
+  resolveRemLengths,
+  typographyOptionsToFlat,
+  variantNameToClassName,
 } from '../entities';
 import { getValueOf } from '../utils/object';
-import { joinKebab, prefixKebab } from '../utils/string';
+import { isValueInArray } from '../utils/array';
 import {
   type CssRulesArray,
+  type CssRuleTuple,
   cssRulesArrayToString,
   type CssRuleDeclarations,
-  type CssVarName,
-  objectToVarValues,
+  toVarDeclaration,
 } from '../utils/css';
 
 /**
- * The class every library element carries in the DOM and PDF targets, e.g.
- * `matti-docs-element-grid-container`. The library styles nothing through it:
- * it exists so a consumer's own stylesheet can reach an element the library
- * rendered without depending on the tag it happened to choose.
- *
- * @example
- * elementTypeToClassName({ prefixes }, 'gridItem');
- * // 'matti-docs-element-grid-item'
+ * An inline style with every `rem` length resolved to `px`, for the same reason
+ * {@link typographyOptionsToStyleVars} resolves them: the host page's root font
+ * size must not reach into a document.
  */
-export const elementTypeToClassName = (
-  { prefixes }: { prefixes: Pick<PrefixesConfig, 'elementClassName'> },
-  elementType: ElementType,
-) => prefixKebab(prefixes.elementClassName, elementType);
+export const resolveStyleRemLengths = <TValue>(
+  style: Record<string, TValue>,
+): Record<string, string | TValue> =>
+  mapValues(style, (value) =>
+    typeof value === 'string' ? resolveRemLengths(value) : value,
+  );
 
-export const variantNameToClassName = (
-  { prefixes }: { prefixes: Pick<PrefixesConfig, 'variantClassName'> },
-  variantName: VariantName,
-) => prefixKebab(prefixes.variantClassName, variantName);
-
+/**
+ * The custom properties that carry `typographyOptions` to the `*` rule of
+ * {@link createStructuralStyleArray}. A fallback array becomes a `var()` chain,
+ * and `rem` lengths are resolved here, including the literal at the end of the
+ * chain, so a document keeps its sizes on a host page with a different root
+ * font size.
+ */
 export const typographyOptionsToStyleVars = (
   options: {
     prefixes: Pick<PrefixesConfig, 'cssVariable'>;
   },
   typographyOptions: undefined | TypographyOptions,
 ) =>
-  objectToVarValues(pick(typographyOptions, ...TYPOGRAPHY_CSS_KEYS), {
-    prefix: options.prefixes.cssVariable,
-  });
-
-export const variantsToStyleVars = (
-  options: {
-    prefixes: Pick<PrefixesConfig, 'cssVariable'>;
-  },
-  variants: Partial<Variants>,
-) =>
-  objectToVarValues(variants, {
-    prefix: options.prefixes.cssVariable,
-  });
-
-const createPrefixedVarName = (
-  options: {
-    prefixes: Pick<PrefixesConfig, 'cssVariable'>;
-  },
-  value: string | number,
-): CssVarName => `--${joinKebab(options.prefixes.cssVariable, String(value))}`;
-
-const createPrefixedVar = (
-  options: {
-    prefixes: Pick<PrefixesConfig, 'cssVariable'>;
-  },
-  value: string | number,
-  defaultValue?: string | number,
-) =>
-  `var(${createPrefixedVarName(options, value)}${
-    defaultValue !== undefined ? `, ${defaultValue}` : ''
-  })`;
+  createTypographyVars(options).encodeCssVars(
+    mapValues(pick(typographyOptions, ...TYPOGRAPHY_CSS_KEYS), (value) => {
+      const declaration = toVarDeclaration(value);
+      return declaration && resolveRemLengths(declaration);
+    }),
+  );
 
 const DEFAULT_VARS: CssRuleDeclarations = {
-  fontSize: '1rem',
+  fontSize: `${ROOT_FONT_SIZE_PX}px`,
   borderWidth: 0,
   borderTopWidth: 0,
   borderRightWidth: 0,
@@ -183,13 +163,59 @@ export const createFontFaceString = ({
   return rules.join('\n');
 };
 
-export const createStyleArray = (options: {
-  variants?: Variants;
-  prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
-}): CssRulesArray => {
-  const { prefixes, variants = {} } = options;
+/**
+ * The declarations the browser needs for a tag of
+ * {@link INTRINSIC_TYPOGRAPHY_OPTIONS}, which the DOCX mapper applies to the
+ * same tag as run properties. Super- and subscript are not CSS keys, so they
+ * are translated to the `vertical-align` a user agent would give the tag --
+ * declared rather than inherited from the user agent, which a host page's reset
+ * may have removed.
+ */
+const intrinsicTypographyToCss = (
+  typographyOptions: TypographyOptions,
+): CSSProperties => {
+  const { superScript, subScript, ...cssOptions } =
+    typographyOptionsToFlat(typographyOptions);
+  return {
+    ...pick(cssOptions, ...TYPOGRAPHY_CSS_KEYS),
+    ...(superScript && { verticalAlign: 'super' }),
+    ...(subScript && { verticalAlign: 'sub' }),
+  };
+};
 
-  // TODO: How to handle highlight, <sup>, <sub>?
+/**
+ * One `:where()` rule per distinct set of declarations, in table order, so
+ * tags that mean the same thing (`b` and `strong`) share a rule.
+ */
+const createIntrinsicTagRules = (): CssRulesArray => {
+  const rulesByCss = new Map<string, CssRuleTuple>();
+  for (const tagName in INTRINSIC_TYPOGRAPHY_OPTIONS) {
+    const css = intrinsicTypographyToCss(
+      getValueOf(INTRINSIC_TYPOGRAPHY_OPTIONS, tagName) ?? {},
+    );
+    const key = JSON.stringify(css);
+    const [selector] = rulesByCss.get(key) ?? [];
+    rulesByCss.set(key, [
+      selector ? `${selector.slice(0, -1)}, ${tagName})` : `:where(${tagName})`,
+      css,
+    ]);
+  }
+  return Array.from(rulesByCss.values());
+};
+
+/**
+ * The rules every document shares: they depend on nothing but the CSS
+ * variable prefix. The `*` rule reads each typography option from its custom
+ * property, and the tag rules supply the intrinsic typography the DOCX mapper
+ * reads from the same tables.
+ */
+export const createStructuralStyleArray = (options: {
+  prefixes: Pick<PrefixesConfig, 'cssVariable'>;
+}): CssRulesArray => {
+  const { prefixes } = options;
+
+  const typographyVars = createTypographyVars(options);
+
   const rules: CssRulesArray = [];
 
   rules.push([
@@ -200,7 +226,7 @@ export const createStyleArray = (options: {
       ...SELF_STYLE_KEYS.reduce(
         (declarations, property) => ({
           ...declarations,
-          [createPrefixedVarName(options, property)]: 'initial',
+          [typographyVars.var(property)]: 'initial',
         }),
         {} as CssRuleDeclarations,
       ),
@@ -210,8 +236,7 @@ export const createStyleArray = (options: {
         }
         return {
           ...declarations,
-          [kebabCase(property)]: createPrefixedVar(
-            options,
+          [kebabCase(property)]: typographyVars.ref(
             property,
             DEFAULT_VARS[property] ?? 'unset',
           ),
@@ -220,32 +245,7 @@ export const createStyleArray = (options: {
     },
   ]);
 
-  rules.push(
-    [
-      ':where(b, strong)',
-      {
-        fontWeight: 'bold',
-      },
-    ],
-    [
-      ':where(em, i)',
-      {
-        fontStyle: 'italic',
-      },
-    ],
-    [
-      ':where(u)',
-      {
-        textDecoration: 'underline',
-      },
-    ],
-    [
-      ':where(s)',
-      {
-        textDecoration: 'line-through',
-      },
-    ],
-  );
+  rules.push(...createIntrinsicTagRules());
 
   rules.push(
     [
@@ -256,8 +256,12 @@ export const createStyleArray = (options: {
         ', ',
       )})`,
       {
-        ...mapValues(DIRECT_PARAGRAPH_STYLES, (value, key) =>
-          createPrefixedVar(options, key, value),
+        ...Object.fromEntries(
+          Object.entries(DIRECT_PARAGRAPH_STYLES).flatMap(([key, value]) =>
+            isValueInArray(key, TYPOGRAPHY_CSS_KEYS)
+              ? [[key, typographyVars.ref(key, value)]]
+              : [],
+          ),
         ),
         display: 'flow-root', // Prevents margin collapse
       },
@@ -300,6 +304,22 @@ export const createStyleArray = (options: {
     ]);
   }
 
+  return rules;
+};
+
+/**
+ * The rules that assign a document's variants. Variants are runtime data
+ * declared on `DocumentProvider`, so this half holds nothing but custom
+ * property assignments; the structural rules read them.
+ */
+export const createVariantStyleArray = (options: {
+  variants?: Variants;
+  prefixes: Pick<PrefixesConfig, 'cssVariable' | 'variantClassName'>;
+}): CssRulesArray => {
+  const { prefixes, variants = {} } = options;
+
+  const rules: CssRulesArray = [];
+
   // Variant vars are attached to variant class names .[prefix]-[variant-name]
   for (const variantName in variants) {
     const intrinsicSelector =
@@ -323,6 +343,127 @@ export const createStyleArray = (options: {
   return rules;
 };
 
+/**
+ * The structural rules followed by the variant rules: the variants have to
+ * come later to win over the intrinsic tag rules at equal specificity.
+ */
+export const createStyleArray = (
+  options: Parameters<typeof createVariantStyleArray>[0],
+): CssRulesArray => [
+  ...createStructuralStyleArray(options),
+  ...createVariantStyleArray(options),
+];
+
 export const createStyleString = (
   ...args: Parameters<typeof createStyleArray>
 ) => cssRulesArrayToString(createStyleArray(...args));
+
+/**
+ * The content root starts from nothing a host page set: every property at its
+ * initial value (and `direction`, which `all` excludes, at `ltr`), which for
+ * the inherited ones (font, line height, colour,
+ * letter spacing, text transform, widows and orphans...) is what a blank
+ * page gives the document -- the page the PDF is printed from. Without it a
+ * preview inherits whatever the application sets on `html` or `body`, a sans
+ * serif, a 24px line height, a dark theme.
+ *
+ * `visibility` and `pointer-events` still inherit, so a hidden container
+ * hides its pages. Paper is white whatever the application's background.
+ *
+ * The selector has no specificity, so a consumer's page class still wins.
+ */
+const CONTENT_ROOT_STYLE = {
+  all: 'initial',
+  // The two properties `all` leaves alone. A document is laid out left to
+  // right in Word, so it is in the browser too, whatever the host's direction.
+  direction: 'ltr',
+  unicodeBidi: 'normal',
+  display: 'block',
+  visibility: 'inherit',
+  pointerEvents: 'inherit',
+  backgroundColor: '#ffffff',
+} as const satisfies CSSProperties;
+
+/**
+ * The user agent defaults a host page's reset removes from the tags a
+ * document may contain (Panda's preflight, a `*` rule), restored at zero
+ * specificity. They are the defaults of a blank page, not a design: the PDF is
+ * printed from a blank page, so this is what a preview has to match.
+ *
+ * Inherited properties that a reset sets on particular tags (`overflow-wrap`
+ * on paragraphs, `text-wrap` on headings) are made to inherit again rather
+ * than given a value, so a consumer that sets them on a container still
+ * reaches the paragraphs inside it.
+ *
+ * The universal rule is spelled `:where(*)` so that it is a different
+ * selector from the structural `*` rule when both are compiled into one
+ * Panda `globalCss` object.
+ */
+const createNeutralElementStyleArray = (): CssRulesArray => [
+  [':where(*)', { boxSizing: 'content-box', borderColor: 'currentColor' }],
+  // The one tag the user agent gives a `border-box`.
+  [':where(table)', { boxSizing: 'border-box' }],
+  [
+    ':where(p, h1, h2, h3, h4, h5, h6)',
+    { overflowWrap: 'inherit', textWrapStyle: 'inherit' },
+  ],
+  [':where(ul, ol)', { marginBlock: '1em', paddingInlineStart: '40px' }],
+  [':where(ul)', { listStyleType: 'disc' }],
+  [':where(ol)', { listStyleType: 'decimal' }],
+  [':where(ul, ol) :where(ul, ol)', { marginBlock: 0 }],
+  [':where(ul, ol) :where(ul)', { listStyleType: 'circle' }],
+  [':where(ul, ol) :where(ul, ol) :where(ul)', { listStyleType: 'square' }],
+  [':where(sub, sup)', { position: 'static', top: 'auto', bottom: 'auto' }],
+  [
+    ':where(img, svg, video, canvas)',
+    { display: 'inline', verticalAlign: 'baseline', maxWidth: 'none' },
+  ],
+];
+
+const rootRules = (root: string, rules: CssRulesArray): CssRulesArray =>
+  rules.map(([selector, style]) => [`:where(${root}) ${selector}`, style]);
+
+/**
+ * The rules that undo what a host page leaks into a document by accident,
+ * rooted at `root`: the reset content root itself, and user agent defaults
+ * below it. They do not depend on the document, and they come before a
+ * consumer's `initialStyleSheets`, which may still reset content on purpose.
+ *
+ * `root` is `:scope` for the stylesheet the library installs itself, which is
+ * adopted inside an `@scope` rule in each realm (so a consumer's scoped
+ * stylesheets keep their order against it), and the content root class for
+ * the Panda preset an application compiles into its own layers.
+ */
+export const createNeutralStyleArray = ({
+  root,
+}: {
+  root: string;
+}): CssRulesArray => [
+  [`:where(${root})`, CONTENT_ROOT_STYLE],
+  ...rootRules(root, createNeutralElementStyleArray()),
+];
+
+/**
+ * Stands in for the CSS variable prefix in the stylesheet the library compiles
+ * at build time. The prefix is runtime configuration (`prefixes` on
+ * `DocumentProvider`), so the compiled sheet is a template that is
+ * instantiated once per prefix a page renders with.
+ */
+export const CSS_VARIABLE_PREFIX_TOKEN = '__matti-docs-css-variable-prefix__';
+
+/**
+ * The structural rules of {@link createStructuralStyleArray}, rooted at `root`
+ * (see {@link createNeutralStyleArray}) and read from the typography custom
+ * properties under `prefixes.cssVariable`.
+ */
+export const createContentStyleArray = ({
+  prefixes,
+  root,
+}: {
+  prefixes: Pick<PrefixesConfig, 'cssVariable'>;
+  root: string;
+}): CssRulesArray => rootRules(root, createStructuralStyleArray({ prefixes }));
+
+export const createVariantStyleString = (
+  ...args: Parameters<typeof createVariantStyleArray>
+) => cssRulesArrayToString(createVariantStyleArray(...args));

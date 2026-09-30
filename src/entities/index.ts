@@ -1,4 +1,6 @@
+export * from './attributeHandles';
 export * from './context';
+export * from './documentNames';
 export * from './elements';
 export * from './fonts';
 export * from './html';

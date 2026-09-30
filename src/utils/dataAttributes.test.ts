@@ -1,43 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
-  encodeDataAttributeKey,
+  decodeDataAttributeValue,
   encodeDataAttributeValue,
-  encodeDataAttributes,
-  decodeDataAttributes,
 } from './dataAttributes';
-
-const OPTIONS = { prefix: 'matti-docs' } as const;
-
-describe('encodeDataAttributeKey', () => {
-  const SUBJECTS = [
-    ['elementType', 'data-matti-docs-element-type'],
-    ['elementOptions', 'data-matti-docs-element-options'],
-    ['variant', 'data-matti-docs-variant'],
-  ] as const;
-
-  for (const [key, expected] of SUBJECTS) {
-    test(`${key} == ${expected}`, () => {
-      expect(encodeDataAttributeKey(key, OPTIONS)).toBe(expected);
-    });
-  }
-
-  test('separates the prefix from the key', () => {
-    // Without the separator this collapsed to data-matti-docselement-type,
-    // which cannot be split back into a prefix and a key.
-    expect(encodeDataAttributeKey('elementType', OPTIONS)).not.toBe(
-      'data-matti-docselement-type',
-    );
-  });
-
-  test('falls back to a bare data- prefix', () => {
-    expect(encodeDataAttributeKey('elementType')).toBe('data-element-type');
-  });
-
-  test('rejects keys that are not camel case', () => {
-    expect(() => encodeDataAttributeKey('element-type', OPTIONS)).toThrow();
-    expect(() => encodeDataAttributeKey('ElementType', OPTIONS)).toThrow();
-  });
-});
 
 describe('encodeDataAttributeValue', () => {
   const SUBJECTS = [
@@ -54,65 +19,21 @@ describe('encodeDataAttributeValue', () => {
   }
 });
 
-describe('encodeDataAttributes / decodeDataAttributes', () => {
+describe('decodeDataAttributeValue', () => {
   const SUBJECTS = [
-    { elementType: 'htmltag' },
-    { elementType: 'document', elementOptions: { size: { width: '5in' } } },
-    { elementType: 'split', variant: 'heading1' },
-    { contentOptions: { fontFamily: 'Times New Roman, serif' } },
+    'htmltag',
+    { size: { width: '5in' } },
+    { fontFamily: 'Times New Roman, serif' },
+    ['--brand', '#00dddd'],
+    12,
+    true,
   ] as const;
 
-  for (const data of SUBJECTS) {
-    test(`round trips ${JSON.stringify(data)}`, () => {
-      const attributes = encodeDataAttributes({ ...data }, OPTIONS);
-      expect(decodeDataAttributes(attributes, OPTIONS)).toEqual(data);
+  for (const value of SUBJECTS) {
+    test(`round trips ${JSON.stringify(value)}`, () => {
+      expect(decodeDataAttributeValue(encodeDataAttributeValue(value))).toEqual(
+        value,
+      );
     });
   }
-
-  test('encodes every key with the prefixed, separated name', () => {
-    expect(
-      Object.keys(
-        encodeDataAttributes(
-          { elementType: 'split', elementOptions: {} },
-          OPTIONS,
-        ),
-      ),
-    ).toEqual([
-      'data-matti-docs-element-type',
-      'data-matti-docs-element-options',
-    ]);
-  });
-
-  test('decodes the camel cased property names HAST produces', () => {
-    expect(
-      decodeDataAttributes(
-        {
-          dataMattiDocsElementType: 'document',
-          dataMattiDocsElementOptions: encodeDataAttributeValue({ a: 1 }),
-        },
-        OPTIONS,
-      ),
-    ).toEqual({ elementType: 'document', elementOptions: { a: 1 } });
-  });
-
-  test('ignores data attributes belonging to anything else', () => {
-    expect(
-      decodeDataAttributes(
-        {
-          dataStackIndex: '2',
-          'data-is-stack-continuous': '',
-          // Shares the prefix but not the separator.
-          dataMattiDocsuffix: 'not mine',
-          dataMattiDocsElementType: 'stack',
-        },
-        OPTIONS,
-      ),
-    ).toEqual({ elementType: 'stack' });
-  });
-
-  test('ignores non-string values', () => {
-    expect(
-      decodeDataAttributes({ dataMattiDocsElementType: 12 }, OPTIONS),
-    ).toEqual({});
-  });
 });

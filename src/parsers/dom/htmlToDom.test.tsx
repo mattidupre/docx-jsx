@@ -36,15 +36,19 @@ type PageSummary = {
 const readPages = (harness: BrowserHarness<DomApi>, html: string) =>
   harness.evaluate(async (api, pageHtml: string): Promise<PageSummary[]> => {
     const pagesEl = await api.htmlToDom(pageHtml);
-    return Array.from(pagesEl.children).map((pageRootEl) => {
-      const textOf = (className: string) =>
-        (pageRootEl.querySelector(`.${className}`)?.textContent ?? '')
+    return Array.from(pagesEl.children).map((pageEl) => {
+      // Header and footer are slotted by name; content takes the default slot.
+      const textOf = (slot: string) =>
+        Array.from(pageEl.children)
+          .filter((child) => child.slot === slot)
+          .map((child) => child.textContent)
+          .join('')
           .replace(/\s+/g, ' ')
           .trim();
       return {
-        header: textOf(api.PageTemplate.headerClassName),
-        footer: textOf(api.PageTemplate.footerClassName),
-        content: textOf(api.PageTemplate.contentClassName),
+        header: textOf('header'),
+        footer: textOf('footer'),
+        content: textOf(''),
       };
     });
   }, html);
@@ -399,16 +403,24 @@ describe('htmlToDom', () => {
         document.body.appendChild(pagesEl);
         try {
           return Array.from(pagesEl.children).map((pageRootEl) => {
-            const contentEl = pageRootEl.querySelector(
-              `.${api.PageTemplate.contentClassName}`,
-            )!;
+            // The content region is a part of the page's shadow root; the
+            // content itself is the light DOM that is not slotted into the
+            // header or footer.
+            const contentEl =
+              pageRootEl.shadowRoot?.querySelector('[part="content"]');
+            if (!contentEl) {
+              throw new Error('The page has no content part.');
+            }
             const areaBottom =
               contentEl.getBoundingClientRect().bottom -
               Number.parseFloat(
                 window.getComputedStyle(contentEl).paddingBottom,
               );
+            const contentParagraphs = Array.from(
+              pageRootEl.querySelectorAll('p'),
+            ).filter((paragraphEl) => !paragraphEl.closest('[slot]'));
             const contentBottom = Math.max(
-              ...Array.from(contentEl.querySelectorAll('p'), (paragraphEl) =>
+              ...contentParagraphs.map((paragraphEl) =>
                 Math.round(paragraphEl.getBoundingClientRect().bottom),
               ),
             );

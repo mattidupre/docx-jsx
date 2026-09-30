@@ -1,12 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
+/**
+ * `dist-test/` at the package root, found from this file rather than by
+ * resolving the package's own name, which changes when the package is
+ * renamed or scoped.
+ */
 const DIST_TEST_PATH = path.resolve(
-  path.dirname(
-    createRequire(import.meta.url).resolve('matti-docs/package.json'),
-  ),
-  './dist-test',
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../../dist-test',
 );
 
 export const writeTestFile = async (

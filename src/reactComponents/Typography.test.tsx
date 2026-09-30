@@ -214,10 +214,19 @@ describe('Typography', () => {
     });
 
     test('does not inline the styles intrinsic tags already carry', () => {
-      // b/strong/em/u/s/sub/sup get their meaning from the injected stylesheet
+      // b/strong/i/em/u/s/sub/sup get their meaning from the injected stylesheet
       // in the browser and from INTRINSIC_TYPOGRAPHY_OPTIONS in the DOCX
       // mapper, never from an inline variable on the tag itself.
-      for (const as of ['b', 'strong', 'em', 'u', 's', 'sub', 'sup'] as const) {
+      for (const as of [
+        'b',
+        'strong',
+        'i',
+        'em',
+        'u',
+        's',
+        'sub',
+        'sup',
+      ] as const) {
         expect(
           styleOf(renderTypography({ as, children: 'text' })),
         ).toBeUndefined();

@@ -32,8 +32,8 @@ import { toDocxColor } from './toDocxColor';
 import { parseParagraphOptions } from './typographyOptionsToDocx';
 
 /**
- * A width written as a number is a percentage; CSS writes `50%` and OOXML
- * writes the same string against `w:type="pct"`.
+ * A width written as a number is a percentage; CSS writes `50%` and docx
+ * writes it against `w:type="pct"` in fiftieths of a percent (`2500`).
  */
 const PERCENT = 100;
 

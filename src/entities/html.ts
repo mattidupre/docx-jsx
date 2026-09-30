@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 // TODO: Add more semantic HTML TagNames.
 //* IMPORTANT: Keep these in sync with base styles.
 export type TagName = keyof Pick<
