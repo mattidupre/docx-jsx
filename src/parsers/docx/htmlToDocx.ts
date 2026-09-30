@@ -40,6 +40,7 @@ import {
   PARAGRAPH_TAG_NAMES,
   assignTypographyOptions,
   isChildOfTagName,
+  isMasonryUnit,
   isTrimmedLineBox,
   resolveBlockTypography,
   resolveFragmentationRules,
@@ -1170,8 +1171,18 @@ const createDocx = async (
         const docxBreak = elementsContext.isInsideColumn
           ? new ColumnBreak()
           : new PageBreak();
-        return elementsContext.isInsideParagraph
-          ? docxBreak
+        if (elementsContext.isInsideParagraph) {
+          return docxBreak;
+        }
+        // Inside a masonry unit, Word breaks where the layout broke the unit,
+        // with the breaks the packing writes. A Break between units is none:
+        // the packing writes the break it made there.
+        return elementsContext.stack.columns.fill === 'masonry'
+          ? createMasonryBreak(
+              elementsContext.isInsideColumn
+                ? { kind: 'column', count: 1 }
+                : { kind: 'page' },
+            )
           : new Paragraph({ children: [docxBreak] });
       }
 
@@ -1415,10 +1426,15 @@ const createDocx = async (
 
   const mappedDocument = mapHtmlToDocument(html, (node) => {
     const parsed = parseNode(node);
-    // Every direct child of a masonry stack is one unit the packing moves.
+    // Every unit child of a masonry stack is one unit the packing moves; any
+    // other child (a Break) is left out of the stack's content.
     return node.type === 'element' &&
       node.data.elementsContext.stack.columns.fill === 'masonry' &&
-      node.data.parentElementTypes.at(-2) === 'content'
+      node.data.parentElementTypes.at(-2) === 'content' &&
+      isMasonryUnit({
+        tagName: node.tagName,
+        elementType: node.data.element.elementType,
+      })
       ? new MasonryUnit([parsed])
       : parsed;
   });

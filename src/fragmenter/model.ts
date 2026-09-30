@@ -32,7 +32,7 @@ export type StartKind = FragmentationStartKind;
  * - `line`: between two line boxes;
  * - `blocked`: between two line boxes that a float spans;
  * - `row`: between two table rows;
- * - `within-row`: inside a row that may split;
+ * - `within-row`: inside a row that may split (a {@link SplitRow});
  * - `within-kept-row`: inside a row that is kept together, which only splits
  *   when it is taller than a whole box.
  */
@@ -51,17 +51,64 @@ export type MeasuredRegion = {
   fill: ColumnFill;
   /**
    * For masonry columns, how many units the region holds: its element
-   * children, which move whole to the shortest column. `undefined` for
-   * columns that flow.
+   * children other than a Break or a `<br>`, which move whole to the
+   * shortest column. `undefined` for columns that flow.
    */
   masonry: undefined | { unitCount: number };
 };
 
-/** A leaf block, measured once at the content width of its stack. */
+/** The lines of one cell of a table row that splits. */
+export type CellLines = {
+  /** The cell's line boxes, from the top of the row. */
+  lines: ReadonlyArray<{ top: number; bottom: number }>;
+  /** The cell's top border and padding, which every piece of it keeps. */
+  insetTop: number;
+  /** The cell's bottom border and padding, which every piece of it keeps. */
+  insetBottom: number;
+  /** Where the cell's content and bottom inset end, from the top of the row. */
+  bottom: number;
+};
+
+/**
+ * A table row that splits between the lines of its cells. Every cell splits
+ * on its own, at a boundary between two of its lines, so a piece of the row
+ * holds the lines of each cell that fit, and is as tall as its tallest cell.
+ */
+export type SplitRow = {
+  /** The unit the row starts at. Its cuts are the units after it. */
+  unit: number;
+  /** The row's height, whole. */
+  height: number;
+  cells: ReadonlyArray<CellLines>;
+  /**
+   * The places the row can be cut at, in order: for each, how many lines of
+   * every cell come before it.
+   */
+  cuts: ReadonlyArray<ReadonlyArray<number>>;
+};
+
+/**
+ * A leaf block, measured at the content width of the page its stack starts
+ * on, and again at the width of any later page of another width.
+ */
 export type MeasuredBlock = {
   stackIndex: number;
-  /** Position in its stack's measurement, which identifies the block. */
+  /**
+   * Which measurement of its stack the block comes from: 0, and one more
+   * each time the stack is measured again.
+   */
+  measurement: number;
+  /**
+   * Position in its stack's measurement, which identifies the block. It is
+   * the same in every measurement of the stack.
+   */
   index: number;
+  /**
+   * The block is what is left of a block split on an earlier page, measured
+   * again on its own: it opens as a continuation does, with no margin,
+   * border, forced break or orphan rule of its own.
+   */
+  continuation: boolean;
   kind: BlockKind;
   region: undefined | MeasuredRegion;
   /**
@@ -94,6 +141,11 @@ export type MeasuredBlock = {
   bounds: ReadonlyArray<number>;
   /** The kind of every boundary in {@link bounds}. */
   boundaries: ReadonlyArray<BoundaryKind>;
+  /**
+   * A table's rows that split between lines, whose pieces are as tall as
+   * their tallest cell rather than the distance between two bounds.
+   */
+  splitRows: ReadonlyArray<SplitRow>;
   /** Height repeated at the top of every continuation (a table's header). */
   repeatHeight: number;
   /** The table asks for its header rows to repeat (`repeatHeader`). */
@@ -116,6 +168,16 @@ export type MeasuredBlock = {
    * trimmed piece that ends there.
    */
   trim: undefined | { lineHeight: number; capHeight: number };
+};
+
+/**
+ * How a stack was measured once: at `size`, with the rest of each of the
+ * `continuations` (blocks of the stack's measurement before, by index, from
+ * a unit on) measured as a block of its own.
+ */
+export type StackMeasurement = {
+  size: BoxSize;
+  continuations: ReadonlyArray<{ index: number; from: number }>;
 };
 
 /** One stack, measured at one content size. */
@@ -213,8 +275,8 @@ export type Checkpoint = {
   queue: ReadonlyArray<PieceRef>;
   /** How many stacks had been measured into the queue. */
   loadedStackCount: number;
-  /** The size each loaded stack was measured at. */
-  stackSizes: ReadonlyArray<BoxSize>;
+  /** Every measurement of each loaded stack so far, in order. */
+  measurements: ReadonlyArray<ReadonlyArray<StackMeasurement>>;
   /** Stacks whose first block opens with a forced page break. */
   forcedStarts: ReadonlyArray<number>;
   /** A forced break still waiting for a block to apply to. */

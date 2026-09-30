@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Browser } from 'puppeteer-core';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import {
   DocumentProvider,
   Stack,
@@ -11,6 +12,8 @@ import {
 } from '../../reactComponents';
 import { reactToHtml } from '../../lib/reactToHtml';
 import { reactToDocx } from '../../reactToDocx';
+import { reactToPdf } from '../../reactToPdf';
+import { isErrorObject, stringifyErrorObject } from '../../utils/error';
 import { closeTestBrowser, launchTestBrowser } from '../../fixtures/browser';
 import {
   createBrowserHarness,
@@ -98,6 +101,78 @@ function TallRowDocument() {
     </DocumentProvider>
   );
 }
+
+/** Lines of the second cell of {@link TwoTallCellsDocument}. */
+const OTHER_LINES = Array.from(
+  { length: 40 },
+  (_value, index) => `Other ${index + 1}`,
+);
+
+/**
+ * A row with two cells taller than a page, whose lines are of different
+ * heights, so no cut runs between the lines of both: each splits on its own.
+ */
+function TwoTallCellsDocument() {
+  return (
+    <DocumentProvider>
+      <Stack>
+        <Table columnWidths={[1, 1]}>
+          <TableRow>
+            <TableCell>
+              {TALL_ROW_LINES.map((line) => (
+                <p key={line} style={{ margin: 0, lineHeight: '17px' }}>
+                  {line}
+                </p>
+              ))}
+            </TableCell>
+            <TableCell>
+              {OTHER_LINES.map((line) => (
+                <p key={line} style={{ margin: '0 0 6px', lineHeight: '43px' }}>
+                  {line}
+                </p>
+              ))}
+            </TableCell>
+          </TableRow>
+        </Table>
+      </Stack>
+    </DocumentProvider>
+  );
+}
+
+/** The text of every page of a PDF, and where its lines are drawn. */
+const readPdfPages = async (bytes: Uint8Array) => {
+  const loadingTask = getDocument({ data: Uint8Array.from(bytes) });
+  try {
+    const pdf = await loadingTask.promise;
+    const pages: Array<{
+      height: number;
+      items: Array<{ text: string; top: number; bottom: number }>;
+    }> = [];
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const [, , , pageHeight] = page.view;
+      const { items } = await page.getTextContent();
+      pages.push({
+        height: pageHeight,
+        items: items.flatMap((item) =>
+          'str' in item && item.str.trim()
+            ? [
+                {
+                  text: item.str,
+                  // From the top of the page, in pt.
+                  top: pageHeight - item.transform[5] - item.height,
+                  bottom: pageHeight - item.transform[5],
+                },
+              ]
+            : [],
+        ),
+      });
+    }
+    return pages;
+  } finally {
+    await loadingTask.destroy();
+  }
+};
 
 const readTablePages = (harness: BrowserHarness<DomApi>, html: string) =>
   harness.evaluate(async (api, pageHtml: string): Promise<TablePage[]> => {
@@ -246,6 +321,46 @@ describe('a table that spans two pages', () => {
       expect(page.visible.length).toBeGreaterThan(0);
     }
     expect(tallPages.flatMap((page) => page.visible)).toEqual(TALL_ROW_LINES);
+  });
+
+  it('splits each cell of a tall row on its own, and draws every line once', async () => {
+    const pages = await readVisibleCellLines(
+      harness,
+      reactToHtml(TwoTallCellsDocument, 'pdf'),
+    );
+    expect(pages.length).toBeGreaterThan(1);
+    for (const page of pages) {
+      expect(page.cut).toBe(0);
+    }
+    const visible = pages.flatMap((page) => page.visible);
+    expect(visible.filter((line) => line.startsWith('Line'))).toEqual(
+      TALL_ROW_LINES,
+    );
+    expect(visible.filter((line) => line.startsWith('Other'))).toEqual(
+      OTHER_LINES,
+    );
+  });
+
+  it('puts every line of a tall row in the PDF text layer once, inside the page', async () => {
+    const pdf = await reactToPdf(TwoTallCellsDocument, { browser });
+    if (isErrorObject(pdf)) {
+      throw new Error(stringifyErrorObject(pdf));
+    }
+    const pages = await readPdfPages(pdf);
+    expect(pages.length).toBeGreaterThan(1);
+    const texts = pages.flatMap(({ items }) => items.map(({ text }) => text));
+    // Nothing is drawn twice or hidden behind a clip: each line is one text
+    // item, and nothing else is.
+    expect([...texts].sort()).toEqual(
+      [...TALL_ROW_LINES, ...OTHER_LINES].sort(),
+    );
+    // The default page's 0.5in margins, with a point for rounding.
+    for (const { height, items } of pages) {
+      for (const { top, bottom } of items) {
+        expect(top).toBeGreaterThanOrEqual(36 - 1);
+        expect(bottom).toBeLessThanOrEqual(height - 36 + 1);
+      }
+    }
   });
 
   it('repeats the header row in DOCX, where Word can', async () => {

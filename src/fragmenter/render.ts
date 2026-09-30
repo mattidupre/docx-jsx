@@ -1,10 +1,18 @@
-import { unitCountOf, type PlacedPage, type Placement } from './model';
+import {
+  unitCountOf,
+  type BlockKind,
+  type MeasuredBlock,
+  type Piece,
+  type PlacedPage,
+  type Placement,
+} from './model';
 import {
   isStyledElement,
+  pairNodes,
   type ContainerSpan,
   type DomBlock,
+  type DomPosition,
   type MeasuredStackDom,
-  type RowSliceGeometry,
   type StyledElement,
 } from './measure';
 
@@ -71,53 +79,138 @@ const continueNumbering = (
 };
 
 /**
- * One slice of a row that is cut: every cell shows `[top, bottom)` of its
- * content through a clipping box, so the row is drawn across two pages with
- * no line cut in half.
+ * Marks the elements a range cut through at one edge, in `clone`, its cloned
+ * contents: the clones of the ancestors of the edge's node inside
+ * `container`, which the range copied partially.
  */
-const sliceRow = (
+const markCutEdge = (
+  clone: Node,
+  container: Node,
+  { node }: DomPosition,
+  edge: 'start' | 'end',
+) => {
+  const chain: Array<Node> = [];
+  for (
+    let ancestor: null | Node =
+      node instanceof Element ? node : node.parentNode;
+    ancestor && ancestor !== container;
+    ancestor = ancestor.parentNode
+  ) {
+    chain.push(ancestor);
+  }
+  let current: null | Node = clone;
+  for (let index = chain.length - 1; index >= 0 && current; index -= 1) {
+    current = edge === 'start' ? current.firstChild : current.lastChild;
+    if (!isStyledElement(current)) {
+      return;
+    }
+    if (edge === 'start') {
+      markSplitFrom(current);
+    } else {
+      markSplitTo(current);
+    }
+  }
+};
+
+/**
+ * The same place in the content as `position`, as far up towards
+ * `container` as it goes: the start of an element is the place just before
+ * it. A cut there then copies no empty part of that element.
+ */
+const hoistPosition = (
+  { node, offset }: DomPosition,
+  container: Node,
+): DomPosition => {
+  let current = { node, offset };
+  while (current.offset === 0 && current.node !== container) {
+    const parent = current.node.parentNode;
+    if (!parent) {
+      break;
+    }
+    current = {
+      node: parent,
+      offset: Array.from<Node>(parent.childNodes).indexOf(current.node),
+    };
+  }
+  return current;
+};
+
+/**
+ * Lines `[first, end)` of a table cell, in a clone of the cell that keeps
+ * its borders and padding. The blocks a cut goes through lose their margin,
+ * border and padding on that side, as a split block does.
+ */
+const renderCellPiece = (
+  cell: StyledElement,
+  starts: ReadonlyArray<DomPosition>,
+  first: number,
+  end: number,
+): StyledElement => {
+  if (first === 0 && end === starts.length) {
+    return cloneDeep(cell);
+  }
+  const clone = cloneShallow(cell);
+  if (end <= first) {
+    return clone;
+  }
+  const start = first === 0 ? undefined : hoistPosition(starts[first], cell);
+  const stop =
+    end === starts.length ? undefined : hoistPosition(starts[end], cell);
+  const range = document.createRange();
+  if (start) {
+    range.setStart(start.node, start.offset);
+  } else {
+    range.setStart(cell, 0);
+  }
+  if (stop) {
+    range.setEnd(stop.node, stop.offset);
+  } else {
+    range.setEnd(cell, cell.childNodes.length);
+  }
+  clone.appendChild(range.cloneContents());
+  if (start) {
+    markCutEdge(clone, cell, start, 'start');
+  }
+  if (stop) {
+    markCutEdge(clone, cell, stop, 'end');
+  }
+  return clone;
+};
+
+/**
+ * A piece of a split row: every cell shows its lines from the cut `from`
+ * (the top of the row when `undefined`) to the cut `to` (the end of the
+ * row), top aligned, so each line is drawn once, on one page.
+ */
+const renderRowPiece = (
   row: HTMLTableRowElement,
-  top: number,
-  bottom: undefined | number,
-  geometry: RowSliceGeometry,
+  lineStarts: ReadonlyArray<ReadonlyArray<DomPosition>>,
+  from: undefined | ReadonlyArray<number>,
+  to: undefined | ReadonlyArray<number>,
 ): StyledElement => {
   const rowClone = cloneShallow(row);
   rowClone.style.removeProperty('height');
-  const sliceHeight = (bottom ?? geometry.height) - top;
-  Array.from(row.children).forEach((cell, cellIndex) => {
-    if (!isStyledElement(cell)) {
-      return;
-    }
-    const padding = geometry.cellPaddings[cellIndex] ?? { top: 0, bottom: 0 };
-    const cellClone = cloneShallow(cell);
-    cellClone.style.setProperty('padding-top', '0');
-    cellClone.style.setProperty('padding-bottom', '0');
-    cellClone.style.setProperty('vertical-align', 'top');
-    const viewport = document.createElement('div');
-    viewport.style.setProperty('overflow', 'hidden');
-    viewport.style.setProperty('height', `${sliceHeight}px`);
-    const inner = document.createElement('div');
-    inner.style.setProperty('display', 'flow-root');
-    inner.style.setProperty('margin-top', `${-top}px`);
-    inner.style.setProperty('padding-top', `${padding.top}px`);
-    inner.style.setProperty('padding-bottom', `${padding.bottom}px`);
-    inner.append(
-      ...Array.from(cell.childNodes, (node) => node.cloneNode(true)),
+  Array.from(row.cells).forEach((cell, cellIndex) => {
+    const starts = lineStarts[cellIndex] ?? [];
+    const cellClone = renderCellPiece(
+      cell,
+      starts,
+      from?.[cellIndex] ?? 0,
+      to?.[cellIndex] ?? starts.length,
     );
-    viewport.appendChild(inner);
-    cellClone.appendChild(viewport);
+    cellClone.style.setProperty('vertical-align', 'top');
     rowClone.appendChild(cellClone);
   });
-  if (top > 0) {
+  if (from) {
     rowClone.setAttribute(SPLIT_FROM_ATTRIBUTE, '');
   }
-  if (bottom !== undefined) {
+  if (to) {
     rowClone.setAttribute(SPLIT_TO_ATTRIBUTE, '');
   }
   return rowClone;
 };
 
-/** Rows (or row slices) `[from, to)` of a table, under its kept sections. */
+/** Rows (or pieces of rows) `[from, to)` of a table, under its kept sections. */
 const renderTablePiece = (
   dom: DomBlock,
   placement: Placement,
@@ -145,7 +238,7 @@ const renderTablePiece = (
   const end = to < unitCountOf(block) ? dom.tableUnits[to] : undefined;
   const startRow = rows.indexOf(start.row);
   const endRow = end ? rows.indexOf(end.row) : rows.length;
-  const lastRow = end && end.offset > 0 ? endRow : endRow - 1;
+  const lastRow = end?.cut ? endRow : endRow - 1;
   const bodies = new Map<Element, StyledElement>();
   for (let rowIndex = startRow; rowIndex <= lastRow; rowIndex += 1) {
     const row = rows[rowIndex];
@@ -159,12 +252,12 @@ const renderTablePiece = (
       bodies.set(body, bodyClone);
       element.appendChild(bodyClone);
     }
-    const top = rowIndex === startRow ? start.offset : 0;
-    const bottom = end && rowIndex === endRow ? end.offset : undefined;
-    const geometry = dom.rowSlices.get(row);
+    const rowFrom = rowIndex === startRow ? start.cut : undefined;
+    const rowTo = rowIndex === endRow ? end?.cut : undefined;
+    const lineStarts = dom.rowLines.get(row);
     bodyClone.appendChild(
-      geometry && (top > 0 || bottom !== undefined)
-        ? sliceRow(row, top, bottom, geometry)
+      lineStarts && (rowFrom || rowTo)
+        ? renderRowPiece(row, lineStarts, rowFrom, rowTo)
         : cloneDeep(row),
     );
   }
@@ -196,15 +289,77 @@ const renderTextPiece = (
   return element;
 };
 
-type Track = { span: ContainerSpan; last: number; complete: boolean };
+/**
+ * Units `[from, to)` of a block: a deep clone when it is whole, else the
+ * piece its kind cuts. The edges the piece is cut at are not marked yet.
+ */
+const renderPiece = (dom: DomBlock, placement: Placement): StyledElement => {
+  const { block, from, to } = placement;
+  if ((from === 0 && to === unitCountOf(block)) || block.kind === 'atomic') {
+    return cloneDeep(dom.source);
+  }
+  return block.kind === 'table'
+    ? renderTablePiece(dom, placement)
+    : renderTextPiece(dom, placement);
+};
 
 /**
- * Builds the content of one page. `stackDomOf` returns the measurement the
- * page's placements were made from.
+ * The source of a stack to measure again from the `pieces` that carry on:
+ * a copy of the source of its measurement `stackDom`, in which the block of
+ * each piece is replaced by what is left of it, cut as its continuation is
+ * drawn (from the same place in its content, with its cut edge marked).
+ * `repeatsHeader` says whether a table's rest opens with its header rows.
+ */
+export const continueStack = (
+  stackDom: MeasuredStackDom,
+  pieces: ReadonlyArray<Piece>,
+  repeatsHeader: (block: MeasuredBlock) => boolean,
+): {
+  source: HTMLElement;
+  continuations: Map<StyledElement, BlockKind>;
+} => {
+  const source = stackDom.source.cloneNode(true);
+  if (!(source instanceof HTMLElement)) {
+    throw new TypeError('Expected a stack clone.');
+  }
+  const pairs = pairNodes(stackDom.source, source, new Map());
+  const continuations = new Map<StyledElement, BlockKind>();
+  for (const { block, from } of pieces) {
+    const dom = stackDom.blocks[block.index];
+    const target = pairs.get(dom.source);
+    if (!(target instanceof Element)) {
+      throw new Error(`Block ${block.index + 1} was never measured.`);
+    }
+    const rest = renderPiece(dom, {
+      block,
+      from,
+      to: unitCountOf(block),
+      marginTop: 0,
+      repeatHeader: from > 0 && repeatsHeader(block),
+      bottom: 0,
+    });
+    if (from > 0) {
+      markSplitFrom(rest);
+    }
+    target.replaceWith(rest);
+    continuations.set(rest, block.kind);
+  }
+  return { source, continuations };
+};
+
+type Track = { span: ContainerSpan; last: number; complete: boolean };
+
+/** Whether a placement carries on from a piece of its block placed before. */
+const continues = ({ block, from }: Placement): boolean =>
+  from > 0 || block.continuation;
+
+/**
+ * Builds the content of one page. `stackDomOf` returns the measurement a
+ * block of the page's placements comes from.
  */
 export const renderPage = (
   page: PlacedPage,
-  stackDomOf: (stackIndex: number) => MeasuredStackDom,
+  stackDomOf: (block: MeasuredBlock) => MeasuredStackDom,
 ): HTMLElement => {
   const contentElement = document.createElement('div');
   const stackClones = new Map<number, StyledElement>();
@@ -225,11 +380,11 @@ export const renderPage = (
 
   const stackCloneOf = (placement: Placement): StyledElement => {
     const { stackIndex } = placement.block;
-    const stackDom = stackDomOf(stackIndex);
+    const stackDom = stackDomOf(placement.block);
     let clone = stackClones.get(stackIndex);
     if (!clone) {
       clone = cloneShallow(stackDom.source);
-      if (placement.block.index > 0 || placement.from > 0) {
+      if (placement.block.index > 0 || continues(placement)) {
         markSplitFrom(clone);
       }
       stackClones.set(stackIndex, clone);
@@ -249,7 +404,7 @@ export const renderPage = (
     chain: ReadonlyArray<StyledElement>,
     map: Map<StyledElement, StyledElement>,
   ): StyledElement => {
-    const stackDom = stackDomOf(placement.block.stackIndex);
+    const stackDom = stackDomOf(placement.block);
     const dom = stackDom.blocks[placement.block.index];
     let parent = root;
     for (const ancestor of chain) {
@@ -259,7 +414,7 @@ export const renderPage = (
         clone = cloneShallow(ancestor);
         if (
           span &&
-          (span.first < placement.block.index || placement.from > 0)
+          (span.first < placement.block.index || continues(placement))
         ) {
           markSplitFrom(clone);
           if (ancestor instanceof HTMLOListElement) {
@@ -285,17 +440,11 @@ export const renderPage = (
     previous: undefined | Placement,
   ) => {
     const { block, from, to } = placement;
-    const stackDom = stackDomOf(block.stackIndex);
+    const stackDom = stackDomOf(block);
     const dom = stackDom.blocks[block.index];
     const unitCount = unitCountOf(block);
-    let element: StyledElement;
-    if ((from === 0 && to === unitCount) || block.kind === 'atomic') {
-      element = cloneDeep(dom.source);
-    } else if (block.kind === 'table') {
-      element = renderTablePiece(dom, placement);
-    } else {
-      element = renderTextPiece(dom, placement);
-    }
+    const element = renderPiece(dom, placement);
+    // A continuation measured on its own is marked already.
     if (from > 0) {
       markSplitFrom(element);
     }
@@ -308,7 +457,7 @@ export const renderPage = (
     parent.appendChild(element);
     map.set(dom.source, element);
 
-    if (from > 0) {
+    if (continues(placement)) {
       // A continuation's own space: the inset of a trimmed first line.
       if (placement.marginTop !== 0) {
         element.style.setProperty('margin-top', `${placement.marginTop}px`);
@@ -326,23 +475,23 @@ export const renderPage = (
     if (placement.marginTop === collapsed) {
       return;
     }
-    const cloneOf = (stackIndex: number, marginElement: StyledElement) =>
-      marginElement === stackDomOf(stackIndex).source
-        ? stackClones.get(stackIndex)
+    const cloneOf = (owner: MeasuredBlock, marginElement: StyledElement) =>
+      marginElement === stackDomOf(owner).source
+        ? stackClones.get(owner.stackIndex)
         : (map.get(marginElement) ?? flowClones.get(marginElement));
     if (previous) {
-      const previousDom = stackDomOf(previous.block.stackIndex).blocks[
+      const previousDom = stackDomOf(previous.block).blocks[
         previous.block.index
       ];
       for (const marginElement of previousDom.bottomMarginElements) {
-        cloneOf(previous.block.stackIndex, marginElement)?.style.setProperty(
+        cloneOf(previous.block, marginElement)?.style.setProperty(
           'margin-bottom',
           '0',
         );
       }
     }
     dom.topMarginElements.forEach((marginElement, index) => {
-      const clone = cloneOf(block.stackIndex, marginElement);
+      const clone = cloneOf(block, marginElement);
       clone?.style.setProperty(
         'margin-top',
         index === 0 ? `${placement.marginTop}px` : '0',
@@ -354,9 +503,7 @@ export const renderPage = (
   for (const item of page.items) {
     if (item.kind === 'flow') {
       const { placement } = item;
-      const dom = stackDomOf(placement.block.stackIndex).blocks[
-        placement.block.index
-      ];
+      const dom = stackDomOf(placement.block).blocks[placement.block.index];
       const parent = ensureChain(
         placement,
         stackCloneOf(placement),
@@ -372,7 +519,7 @@ export const renderPage = (
     if (!firstPlacement) {
       continue;
     }
-    const stackDom = stackDomOf(firstPlacement.block.stackIndex);
+    const stackDom = stackDomOf(firstPlacement.block);
     const regionSource = stackDom.regions.get(item.region.id);
     const outerChainOf = (placement: Placement) => {
       const { ancestors } = stackDom.blocks[placement.block.index];

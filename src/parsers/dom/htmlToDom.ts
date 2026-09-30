@@ -152,8 +152,9 @@ const renderPages = async (
   });
   if (fontFaceCss) {
     // `@font-face` is ignored inside a shadow root, so custom fonts are
-    // registered on the documents themselves. The Fragmenter loads every face
-    // before it measures.
+    // registered on the documents themselves. The Fragmenter loads the faces
+    // of these families, and of any other the content uses, before it
+    // measures.
     for (const styles of new Set([measureStyles, documentStyles])) {
       styles.adopt(fontFaceCss);
     }
@@ -235,6 +236,7 @@ const renderPages = async (
     profile: resolveFragmentationProfile(
       fragmentation ?? documentFragmentation,
     ),
+    fontFamilies: Object.keys(fonts ?? documentFonts ?? {}),
   });
 
   // A page belongs to the stack whose content starts it: that stack's header,

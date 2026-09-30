@@ -18,6 +18,7 @@ import {
   type Piece,
   type PieceRef,
   type PlacedPage,
+  type StackMeasurement,
   type Placement,
   type StartKind,
 } from './model';
@@ -36,8 +37,18 @@ export type PlacementInput = {
    * down the page of the stack before it; any other one starts a page.
    */
   stacks: ReadonlyArray<{ continuous: boolean }>;
-  /** Measures a stack at the content size of the page it starts on. */
-  measureStack: (stackIndex: number, size: BoxSize) => MeasuredStack;
+  /**
+   * Measures a stack at the content size of the page it starts on, and again
+   * at the size of a later page of another width. `continuations` are the
+   * pieces of its measurement before that carry on: the rest of each is
+   * measured as a block of its own, at the same index, which is a
+   * {@link MeasuredBlock.continuation}.
+   */
+  measureStack: (
+    stackIndex: number,
+    size: BoxSize,
+    continuations: ReadonlyArray<Piece>,
+  ) => MeasuredStack;
   /** Starts a page and returns the size of its content box. */
   startPage: (context: {
     pageIndex: number;
@@ -155,13 +166,27 @@ const keepsTogether = (
   (profile.canBreakBetween !== undefined &&
     !profile.canBreakBetween(before, after, context));
 
-const wantsRepeatedHeader = (
+/** Whether a table's continuations carry its header rows. */
+export const wantsRepeatedHeader = (
   profile: FragmentationProfile,
   block: MeasuredBlock,
 ): boolean =>
   block.repeatHeight > 0 &&
   (profile.tables.repeatHeader === 'always' ||
     (profile.tables.repeatHeader === 'option' && block.repeatHeader));
+
+/**
+ * Whether units from `from` on open the block, rather than carry on from a
+ * piece of it placed before.
+ */
+const opensBlock = ({ block, from }: Piece): boolean =>
+  from === 0 && !block.continuation;
+
+/** Whether a piece starts inside a table row that splits between lines. */
+const startsInsideSplitRow = ({ block, from }: Piece): boolean =>
+  block.splitRows.some(
+    ({ unit, cuts }) => from > unit && from <= unit + cuts.length,
+  );
 
 /**
  * Where to break `block` so that units `[from, to)` stay in `space`. Returns
@@ -221,7 +246,7 @@ const chooseBreak = (
     }
     best = Math.min(best, earlier);
   }
-  if (best - from < (from === 0 ? orphans : 1)) {
+  if (best - from < (opensBlock({ block, from }) ? orphans : 1)) {
     return from;
   }
   const adjusted = profile.adjustBreak
@@ -282,7 +307,7 @@ const fill = (
 
     const splitter = profile.splitters[block.kind];
     const unitCount = unitCountOf(block);
-    const opening = from === 0;
+    const opening = opensBlock({ block, from });
     const collapsedMarginTop = !opening
       ? 0
       : last || box.marginAbove !== undefined
@@ -306,7 +331,9 @@ const fill = (
     const fits = (to: number, repeatHeader: boolean) =>
       top + heightOf(to, repeatHeader) + reserve <= box.height + FIT_EPSILON_PX;
 
-    let repeatHeader = !opening && wantsRepeatedHeader(profile, block);
+    // A table measured again from a continuation holds the header its first
+    // piece repeats, so only a later piece repeats it.
+    let repeatHeader = from > 0 && wantsRepeatedHeader(profile, block);
     // A repeated header with no row under it is dropped rather than moved on.
     if (
       repeatHeader &&
@@ -371,7 +398,7 @@ const fill = (
     while (chainStart > 0) {
       const candidate = placed[chainStart - 1];
       const whole =
-        candidate.from === 0 && candidate.to === unitCountOf(candidate.block);
+        opensBlock(candidate) && candidate.to === unitCountOf(candidate.block);
       if (
         !whole ||
         !keepsTogether(profile, candidate.block, next, contextNow())
@@ -395,8 +422,22 @@ const fill = (
 type ColumnsResult = {
   columns: Array<Array<Placement>>;
   used: number;
+  /**
+   * Where the columns end with the bottom margins of their last blocks: each
+   * column is a formatting context of its own, which holds those margins, so
+   * the region takes that much of the page.
+   */
+  extent: number;
   rest: Array<Piece>;
   forcedPage: boolean;
+};
+
+/** The margin a column's last placement leaves below it inside the column. */
+const marginBelowOf = (placements: ReadonlyArray<Placement>): number => {
+  const last = placements.at(-1);
+  return last && last.to === unitCountOf(last.block)
+    ? last.block.marginBottom
+    : 0;
 };
 
 const fillColumns = (
@@ -412,6 +453,7 @@ const fillColumns = (
   const columns: Array<Array<Placement>> = [];
   let rest: Array<Piece> = [...pieces];
   let used = 0;
+  let extent = 0;
   let forcedPage = false;
   for (
     let column = 0;
@@ -439,13 +481,14 @@ const fillColumns = (
     );
     columns.push(result.placed);
     used = Math.max(used, result.used);
+    extent = Math.max(extent, result.used + marginBelowOf(result.placed));
     rest = result.rest;
     if (result.stop === 'forced-page') {
       forcedPage = true;
       break;
     }
   }
-  return { columns, used, rest, forcedPage };
+  return { columns, used, extent, rest, forcedPage };
 };
 
 /**
@@ -465,9 +508,18 @@ type MasonryColumn = {
   sealed: boolean;
 };
 
-/** Whether a packing unit opens with a forced page break. */
-const opensWithPageBreak = (pieces: ReadonlyArray<Piece>): boolean =>
-  pieces[0]?.from === 0 && pieces[0].block.breakBefore === 'page';
+/** The forced break a packing unit opens with, if any. */
+const openingBreakOf = (
+  pieces: ReadonlyArray<Piece>,
+): undefined | 'page' | 'column' =>
+  pieces[0]?.from === 0 ? pieces[0].block.breakBefore : undefined;
+
+/** Whether a packing unit breaks by force after its first piece. */
+const breaksInside = (pieces: ReadonlyArray<Piece>): boolean =>
+  pieces.some(
+    ({ block, from }, index) =>
+      index > 0 && from === 0 && block.breakBefore !== undefined,
+  );
 
 /** Whether a packing unit goes on with a unit begun on an earlier page. */
 const continuesUnit = (pieces: ReadonlyArray<Piece>): boolean =>
@@ -483,9 +535,9 @@ const withoutBreak = (piece: Piece): Piece =>
 /**
  * The packing units of a masonry region: its units (the pieces of one child
  * of the region), with a unit that keeps with the next one (a heading, or a
- * group marked keep-with-next) chained to it, so they move as one. Packing
- * decides where columns end, so only a page break at the start of a unit is
- * kept, and it starts a packing unit of its own.
+ * group marked keep-with-next) chained to it, so they move as one. A unit
+ * that opens with a forced break (a Break between two units) starts a
+ * packing unit of its own.
  */
 const packingUnitsOf = (
   profile: FragmentationProfile,
@@ -496,11 +548,9 @@ const packingUnitsOf = (
   for (const piece of pieces) {
     const unit = units.at(-1);
     if (unit && unit[0].block.unit?.index === piece.block.unit?.index) {
-      unit.push(withoutBreak(piece));
+      unit.push(piece);
     } else {
-      units.push([
-        piece.block.breakBefore === 'column' ? withoutBreak(piece) : piece,
-      ]);
+      units.push([piece]);
     }
   }
   const packing: Array<Array<Piece>> = [];
@@ -510,7 +560,7 @@ const packingUnitsOf = (
     if (
       chain &&
       previous &&
-      !opensWithPageBreak(unit) &&
+      openingBreakOf(unit) === undefined &&
       keepsTogether(profile, previous.block, unit[0].block, context)
     ) {
       chain.push(...unit);
@@ -530,17 +580,24 @@ const packingUnitsOf = (
  * - when the next one fits in no column, the next {@link MASONRY_LOOKAHEAD}
  *   are tried in its place, in order, and the first that fits is placed;
  *   when none fits, the page ends;
- * - a packing unit too tall for an empty column of a whole page splits as
- *   flow does, under the page's rules: it starts below the last column with
- *   content, and each piece that does not end it carries on at the top of the
- *   next column, which is empty, so the unit reads on from column to column.
- *   A column whose last piece carries on takes nothing more, and what does
- *   not fit on the page goes on at the top of the next page's first column
- *   before anything else is packed there.
+ * - a packing unit too tall for an empty column of a whole page, or one with
+ *   a forced break inside it, splits as flow does, under the page's rules: it
+ *   starts below the last column with content, and each piece that does not
+ *   end it carries on at the top of the next column, which is empty, so the
+ *   unit reads on from column to column. A column whose last piece carries on
+ *   takes nothing more, and what does not fit on the page goes on at the top
+ *   of the next page's first column before anything else is packed there.
  *
  * The columns are then read top to bottom, left to right: that is the packed
- * order. A packing unit that starts with a forced page break waits for a new
- * page, and nothing after it is packed ahead of it.
+ * order. Forced breaks keep it in source order:
+ * - a page break ends the page: a packing unit that starts with one waits for
+ *   a new page, and one inside a unit carries the rest of the unit to the
+ *   next page, with nothing packed on this page after it;
+ * - a column break moves on to the next column: a packing unit that starts
+ *   with one goes into the columns right of every column with content, and
+ *   one inside a unit carries the rest of the unit to the top of the next
+ *   column;
+ * - nothing after a forced break is packed ahead of what comes before it.
  */
 const packMasonry = (
   profile: FragmentationProfile,
@@ -570,8 +627,8 @@ const packMasonry = (
     return {
       height: empty ? boxHeight : boxHeight - columns[columnIndex].bottom,
       atTop: empty ? startKind : undefined,
-      // A forced column break means nothing to a packing.
-      isColumn: false,
+      // A forced break inside a packing unit ends its piece in the column.
+      isColumn: true,
       mustProgress: progress,
       hasContentAbove: false,
       marginAbove: empty ? undefined : columns[columnIndex].marginBottom,
@@ -624,8 +681,9 @@ const packMasonry = (
   };
 
   /**
-   * Whether a packing unit is too tall for an empty column of a whole page,
-   * the first one or any other (their top margins may differ).
+   * Whether a packing unit cannot go whole into an empty column of a whole
+   * page, the first one or any other (their top margins may differ): it is
+   * too tall, or it breaks by force inside.
    */
   const isOversized = (unit: ReadonlyArray<Piece>): boolean =>
     [0, columns.length - 1].every(
@@ -640,12 +698,13 @@ const packMasonry = (
 
   /**
    * Splits a packing unit as flow does, from below the last column with
-   * content onwards. Returns what did not fit on the page.
+   * content onwards. Returns what did not fit on the page, and whether a
+   * forced page break inside the unit ended the page.
    */
   const placeFlowing = (
     unit: ReadonlyArray<Piece>,
     progress: boolean,
-  ): { rest: Array<Piece>; placed: boolean } => {
+  ): { rest: Array<Piece>; placed: boolean; pageBreak: boolean } => {
     const start = Math.max(
       0,
       columns.findLastIndex(({ placed }) => placed.length > 0),
@@ -653,11 +712,22 @@ const packMasonry = (
     let rest = [...unit];
     let first: undefined | number = undefined;
     let last = start;
+    let pageBreak = false;
     for (
       let columnIndex = start;
       columnIndex < columns.length && rest.length > 0;
       columnIndex += 1
     ) {
+      if (first !== undefined && openingBreakOf(rest) === 'page') {
+        pageBreak = true;
+        break;
+      }
+      if (columns[columnIndex].sealed) {
+        if (first !== undefined) {
+          break;
+        }
+        continue;
+      }
       const result = fill(
         profile,
         rest,
@@ -675,9 +745,13 @@ const packMasonry = (
       rest = result.rest;
       first ??= columnIndex;
       last = columnIndex;
+      if (result.stop === 'forced-page') {
+        pageBreak = true;
+        break;
+      }
     }
     if (first === undefined) {
-      return { rest, placed: false };
+      return { rest, placed: false, pageBreak: false };
     }
     // Nothing may come between the pieces: the columns the unit carries on
     // from take nothing more, nor, when it goes on to the next page, does
@@ -687,7 +761,7 @@ const packMasonry = (
       .forEach((column) => {
         column.sealed = true;
       });
-    return { rest, placed: true };
+    return { rest, placed: true, pageBreak };
   };
 
   let forcedPage = false;
@@ -695,9 +769,12 @@ const packMasonry = (
   let headWaits = false;
   /** Splits the head as flow does; false when none of it fits. */
   const flowHead = (progress: boolean): boolean => {
-    const { rest, placed } = placeFlowing(pending[0], progress);
+    const { rest, placed, pageBreak } = placeFlowing(pending[0], progress);
     if (!placed) {
       return false;
+    }
+    if (pageBreak) {
+      forcedPage = true;
     }
     if (rest.length === 0) {
       pending.shift();
@@ -708,11 +785,27 @@ const packMasonry = (
     return true;
   };
 
-  while (pending.length > 0) {
+  while (pending.length > 0 && !forcedPage) {
     const head = pending[0];
-    if (opensWithPageBreak(head) && (!isPageEmpty() || hasContentAbove)) {
+    const openingBreak = openingBreakOf(head);
+    if (openingBreak === 'page' && (!isPageEmpty() || hasContentAbove)) {
       forcedPage = true;
       break;
+    }
+    if (openingBreak === 'column') {
+      // The unit and everything after it go on right of every column with
+      // content, or on the next page when no column is left.
+      const lastFilled = columns.findLastIndex(
+        ({ placed }) => placed.length > 0,
+      );
+      columns.slice(0, lastFilled + 1).forEach((column) => {
+        column.sealed = true;
+      });
+      pending[0] = [withoutBreak(head[0]), ...head.slice(1)];
+      if (columns.every(({ sealed }) => sealed)) {
+        break;
+      }
+      continue;
     }
     if (!headWaits) {
       // A unit begun on the page before goes on at the top of the first
@@ -727,7 +820,7 @@ const packMasonry = (
         pending.shift();
         continue;
       }
-      if (isOversized(head) && flowHead(mustProgress)) {
+      if ((breaksInside(head) || isOversized(head)) && flowHead(mustProgress)) {
         continue;
       }
     }
@@ -737,7 +830,7 @@ const packMasonry = (
       index < pending.length && index <= MASONRY_LOOKAHEAD;
       index += 1
     ) {
-      if (opensWithPageBreak(pending[index])) {
+      if (openingBreakOf(pending[index]) !== undefined) {
         break;
       }
       if (placeWhole(pending[index])) {
@@ -752,13 +845,17 @@ const packMasonry = (
   }
 
   // Every page takes something: an empty page flows the head from the top.
-  if (mustProgress && isPageEmpty() && pending.length > 0) {
+  if (mustProgress && isPageEmpty() && pending.length > 0 && !forcedPage) {
     flowHead(true);
   }
 
   return {
     columns: columns.map(({ placed }) => placed),
     used: Math.max(0, ...columns.map(({ bottom }) => bottom)),
+    extent: Math.max(
+      0,
+      ...columns.map(({ bottom, marginBottom }) => bottom + marginBottom),
+    ),
     rest: pending.flat(),
     forcedPage,
   };
@@ -867,7 +964,7 @@ export const placePages = ({
   resumeFrom,
 }: PlacementInput): PlacementResult => {
   const measured: Array<undefined | MeasuredStack> = [];
-  const stackSizes: Array<BoxSize> = [];
+  const measurements: Array<Array<StackMeasurement>> = [];
   /** Stacks whose first block opens with a forced page break. */
   const forcedStarts = new Set<number>();
   const pages: Array<PlacedPage> = [];
@@ -883,21 +980,40 @@ export const placePages = ({
   const piecesOf = (stackIndex: number): Array<Piece> =>
     (measured[stackIndex]?.blocks ?? []).map((block) => ({
       block:
-        block.index === 0 && forcedStarts.has(stackIndex)
+        block.index === 0 && !block.continuation && forcedStarts.has(stackIndex)
           ? { ...block, breakBefore: 'page' }
           : block,
       from: 0,
     }));
 
-  const measureInto = (stackIndex: number, size: BoxSize) => {
-    measured[stackIndex] = measureStack(stackIndex, size);
-    stackSizes[stackIndex] = size;
+  /** Block `index` of the stack's latest measurement, from unit `from` on. */
+  const pieceAt = (stackIndex: number, index: number, from: number): Piece => {
+    const piece = piecesOf(stackIndex)[index];
+    if (!piece) {
+      throw new Error('The checkpoint does not match the measured stacks.');
+    }
+    return { block: piece.block, from };
+  };
+
+  const measureInto = (
+    stackIndex: number,
+    size: BoxSize,
+    continuations: ReadonlyArray<Piece>,
+  ) => {
+    measured[stackIndex] = measureStack(stackIndex, size, continuations);
+    (measurements[stackIndex] ??= []).push({
+      size,
+      continuations: continuations.map(({ block, from }) => ({
+        index: block.index,
+        from,
+      })),
+    });
   };
 
   /** Measures the next stack into the queue at the size of the current page. */
   const loadStack = (size: BoxSize): Array<Piece> => {
     const stackIndex = loadedStackCount;
-    measureInto(stackIndex, size);
+    measureInto(stackIndex, size, []);
     loadedStackCount += 1;
     const stack = measured[stackIndex];
     if (pendingBreak && stack && stack.blocks.length > 0) {
@@ -911,36 +1027,39 @@ export const placePages = ({
   };
 
   /**
-   * Re-measures every stack that starts on this page at its size, when it was
-   * measured at another page's size and nothing of it is placed yet.
+   * Measures again, at the size of this page, every stack with content left
+   * that was measured at another width, and every stack whose next piece
+   * starts inside a split table row, whose cells each go on from a line of
+   * their own. A block split before carries on from the same place in its
+   * content, measured on its own as a continuation.
    */
   const remeasureFor = (size: BoxSize) => {
     const stale = new Set(
       queue
         .filter(
-          ({ block, from }) =>
-            block.index === 0 &&
-            from === 0 &&
+          (piece) =>
             Math.abs(
-              (measured[block.stackIndex]?.width ?? size.width) - size.width,
-            ) > FIT_EPSILON_PX,
+              (measured[piece.block.stackIndex]?.width ?? size.width) -
+                size.width,
+            ) > FIT_EPSILON_PX || startsInsideSplitRow(piece),
         )
         .map(({ block }) => block.stackIndex),
     );
-    if (stale.size === 0) {
-      return;
+    for (const stackIndex of stale) {
+      measureInto(
+        stackIndex,
+        size,
+        queue.filter(
+          (piece) =>
+            piece.block.stackIndex === stackIndex && !opensBlock(piece),
+        ),
+      );
     }
-    queue = queue.flatMap((piece) => {
-      const { stackIndex, index } = piece.block;
-      if (!stale.has(stackIndex)) {
-        return [piece];
-      }
-      if (index !== 0) {
-        return [];
-      }
-      measureInto(stackIndex, size);
-      return piecesOf(stackIndex);
-    });
+    queue = queue.map((piece) =>
+      stale.has(piece.block.stackIndex)
+        ? pieceAt(piece.block.stackIndex, piece.block.index, 0)
+        : piece,
+    );
   };
 
   const snapshot = (): Checkpoint => ({
@@ -951,7 +1070,9 @@ export const placePages = ({
       from,
     })),
     loadedStackCount,
-    stackSizes: [...stackSizes],
+    measurements: measurements.map((stackMeasurements) => [
+      ...stackMeasurements,
+    ]),
     forcedStarts: [...forcedStarts],
     pendingBreak,
     startKind,
@@ -966,19 +1087,29 @@ export const placePages = ({
     resumeFrom.forcedStarts.forEach((stackIndex) =>
       forcedStarts.add(stackIndex),
     );
-    resumeFrom.stackSizes.forEach((size, stackIndex) => {
-      stackSizes[stackIndex] = size;
-    });
-    queue = resumeFrom.queue.map(({ stackIndex, index, from }) => {
-      if (!measured[stackIndex]) {
-        measureInto(stackIndex, resumeFrom.stackSizes[stackIndex]);
+    // The stacks with content left are measured again as they were; the
+    // measurements of the others are only carried on.
+    const pending = new Set(
+      resumeFrom.queue.map(({ stackIndex }) => stackIndex),
+    );
+    resumeFrom.measurements.forEach((stackMeasurements, stackIndex) => {
+      if (!pending.has(stackIndex)) {
+        measurements[stackIndex] = [...stackMeasurements];
+        return;
       }
-      const piece = piecesOf(stackIndex)[index];
-      if (!piece) {
-        throw new Error('The checkpoint does not match the measured stacks.');
+      for (const { size, continuations } of stackMeasurements) {
+        measureInto(
+          stackIndex,
+          size,
+          continuations.map(({ index, from }) =>
+            pieceAt(stackIndex, index, from),
+          ),
+        );
       }
-      return { block: piece.block, from };
     });
+    queue = resumeFrom.queue.map(({ stackIndex, index, from }) =>
+      pieceAt(stackIndex, index, from),
+    );
   }
 
   for (;;) {
@@ -988,7 +1119,7 @@ export const placePages = ({
     const head = queue.at(0);
     if (head) {
       stackIndex = head.block.stackIndex;
-      first = head.from === 0 && head.block.index === 0;
+      first = opensBlock(head) && head.block.index === 0;
     } else if (loadedStackCount < stacks.length) {
       stackIndex = loadedStackCount;
       first = true;
@@ -1029,6 +1160,12 @@ export const placePages = ({
 
     const items: Array<PageItem> = [];
     let used = 0;
+    /**
+     * The bottom margin of the last flow block placed. A region's columns are
+     * formatting contexts of their own, so it does not collapse with the
+     * margins inside them: the columns start below it.
+     */
+    let marginBelow = 0;
     let boxStart: undefined | StartKind = startKind;
     let nextStartKind: undefined | StartKind = undefined;
     const context = (): Omit<PageContext, 'used'> => ({
@@ -1067,7 +1204,7 @@ export const placePages = ({
           profile,
           segment,
           region,
-          size.height - used,
+          size.height - used - marginBelow,
           boxStart,
           mustProgress,
           context(),
@@ -1079,7 +1216,10 @@ export const placePages = ({
             columns: result.columns,
           });
         }
-        used += result.used;
+        // What follows the region starts below its columns' margins, and
+        // keeps its own top margin in addition.
+        used += marginBelow + result.extent;
+        marginBelow = 0;
         queue = [...result.rest, ...queue.slice(segment.length)];
         boxStart = undefined;
         if (result.rest.length > 0 || result.forcedPage) {
@@ -1113,6 +1253,7 @@ export const placePages = ({
       queue = result.rest;
       if (result.placed.length > 0) {
         boxStart = undefined;
+        marginBelow = marginBelowOf(result.placed);
       }
       if (result.stop === 'region') {
         continue;

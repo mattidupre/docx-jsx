@@ -233,11 +233,6 @@ export const mapHtmlToDocument = <TContent>(
         }
 
         const { columns } = elementData.elementOptions;
-        if (columns.fill === 'masonry' && columns.columnCount < 2) {
-          throw new TypeError(
-            'Masonry columns need a columnCount of at least 2.',
-          );
-        }
 
         assignElementsContext(elementsContext, {
           stack: elementData.elementOptions,
@@ -303,12 +298,6 @@ export const mapHtmlToDocument = <TContent>(
           PARAGRAPH_TAG_NAMES,
         );
 
-        const isMasonry = elementsContext.stack.columns.fill === 'masonry';
-        if (isElementOfType(elementData, 'break') && isMasonry) {
-          throw new TypeError(
-            'A Break cannot be used inside masonry columns: the packing decides where columns and pages end.',
-          );
-        }
         if (
           isElementOfType(elementData, 'masonryGroup') &&
           parentElementTypes.at(-1) !== 'content'

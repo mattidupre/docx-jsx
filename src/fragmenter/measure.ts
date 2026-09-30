@@ -2,17 +2,20 @@ import {
   COLUMNS_DATA_ATTRIBUTES,
   decodeElementData,
   isElementOfType,
+  isMasonryUnit,
   type ElementData,
 } from '../entities';
 import {
   type BlockKind,
   type BoundaryKind,
   type BoxSize,
+  type CellLines,
   type ColumnFill,
   type ElementKind,
   type MeasuredBlock,
   type MeasuredRegion,
   type MeasuredStack,
+  type SplitRow,
   FIT_EPSILON_PX,
 } from './model';
 import type { ClassifyInput, FragmentationProfile } from './profile';
@@ -39,10 +42,16 @@ export type DomBlock = {
    * `unitStarts[0]` is the start of the block and left out.
    */
   unitStarts: ReadonlyArray<undefined | DomPosition>;
-  /** For a table: the body row each unit starts in, and how far down it. */
-  tableUnits: ReadonlyArray<{ row: HTMLTableRowElement; offset: number }>;
-  /** For a table: the geometry of every row that can be cut. */
-  rowSlices: ReadonlyMap<HTMLTableRowElement, RowSliceGeometry>;
+  /**
+   * For a table: the body row each unit starts in, and for a unit that starts
+   * inside a row, how many lines of each of its cells come before it.
+   */
+  tableUnits: ReadonlyArray<TableUnit>;
+  /** For a table: where every line of every cell of a split row starts. */
+  rowLines: ReadonlyMap<
+    HTMLTableRowElement,
+    ReadonlyArray<ReadonlyArray<DomPosition>>
+  >;
   /** A justified block, whose first piece has to justify its last line. */
   justified: boolean;
   /** The containers between the stack element and the block, outermost first. */
@@ -53,11 +62,9 @@ export type DomBlock = {
   bottomMarginElements: ReadonlyArray<StyledElement>;
 };
 
-/** What a cut row needs to be drawn in slices. */
-export type RowSliceGeometry = {
-  height: number;
-  /** The vertical padding of every cell, in cell order. */
-  cellPaddings: ReadonlyArray<{ top: number; bottom: number }>;
+export type TableUnit = {
+  row: HTMLTableRowElement;
+  cut: undefined | ReadonlyArray<number>;
 };
 
 /** The blocks a container wraps: indexes of its first and last. */
@@ -120,7 +127,7 @@ const cloneDeep = (element: StyledElement): StyledElement => {
 };
 
 /** Pairs every node of `source` with the node at the same place in `clone`. */
-const pairNodes = (
+export const pairNodes = (
   source: Node,
   clone: Node,
   pairs: Map<Node, Node>,
@@ -163,6 +170,13 @@ const elementDataOf = (element: Element): undefined | ElementData => {
     return undefined;
   }
 };
+
+/** Whether a child of a masonry region is one of its units. */
+const isMasonryUnitElement = (element: Element): boolean =>
+  isMasonryUnit({
+    tagName: element.tagName,
+    elementType: elementDataOf(element)?.elementType,
+  });
 
 type Edge =
   | { margin: number; element: StyledElement }
@@ -368,41 +382,75 @@ const lineBoxesOf = (
 };
 
 /**
- * Offsets from the top of a row at which it can be cut without cutting a
- * line of any of its cells: between two lines of one cell, and clear of every
- * line of the others.
+ * The lines of every cell of a row, and the places the row can be cut at:
+ * after each line of any cell, where every cell keeps the lines that end
+ * above that line's bottom. The cells are aligned to the top first, as every
+ * piece of a split row draws them.
  */
-const rowCutOffsets = (row: HTMLTableRowElement): Array<number> => {
+const splitRowOf = (
+  row: HTMLTableRowElement,
+): {
+  cells: Array<CellLines>;
+  cuts: Array<{ offset: number; lines: Array<number> }>;
+  starts: Array<Array<DomPosition>>;
+} => {
+  const cellElements = Array.from(row.cells);
+  for (const cell of cellElements) {
+    cell.style.setProperty('vertical-align', 'top');
+  }
   const rowTop = row.getBoundingClientRect().top;
-  const cellLines = Array.from(row.cells).map(
-    (cell) => lineBoxesOf(cell).lines,
-  );
-  const candidates = cellLines
-    .flatMap((lines) =>
-      lines
-        .slice(1)
-        .map((line, index) => (lines[index].bottom + line.top) / 2 - rowTop),
-    )
-    .sort((a, b) => a - b);
-  const offsets: Array<number> = [];
-  for (const offset of candidates) {
-    const cutsALine = cellLines.some((lines) =>
-      lines.some(
-        (line) =>
-          line.top - rowTop < offset - FIT_EPSILON_PX &&
-          line.bottom - rowTop > offset + FIT_EPSILON_PX,
-      ),
+  const starts: Array<Array<DomPosition>> = [];
+  const cells = cellElements.map((cell): CellLines => {
+    const style = getComputedStyle(cell);
+    const insetTop = toPx(style.borderTopWidth) + toPx(style.paddingTop);
+    const insetBottom =
+      toPx(style.borderBottomWidth) + toPx(style.paddingBottom);
+    const { lines } = lineBoxesOf(cell);
+    starts.push(lines.map(({ start }) => start));
+    // The content ends at its last line, or below it at the margin box of a
+    // block that ends lower.
+    const contentBottom = Math.max(
+      rowTop + insetTop,
+      ...lines.map(({ bottom }) => bottom),
+      ...Array.from(cell.children, (child) => {
+        const rect = child.getBoundingClientRect();
+        return rect.bottom + toPx(getComputedStyle(child).marginBottom);
+      }),
     );
-    const previous = offsets.at(-1);
+    return {
+      lines: lines.map(({ top, bottom }) => ({
+        top: top - rowTop,
+        bottom: bottom - rowTop,
+      })),
+      insetTop,
+      insetBottom,
+      bottom: contentBottom - rowTop + insetBottom,
+    };
+  });
+  const offsets = [
+    ...new Set(cells.flatMap(({ lines }) => lines.map(({ bottom }) => bottom))),
+  ].sort((a, b) => a - b);
+  // Cells may hold more than the row shows (a fixed height that clips); a
+  // cut stays inside the row.
+  const rowHeight = row.getBoundingClientRect().height;
+  const cuts: Array<{ offset: number; lines: Array<number> }> = [];
+  for (const offset of offsets.filter((value) => value < rowHeight)) {
+    const lineCounts = cells.map(
+      ({ lines }) =>
+        lines.filter(({ bottom }) => bottom <= offset + FIT_EPSILON_PX).length,
+    );
+    const previous = cuts.at(-1)?.lines ?? cells.map(() => 0);
+    const complete = lineCounts.every(
+      (count, index) => count === cells[index].lines.length,
+    );
     if (
-      offset > 0 &&
-      !cutsALine &&
-      (previous === undefined || offset - previous >= 1)
+      !complete &&
+      lineCounts.some((count, index) => count !== previous[index])
     ) {
-      offsets.push(offset);
+      cuts.push({ offset, lines: lineCounts });
     }
   }
-  return offsets;
+  return { cells, cuts, starts };
 };
 
 const defaultKindOf = (
@@ -460,12 +508,22 @@ export const measureStack = ({
   stackSource,
   stackIndex,
   size,
+  measurement,
+  continuations,
 }: {
   root: HTMLElement;
   profile: FragmentationProfile;
   stackSource: HTMLElement;
   stackIndex: number;
   size: BoxSize;
+  /** Which measurement of the stack this is. */
+  measurement: number;
+  /**
+   * The elements of `stackSource` that are what is left of a block split
+   * before, with the kind of that block. Each is measured as a block of that
+   * kind that continues.
+   */
+  continuations: ReadonlyMap<StyledElement, BlockKind>;
 }): MeasuredStackDom => {
   const box = document.createElement('div');
   box.style.setProperty('width', `${size.width}px`);
@@ -506,18 +564,23 @@ export const measureStack = ({
       const measured = measuredOf(element);
       const style = getComputedStyle(measured);
       const columnCount = toCount(style.columnCount, 1);
-      if (columnCount > 1) {
+      // Masonry packs even a single column, where it reorders the units.
+      const masonry =
+        element.getAttribute(
+          COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill'),
+        ) === 'masonry'
+          ? {
+              unitCount: Array.from(element.children).filter(
+                isMasonryUnitElement,
+              ).length,
+            }
+          : undefined;
+      if (columnCount > 1 || masonry) {
         const columnGap = toPx(style.columnGap);
         const fill: ColumnFill =
           style.columnFill === 'auto' || style.columnFill === 'balance-all'
             ? style.columnFill
             : 'balance';
-        const masonry =
-          element.getAttribute(
-            COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill'),
-          ) === 'masonry'
-            ? { unitCount: Array.from(element.children).length }
-            : undefined;
         regionSource = element;
         region = {
           id: regions.size,
@@ -589,9 +652,12 @@ export const measureStack = ({
       let bounds: Array<number> = [0, height];
       let boundaries: Array<BoundaryKind> = ['edge', 'edge'];
       let unitStarts: Array<undefined | DomPosition> = [undefined];
-      const tableUnits: Array<{ row: HTMLTableRowElement; offset: number }> =
-        [];
-      const rowSlices = new Map<HTMLTableRowElement, RowSliceGeometry>();
+      const tableUnits: Array<TableUnit> = [];
+      const splitRows: Array<SplitRow> = [];
+      const rowLines = new Map<
+        HTMLTableRowElement,
+        ReadonlyArray<ReadonlyArray<DomPosition>>
+      >();
       let repeatHeight = 0;
       let repeatHeader = false;
       let trim: MeasuredBlock['trim'] = undefined;
@@ -612,36 +678,66 @@ export const measureStack = ({
         const rows = Array.from(source.tBodies).flatMap((body) =>
           Array.from(body.rows),
         );
-        rows.forEach((row, rowIndex) => {
+        // Every row is read before any is cut up: aligning a row's cells to
+        // the top for its lines may change the heights of the rows after it.
+        const measuredRows = rows.flatMap((row) => {
           const measuredRow = measuredOf(row);
-          if (!(measuredRow instanceof HTMLTableRowElement)) {
-            return;
-          }
-          const rowRect = measuredRow.getBoundingClientRect();
-          const kept = avoidsBreak(getComputedStyle(measuredRow).breakInside);
-          tableUnits.push({ row, offset: 0 });
-          bounds.push(rowRect.top - rect.top);
-          boundaries.push(rowIndex === 0 ? 'edge' : 'row');
-          // Only a row that may split, or one too tall for any page, needs
-          // the places it can be cut at.
-          if (!kept || rowRect.height > size.height) {
-            rowSlices.set(row, {
-              height: rowRect.height,
-              cellPaddings: Array.from(measuredRow.cells, (cell) => {
-                const cellStyle = getComputedStyle(cell);
-                return {
-                  top: toPx(cellStyle.paddingTop),
-                  bottom: toPx(cellStyle.paddingBottom),
-                };
-              }),
-            });
-            for (const offset of rowCutOffsets(measuredRow)) {
-              tableUnits.push({ row, offset });
-              bounds.push(rowRect.top - rect.top + offset);
-              boundaries.push(kept ? 'within-kept-row' : 'within-row');
+          return measuredRow instanceof HTMLTableRowElement
+            ? [
+                {
+                  row,
+                  measuredRow,
+                  rect: measuredRow.getBoundingClientRect(),
+                  kept: avoidsBreak(getComputedStyle(measuredRow).breakInside),
+                },
+              ]
+            : [];
+        });
+        // A row a cell spans into, or out of, is not cut: the cell is drawn
+        // with the row it starts in.
+        const spanned = new Set<number>();
+        measuredRows.forEach(({ measuredRow }, rowIndex) => {
+          for (const { rowSpan } of Array.from(measuredRow.cells)) {
+            for (let offset = 0; rowSpan > 1 && offset < rowSpan; offset += 1) {
+              spanned.add(rowIndex + offset);
             }
           }
         });
+        measuredRows.forEach(
+          ({ row, measuredRow, rect: rowRect, kept }, rowIndex) => {
+            const unit = bounds.length;
+            tableUnits.push({ row, cut: undefined });
+            bounds.push(rowRect.top - rect.top);
+            boundaries.push(unit === 0 ? 'edge' : 'row');
+            // Only a row that may split, or one too tall for any page, needs
+            // the places it can be cut at.
+            if (
+              (kept && rowRect.height <= size.height) ||
+              spanned.has(rowIndex)
+            ) {
+              return;
+            }
+            const { cells, cuts, starts } = splitRowOf(measuredRow);
+            if (cuts.length === 0) {
+              return;
+            }
+            splitRows.push({
+              unit,
+              height: rowRect.height,
+              cells,
+              cuts: cuts.map(({ lines }) => lines),
+            });
+            rowLines.set(
+              row,
+              starts.map((cellStarts) => cellStarts.map(toSourcePosition)),
+            );
+            for (const cut of cuts) {
+              tableUnits.push({ row, cut: cut.lines });
+              bounds.push(rowRect.top - rect.top + cut.offset);
+              boundaries.push(kept ? 'within-kept-row' : 'within-row');
+            }
+          },
+        );
         bounds.push(height);
         boundaries.push('edge');
       } else if (kind === 'text' || kind === 'list') {
@@ -699,12 +795,20 @@ export const measureStack = ({
       pendingTop = [];
       const keepLines =
         avoidsBreak(style.breakInside) || keepGroup !== undefined;
+      // What is left of a split block was placed from on an earlier page: a
+      // break or keep before it has been honoured there.
+      const continuation = continuations.has(source);
       const block: MeasuredBlock = {
         stackIndex,
+        measurement,
         index: drafts.length,
+        continuation,
         kind: tableUnits.length > 0 || kind !== 'table' ? kind : 'atomic',
         region: currentRegion,
-        unit: currentUnit,
+        unit:
+          continuation && currentUnit
+            ? { index: currentUnit.index, opens: false }
+            : currentUnit,
         height,
         marginTop: topEdges.margin,
         insetTop: topEdges.inset,
@@ -712,12 +816,13 @@ export const measureStack = ({
         insetBottom: 0,
         bounds,
         boundaries,
+        splitRows,
         repeatHeight,
         repeatHeader,
         keepLines,
         keepNext: avoidsBreak(style.breakAfter),
-        keepPrevious: avoidsBreak(style.breakBefore),
-        breakBefore: pendingBreak,
+        keepPrevious: !continuation && avoidsBreak(style.breakBefore),
+        breakBefore: continuation ? undefined : pendingBreak,
         orphans: toCount(style.orphans, 2),
         widows: toCount(style.widows, 2),
         trim,
@@ -733,7 +838,7 @@ export const measureStack = ({
           source,
           unitStarts,
           tableUnits,
-          rowSlices,
+          rowLines,
           justified: style.textAlign === 'justify',
           ancestors: [...ancestors],
           topMarginElements: topEdges.elements,
@@ -749,6 +854,12 @@ export const measureStack = ({
     ): void => {
       const style = styleOf(source);
       if (style.display === 'none') {
+        return;
+      }
+      const continuedKind = continuations.get(source);
+      if (continuedKind) {
+        measureLeaf(source, style, continuedKind, keepGroup);
+        addBreak(forcedBreakOf(style.breakAfter));
         return;
       }
       addBreak(forcedBreakOf(style.breakBefore));
@@ -784,15 +895,24 @@ export const measureStack = ({
         const group: undefined | Array<MeasuredBlock> = groupsChildren
           ? []
           : keepGroup;
-        // Every element child of a masonry region is one unit; the index
-        // counts the children as the DOCX mapping does, all of them.
+        // Every unit child of a masonry region is one unit, counted as the
+        // DOCX mapping counts them. A Break between two units is none: its
+        // break applies to the unit after it.
         const masonry = source === regionSource && region?.masonry;
-        Array.from(source.children).forEach((child, childIndex) => {
+        let unitIndex = 0;
+        Array.from(source.children).forEach((child) => {
           if (!isStyledElement(child)) {
             return;
           }
           if (masonry) {
-            currentUnit = { index: childIndex, opens: true };
+            if (!isMasonryUnitElement(child)) {
+              const childStyle = styleOf(child);
+              addBreak(forcedBreakOf(childStyle.breakBefore));
+              addBreak(forcedBreakOf(childStyle.breakAfter));
+              return;
+            }
+            currentUnit = { index: unitIndex, opens: true };
+            unitIndex += 1;
           }
           visit(child, group);
         });

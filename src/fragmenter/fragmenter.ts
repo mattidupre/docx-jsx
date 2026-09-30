@@ -1,20 +1,27 @@
 import type { PageSize } from '../entities';
-import { measureStack, type MeasuredStackDom } from './measure';
-import type { BoxSize, FragmentationLayout } from './model';
-import { placePages } from './place';
+import {
+  measureStack,
+  type MeasuredStackDom,
+  type StyledElement,
+} from './measure';
+import type { BlockKind, BoxSize, FragmentationLayout } from './model';
+import { placePages, wantsRepeatedHeader } from './place';
 import type { FragmentationProfile } from './profile';
 import { createFragmentationProfile } from './profiles';
-import { renderPage } from './render';
+import { continueStack, renderPage } from './render';
 
 /**
  * The Fragmenter paginates the library's block flow by the conventions of a
  * {@link FragmentationProfile} (Word's by default).
  *
- * Every stack is laid out once, unpaginated, at the content width of the page
- * it starts on, and measured into a block model: border boxes, margins, line
+ * Every stack is laid out, unpaginated, at the content width of the page it
+ * starts on, and measured into a block model: border boxes, margins, line
  * and row boundaries. Pages are then filled by arithmetic on that model, and
- * only the chosen fragments are built into page DOM. The content is measured
- * under the same scoped stylesheets and content root it is shown with.
+ * only the chosen fragments are built into page DOM. What is left of a stack
+ * is laid out and measured again on a page of another width, a block split
+ * before carrying on from the same place in its content. The content is
+ * measured under the same scoped stylesheets and content root it is shown
+ * with.
  */
 
 export type OnPageStart = (context: {
@@ -38,6 +45,12 @@ export type FragmenterOptions = {
    */
   contentClassName?: string;
   profile?: FragmentationProfile;
+  /**
+   * The font families the document configures (its `fonts`). Their faces are
+   * loaded before measuring, as are those of every family the content's
+   * elements resolve `font-family` to.
+   */
+  fontFamilies?: ReadonlyArray<string>;
 };
 
 export type FragmentedStack = {
@@ -53,18 +66,38 @@ export type ToPagesOptions = {
   onPageRendered?: OnPageRendered;
 };
 
+/** A family name as `font-family` and `FontFace.family` spell it, unquoted. */
+const toFamilyKey = (family: string): string =>
+  family
+    .trim()
+    .replace(/^(['"])(.*)\1$/, '$2')
+    .toLowerCase();
+
 /**
- * Pagination measures text, so every face has to be loaded first, not only
- * the ones already used.
+ * Every family `root`'s content resolves `font-family` to, read off its laid
+ * out elements, whether or not the browser picked that family in the end.
  */
-const loadFonts = async () => {
+const resolvedFamiliesOf = (root: Element): Array<string> =>
+  [root, ...Array.from(root.querySelectorAll('*'))].flatMap((element) =>
+    getComputedStyle(element).fontFamily.split(','),
+  );
+
+/**
+ * Pagination measures text, so the faces of every family the content uses
+ * are loaded first, not only those of the text shown so far. A face of a
+ * family the content never names (the host page's own fonts) is left alone.
+ */
+const loadFonts = async (families: ReadonlyArray<string>) => {
+  const used = new Set(families.map(toFamilyKey));
   await document.fonts.ready;
   await Promise.all(
-    Array.from(document.fonts, (fontFace) =>
-      fontFace.load().catch((error: unknown) => {
-        console.error(`Could not load the font ${fontFace.family}`, error);
-      }),
-    ),
+    Array.from(document.fonts)
+      .filter((fontFace) => used.has(toFamilyKey(fontFace.family)))
+      .map((fontFace) =>
+        fontFace.load().catch((error: unknown) => {
+          console.error(`Could not load the font ${fontFace.family}`, error);
+        }),
+      ),
   );
 };
 
@@ -77,10 +110,13 @@ export class Fragmenter {
 
   readonly profile: FragmentationProfile;
 
+  readonly fontFamilies: ReadonlyArray<string>;
+
   constructor({
     styles = [],
     contentClassName,
     profile = createFragmentationProfile('word'),
+    fontFamilies = [],
   }: FragmenterOptions = {}) {
     this.styleSheets = styles.filter(
       (style): style is CSSStyleSheet => style instanceof CSSStyleSheet,
@@ -90,6 +126,7 @@ export class Fragmenter {
     );
     this.contentClassName = contentClassName;
     this.profile = profile;
+    this.fontFamilies = fontFamilies;
   }
 
   /**
@@ -102,8 +139,6 @@ export class Fragmenter {
     onPageStart,
     onPageRendered,
   }: ToPagesOptions): Promise<FragmentationLayout> {
-    await loadFonts();
-
     const hostElement = document.createElement('div');
     hostElement.style.setProperty('visibility', 'hidden');
     hostElement.style.setProperty('position', 'absolute');
@@ -121,6 +156,18 @@ export class Fragmenter {
         root.classList.add(this.contentClassName);
       }
       shadowRoot.appendChild(root);
+
+      // The families come from the content laid out under its own styles.
+      const families = [...this.fontFamilies];
+      for (const { element } of stacks) {
+        const clone = element.cloneNode(true);
+        if (clone instanceof Element) {
+          root.appendChild(clone);
+          families.push(...resolvedFamiliesOf(clone));
+          clone.remove();
+        }
+      }
+      await loadFonts(families);
 
       const sizes = new Map<string, BoxSize>();
       const resolveSize = ({ width, height }: PageSize): BoxSize => {
@@ -140,29 +187,48 @@ export class Fragmenter {
         return size;
       };
 
-      const stackDoms: Array<MeasuredStackDom> = [];
+      /** Every measurement of every stack, by stack, in order. */
+      const stackDoms: Array<Array<MeasuredStackDom>> = [];
       const { pages, packedOrder } = placePages({
         profile: this.profile,
         stacks,
-        measureStack: (stackIndex, size) => {
+        measureStack: (stackIndex, size, continuations) => {
+          const measurements = (stackDoms[stackIndex] ??= []);
+          const previous = measurements.at(-1);
+          if (continuations.length > 0 && !previous) {
+            throw new Error(`Stack ${stackIndex + 1} was never measured.`);
+          }
+          const { source, continuations: continued } =
+            previous && continuations.length > 0
+              ? continueStack(previous, continuations, (block) =>
+                  wantsRepeatedHeader(this.profile, block),
+                )
+              : {
+                  source: stacks[stackIndex].element,
+                  continuations: new Map<StyledElement, BlockKind>(),
+                };
           const stackDom = measureStack({
             root,
             profile: this.profile,
-            stackSource: stacks[stackIndex].element,
+            stackSource: source,
             stackIndex,
             size,
+            measurement: measurements.length,
+            continuations: continued,
           });
-          stackDoms[stackIndex] = stackDom;
+          measurements.push(stackDom);
           return stackDom.stack;
         },
         startPage: (context) => resolveSize(onPageStart(context)),
       });
 
       pages.forEach((page, pageIndex) => {
-        const contentElement = renderPage(page, (stackIndex) => {
-          const stackDom = stackDoms[stackIndex];
+        const contentElement = renderPage(page, (block) => {
+          const stackDom = stackDoms[block.stackIndex]?.[block.measurement];
           if (!stackDom) {
-            throw new Error(`Stack ${stackIndex + 1} was never measured.`);
+            throw new Error(
+              `Stack ${block.stackIndex + 1} was never measured that way.`,
+            );
           }
           return stackDom;
         });
@@ -171,8 +237,8 @@ export class Fragmenter {
 
       return {
         stackCount: stacks.length,
-        masonryStacks: stackDoms.flatMap((stackDom, stackIndex) => {
-          const masonry = stackDom.stack.blocks.find(
+        masonryStacks: stackDoms.flatMap((measurements, stackIndex) => {
+          const masonry = measurements[0]?.stack.blocks.find(
             ({ region }) => region?.masonry,
           )?.region?.masonry;
           return masonry ? [{ stackIndex, unitCount: masonry.unitCount }] : [];

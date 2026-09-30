@@ -22,6 +22,8 @@ type StackInput = {
   /** The content size of the pages this stack starts. */
   width: UnitsSize;
   height: UnitsSize;
+  /** The content width of the pages it owns but does not start, if another. */
+  subsequentWidth?: UnitsSize;
 };
 
 type FragmentedResult = {
@@ -101,9 +103,15 @@ describe('Fragmenter', () => {
           }),
           onPageStart: (context) => {
             starts.push(context);
-            const { width, height } = stackInputs[context.stackIndex];
-            pageSizes[context.pageIndex] = { width, height };
-            return { width, height };
+            const stackInput = stackInputs[context.stackIndex];
+            const size = {
+              width: context.first
+                ? stackInput.width
+                : (stackInput.subsequentWidth ?? stackInput.width),
+              height: stackInput.height,
+            };
+            pageSizes[context.pageIndex] = size;
+            return size;
           },
           onPageRendered: ({ contentElement, pageIndex }) => {
             pages.push(
@@ -252,6 +260,122 @@ describe('Fragmenter', () => {
   const words = (count: number) =>
     Array.from({ length: count }, (_value, index) => `word${index}`).join(' ');
 
+  describe('pages of another width', () => {
+    /** A stack whose first page is 6.5in wide and every other one 2.5in. */
+    const narrowing = (html: string): Array<StackInput> => [
+      { html, continuous: false, ...PAGE, subsequentWidth: '2.5in' },
+    ];
+
+    /** Whether every page's content ends inside its box. */
+    const expectInside = (extents: ReadonlyArray<number>) => {
+      for (const extent of extents) {
+        expect(extent).toBeLessThanOrEqual(PAGE_HEIGHT_PX);
+      }
+    };
+
+    it('carries a paragraph on from the same word, wrapped again', async () => {
+      const { pages, extents } = await fragment(
+        narrowing(
+          `<p style="margin:10px 0;line-height:20px;text-indent:40px;text-align:justify">${words(1200)}</p><p>after</p>`,
+        ),
+      );
+
+      expect(pages.length).toBeGreaterThan(2);
+      expectInside(extents);
+      // The paragraph ends where the next begins, with no space between.
+      expect(pages.join(' ').split(' ')).toEqual([
+        ...words(1199).split(' '),
+        'word1199after',
+      ]);
+    });
+
+    it('carries a list item on without a second marker', async () => {
+      const item = (index: number) =>
+        `<li style="line-height:20px">item${index} ${words(120)}</li>`;
+      const html = `<ol style="margin:0">${Array.from({ length: 12 }, (_value, index) => item(index)).join('')}</ol>`;
+      const result = await harness.evaluate(async (api, listHtml: string) => {
+        const element = document.createElement('div');
+        element.innerHTML = listHtml;
+        const pages: Array<{ starts: Array<number>; splitItems: number }> = [];
+        await new api.Fragmenter().toPages({
+          stacks: [{ element, continuous: false }],
+          onPageStart: ({ first }) => ({
+            width: first ? '6.5in' : '2.5in',
+            height: '9in',
+          }),
+          onPageRendered: ({ contentElement }) => {
+            pages.push({
+              starts: Array.from(
+                contentElement.querySelectorAll('ol'),
+                (list) => list.start,
+              ),
+              splitItems: contentElement.querySelectorAll('li[data-split-from]')
+                .length,
+            });
+          },
+        });
+        return pages;
+      }, html);
+
+      expect(result.length).toBeGreaterThan(2);
+      // A page that opens part way through an item shows it without its
+      // marker, and the list counts on from the item.
+      for (const page of result.slice(1)) {
+        expect(page.starts[0]).toBeGreaterThan(1);
+      }
+      expect(result.slice(1).some(({ splitItems }) => splitItems > 0)).toBe(
+        true,
+      );
+    });
+
+    it('carries a table on from the same row, and a split row from the same lines', async () => {
+      const rowCount = 14;
+      const rows = Array.from(
+        { length: rowCount },
+        (_value, row) =>
+          `<tr><td style="line-height:20px">[a${row}] ${words(60)}</td><td style="line-height:20px">[b${row}]</td></tr>`,
+      ).join('');
+      const { pages, extents } = await fragment(
+        narrowing(
+          `<table style="border-collapse:collapse"><thead><tr><th>[head]</th></tr></thead><tbody>${rows}</tbody></table>`,
+        ),
+      );
+
+      expect(pages.length).toBeGreaterThan(2);
+      expectInside(extents);
+      // Every cell once, and every word of every row once, in order, however
+      // the rows were split. The header is not repeated unless asked to.
+      const text = pages.join(' ');
+      expect(text.match(/\[[ab]\d+\]|\[head\]/g)).toEqual([
+        '[head]',
+        ...Array.from({ length: rowCount }, (_value, row) => [
+          `[a${row}]`,
+          `[b${row}]`,
+        ]).flat(),
+      ]);
+      expect(text.match(/word\d+/g)).toEqual(
+        Array.from({ length: rowCount }, () => words(60).split(' ')).flat(),
+      );
+    });
+  });
+
+  it('does not cut a row a cell spans into, which moves whole', async () => {
+    const tall = `<td style="line-height:20px">${words(900)}</td>`;
+    const { pages } = await fragment(
+      single(
+        `<table><tbody><tr>${tall}<td rowspan="2">spanning</td></tr><tr><td>second</td></tr></tbody></table>`,
+      ),
+    );
+
+    // The row runs past its page rather than cut through the spanning cell,
+    // and nothing of it is drawn twice.
+    expect(pages[0].match(/word\d+|spanning/g)).toEqual([
+      ...words(900).split(' '),
+      'spanning',
+    ]);
+    expect(pages.join(' ').match(/second/g)).toHaveLength(1);
+  });
+
   it('continues the numbering of a list on the next page', async () => {
     const items = Array.from(
       { length: 15 },
@@ -399,6 +523,83 @@ describe('Fragmenter', () => {
         ),
       ).toEqual(['0:0.0', '1:0.0', '1:0.1', '1:1.0', '1:1.1', '2:1.1']);
     });
+
+    it('starts the columns below the margin of the block above them', async () => {
+      const { pages, extents } = await fragment([
+        {
+          html: '<div style="height:80px;margin:0 0 70px">head</div>',
+          continuous: false,
+          ...PAGE,
+        },
+        {
+          html: masonry(
+            Array.from({ length: 20 }, (_value, index) => [`u${index}-`, 1]),
+          ),
+          continuous: true,
+          ...PAGE,
+        },
+      ]);
+
+      // 864px less the block and its margin holds eight lines per column,
+      // which the units fill alternately.
+      const units = (indexes: ReadonlyArray<number>) =>
+        indexes.map((index) => `u${index}-0`).join('');
+      const even = [0, 2, 4, 6, 8, 10, 12, 14];
+      expect(pages).toEqual([
+        `head${units(even)}${units(even.map((index) => index + 1))}`,
+        units([16, 18, 17, 19]),
+      ]);
+      for (const extent of extents) {
+        expect(extent).toBeLessThanOrEqual(PAGE_HEIGHT_PX);
+      }
+    });
+
+    it('starts what follows the columns below their last margins', async () => {
+      const unit = (name: string) =>
+        `<div style="margin:0 0 70px">${lines(name, 4)}</div>`;
+      const { pages, extents } = await fragment([
+        {
+          html: `<div ${COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill')}="masonry" style="column-count:2;column-gap:20px">${unit('a')}${unit('b')}</div>`,
+          continuous: false,
+          ...PAGE,
+        },
+        { html: lines('after', 6), continuous: true, ...PAGE },
+      ]);
+
+      // The columns take 320px and their 70px margins; five lines fit below.
+      expect(pages).toEqual([
+        [...texts('a', 4), ...texts('b', 4), ...texts('after', 5)].join(''),
+        'after5',
+      ]);
+      for (const extent of extents) {
+        expect(extent).toBeLessThanOrEqual(PAGE_HEIGHT_PX);
+      }
+    });
+  });
+
+  it('loads only the faces of the families the document uses', async () => {
+    const statuses = await harness.evaluate(async (api) => {
+      // No face has a usable file: one whose load was attempted ends up in
+      // `error`, one left alone stays `unloaded`.
+      const faces = ['Used Family', 'Configured', 'Host Only'].map(
+        (family) => new FontFace(family, 'url(data:font/woff2;base64,AAAA)'),
+      );
+      faces.forEach((face) => document.fonts.add(face));
+      const element = document.createElement('div');
+      element.innerHTML =
+        '<p style="font-family:\'Used Family\', serif">text</p>';
+      try {
+        await new api.Fragmenter({ fontFamilies: ['Configured'] }).toPages({
+          stacks: [{ element, continuous: false }],
+          onPageStart: () => ({ width: '6.5in', height: '9in' }),
+        });
+        return faces.map((face) => face.status);
+      } finally {
+        faces.forEach((face) => document.fonts.delete(face));
+      }
+    });
+
+    expect(statuses).toEqual(['error', 'error', 'unloaded']);
   });
 
   it('ends with a blank page after a trailing forced break', async () => {
