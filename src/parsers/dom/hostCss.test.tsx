@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Browser } from 'puppeteer-core';
+import type { FontsConfig } from '../../entities';
+import { resolveDocumentFonts } from '../../lib/documentFonts';
 import { reactToHtml } from '../../lib/reactToHtml';
 import { closeTestBrowser, launchTestBrowser } from '../../fixtures/browser';
 import {
@@ -13,6 +15,11 @@ import { VISUAL_DOCUMENTS } from '../../fixtures/visualDocuments';
 import type * as htmlToDomModule from './htmlToDom';
 
 const RESOLVE_DIR = path.dirname(fileURLToPath(import.meta.url));
+
+const MOCK_ASSETS_DIRECTORY = path.join(
+  RESOLVE_DIR,
+  '../../fixtures/mockAssets',
+);
 
 const KIT_SAMPLE_CSS = readFileSync(
   path.join(RESOLVE_DIR, '../../fixtures/kitSample.css'),
@@ -48,6 +55,7 @@ const snapshotRender = (
   harness: BrowserHarness<DomApi>,
   html: string,
   environment: HostEnvironment,
+  fonts: FontsConfig,
 ) =>
   harness.evaluate(
     async (
@@ -55,6 +63,7 @@ const snapshotRender = (
       pageHtml: string,
       hostCss: string,
       rootClassNames: ReadonlyArray<string>,
+      documentFonts: FontsConfig,
     ): Promise<RenderSnapshot> => {
       document.head.querySelector('style[data-host]')?.remove();
       document.body.replaceChildren();
@@ -68,8 +77,10 @@ const snapshotRender = (
 
       // The fixtures' font files are served by the PDF target and cannot be
       // fetched from this blank page. Both renders fall back to the same
-      // system fonts, which is all a comparison needs.
-      const pagesEl = await api.htmlToDom(pageHtml, { fonts: {} });
+      // system fonts, which is all a comparison needs. A fixture that sets
+      // trimmed or cap height text still needs its font's metrics, which the
+      // test reads in Node and passes in.
+      const pagesEl = await api.htmlToDom(pageHtml, { fonts: documentFonts });
       document.body.append(pagesEl);
 
       const elements: Array<ElementSnapshot> = [];
@@ -104,6 +115,7 @@ const snapshotRender = (
     html,
     environment.css,
     [...environment.rootClassNames],
+    fonts,
   );
 
 /**
@@ -220,11 +232,18 @@ describe('a document rendered on a styled host page', () => {
   });
 
   for (const [hostName, host] of HOSTS) {
-    for (const { name, Document } of VISUAL_DOCUMENTS) {
+    for (const { name, Document, fonts } of VISUAL_DOCUMENTS) {
       it(`renders the ${name} fixture on ${hostName} as on a blank page`, async () => {
         const html = reactToHtml(Document, 'pdf');
-        const blank = await snapshotRender(harness, html, BLANK);
-        const hosted = await snapshotRender(harness, html, host);
+        const documentFonts =
+          (fonts &&
+            (await resolveDocumentFonts(html, {
+              fonts,
+              publicDirectory: MOCK_ASSETS_DIRECTORY,
+            }))) ||
+          {};
+        const blank = await snapshotRender(harness, html, BLANK, documentFonts);
+        const hosted = await snapshotRender(harness, html, host, documentFonts);
         expect(diffRenders(blank, hosted)).toEqual([]);
       });
     }

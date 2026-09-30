@@ -1,8 +1,10 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Browser } from 'puppeteer-core';
 import { reactToDocx } from './reactToDocx';
+import { closeTestBrowser, launchTestBrowser } from './fixtures/browser';
 import { mockFonts } from './fixtures/mockFonts';
 import { VISUAL_DOCUMENTS } from './fixtures/visualDocuments';
 
@@ -40,10 +42,22 @@ const canonicalizeRelationshipIds = (xml: string) => {
  * change that leaks into the markup contract fails here rather than in Word.
  */
 describe('reactToDocx fixture parts', () => {
-  for (const { name, Document } of VISUAL_DOCUMENTS) {
+  // Only masonry fixtures use it: their order comes from a layout run.
+  let browser: undefined | Browser;
+
+  beforeAll(async () => {
+    browser = await launchTestBrowser();
+  });
+
+  afterAll(async () => {
+    await closeTestBrowser(browser);
+  });
+
+  for (const { name, Document, fonts } of VISUAL_DOCUMENTS) {
     it(`keeps the ${name} fixture's Word parts unchanged`, async () => {
       const docx = await reactToDocx(Document, {
-        fonts: mockFonts,
+        browser,
+        fonts: fonts ?? mockFonts,
         publicDirectory: PUBLIC_DIRECTORY,
       });
       const zip = await JSZip.loadAsync(docx);
