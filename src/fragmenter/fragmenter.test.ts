@@ -359,6 +359,23 @@ describe('Fragmenter', () => {
     });
   });
 
+  it('does not cut a row a cell spans into, which moves whole', async () => {
+    const tall = `<td style="line-height:20px">${words(900)}</td>`;
+    const { pages } = await fragment(
+      single(
+        `<table><tbody><tr>${tall}<td rowspan="2">spanning</td></tr><tr><td>second</td></tr></tbody></table>`,
+      ),
+    );
+
+    // The row runs past its page rather than cut through the spanning cell,
+    // and nothing of it is drawn twice.
+    expect(pages[0].match(/word\d+|spanning/g)).toEqual([
+      ...words(900).split(' '),
+      'spanning',
+    ]);
+    expect(pages.join(' ').match(/second/g)).toHaveLength(1);
+  });
+
   it('continues the numbering of a list on the next page', async () => {
     const items = Array.from(
       { length: 15 },

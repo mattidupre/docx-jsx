@@ -430,8 +430,11 @@ const splitRowOf = (
   const offsets = [
     ...new Set(cells.flatMap(({ lines }) => lines.map(({ bottom }) => bottom))),
   ].sort((a, b) => a - b);
+  // Cells may hold more than the row shows (a fixed height that clips); a
+  // cut stays inside the row.
+  const rowHeight = row.getBoundingClientRect().height;
   const cuts: Array<{ offset: number; lines: Array<number> }> = [];
-  for (const offset of offsets) {
+  for (const offset of offsets.filter((value) => value < rowHeight)) {
     const lineCounts = cells.map(
       ({ lines }) =>
         lines.filter(({ bottom }) => bottom <= offset + FIT_EPSILON_PX).length,
@@ -690,36 +693,51 @@ export const measureStack = ({
               ]
             : [];
         });
-        measuredRows.forEach(({ row, measuredRow, rect: rowRect, kept }) => {
-          const unit = bounds.length;
-          tableUnits.push({ row, cut: undefined });
-          bounds.push(rowRect.top - rect.top);
-          boundaries.push(unit === 0 ? 'edge' : 'row');
-          // Only a row that may split, or one too tall for any page, needs
-          // the places it can be cut at.
-          if (kept && rowRect.height <= size.height) {
-            return;
-          }
-          const { cells, cuts, starts } = splitRowOf(measuredRow);
-          if (cuts.length === 0) {
-            return;
-          }
-          splitRows.push({
-            unit,
-            height: rowRect.height,
-            cells,
-            cuts: cuts.map(({ lines }) => lines),
-          });
-          rowLines.set(
-            row,
-            starts.map((cellStarts) => cellStarts.map(toSourcePosition)),
-          );
-          for (const cut of cuts) {
-            tableUnits.push({ row, cut: cut.lines });
-            bounds.push(rowRect.top - rect.top + cut.offset);
-            boundaries.push(kept ? 'within-kept-row' : 'within-row');
+        // A row a cell spans into, or out of, is not cut: the cell is drawn
+        // with the row it starts in.
+        const spanned = new Set<number>();
+        measuredRows.forEach(({ measuredRow }, rowIndex) => {
+          for (const { rowSpan } of Array.from(measuredRow.cells)) {
+            for (let offset = 0; rowSpan > 1 && offset < rowSpan; offset += 1) {
+              spanned.add(rowIndex + offset);
+            }
           }
         });
+        measuredRows.forEach(
+          ({ row, measuredRow, rect: rowRect, kept }, rowIndex) => {
+            const unit = bounds.length;
+            tableUnits.push({ row, cut: undefined });
+            bounds.push(rowRect.top - rect.top);
+            boundaries.push(unit === 0 ? 'edge' : 'row');
+            // Only a row that may split, or one too tall for any page, needs
+            // the places it can be cut at.
+            if (
+              (kept && rowRect.height <= size.height) ||
+              spanned.has(rowIndex)
+            ) {
+              return;
+            }
+            const { cells, cuts, starts } = splitRowOf(measuredRow);
+            if (cuts.length === 0) {
+              return;
+            }
+            splitRows.push({
+              unit,
+              height: rowRect.height,
+              cells,
+              cuts: cuts.map(({ lines }) => lines),
+            });
+            rowLines.set(
+              row,
+              starts.map((cellStarts) => cellStarts.map(toSourcePosition)),
+            );
+            for (const cut of cuts) {
+              tableUnits.push({ row, cut: cut.lines });
+              bounds.push(rowRect.top - rect.top + cut.offset);
+              boundaries.push(kept ? 'within-kept-row' : 'within-row');
+            }
+          },
+        );
         bounds.push(height);
         boundaries.push('edge');
       } else if (kind === 'text' || kind === 'list') {
