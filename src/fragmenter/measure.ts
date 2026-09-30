@@ -209,6 +209,32 @@ const resolveEdges = (edges: ReadonlyArray<Edge>): ResolvedEdges => {
 
 type LineBox = { top: number; bottom: number; start: DomPosition };
 
+/**
+ * The line and cap height of a block whose text box is trimmed at both ends
+ * (`text-box: trim-both`), read off its geometry: a trimmed box of n lines is
+ * n − 1 line heights and one cap height tall. The line height is absolute
+ * wherever the library trims (`nodeToDom` resolves it), so it is read from
+ * the computed style.
+ */
+const trimOf = (
+  style: CSSStyleDeclaration,
+  lineCount: number,
+  contentHeight: number,
+): MeasuredBlock['trim'] => {
+  const lineHeight = toPx(style.lineHeight);
+  if (
+    style.getPropertyValue('text-box-trim') !== 'trim-both' ||
+    lineHeight <= 0 ||
+    lineCount === 0
+  ) {
+    return undefined;
+  }
+  return {
+    lineHeight,
+    capHeight: contentHeight - (lineCount - 1) * lineHeight,
+  };
+};
+
 type InlineItem =
   { kind: 'text'; node: Text } | { kind: 'atomic'; element: StyledElement };
 
@@ -554,6 +580,7 @@ export const measureStack = ({
       const rowSlices = new Map<HTMLTableRowElement, RowSliceGeometry>();
       let repeatHeight = 0;
       let repeatHeader = false;
+      let trim: MeasuredBlock['trim'] = undefined;
 
       if (
         kind === 'table' &&
@@ -612,10 +639,20 @@ export const measureStack = ({
         // A float that hangs below the block is room it takes on the page.
         height = Math.max(height, floatBottom + insetBottom);
         if (lines.length > 0) {
+          trim = trimOf(
+            style,
+            lines.length,
+            rect.height - insetTop - insetBottom,
+          );
+          const lineTrim = trim;
+          // A trimmed piece ends at the baseline of its last line, so that is
+          // where a trimmed block's boundaries are.
           const inner = lines
             .slice(1)
-            .map(
-              (line, index) => (lines[index].bottom + line.top) / 2 - rect.top,
+            .map((line, index) =>
+              lineTrim
+                ? insetTop + lineTrim.capHeight + index * lineTrim.lineHeight
+                : (lines[index].bottom + line.top) / 2 - rect.top,
             );
           bounds = [insetTop, ...inner, height - insetBottom];
           for (let index = 1; index < bounds.length; index += 1) {
@@ -668,6 +705,7 @@ export const measureStack = ({
         breakBefore: pendingBreak,
         orphans: toCount(style.orphans, 2),
         widows: toCount(style.widows, 2),
+        trim,
       };
       pendingBreak = undefined;
       keepGroup?.push(block);

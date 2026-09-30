@@ -309,6 +309,10 @@ export const renderPage = (
     map.set(dom.source, element);
 
     if (from > 0) {
+      // A continuation's own space: the inset of a trimmed first line.
+      if (placement.marginTop !== 0) {
+        element.style.setProperty('margin-top', `${placement.marginTop}px`);
+      }
       return;
     }
     // The browser collapses margins by itself. Where the profile placed the

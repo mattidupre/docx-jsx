@@ -97,6 +97,13 @@ export type MeasuredBlock = {
   /** The computed `orphans` and `widows`. */
   orphans: number;
   widows: number;
+  /**
+   * For a block whose text box is trimmed (`text-box: trim-both`), its line
+   * height and the cap height its first line is trimmed to. Its inner
+   * {@link bounds} are then the baselines of its lines: the bottom of a
+   * trimmed piece that ends there.
+   */
+  trim: undefined | { lineHeight: number; capHeight: number };
 };
 
 /** One stack, measured at one content size. */
@@ -124,7 +131,10 @@ export type Placement = {
   block: MeasuredBlock;
   from: number;
   to: number;
-  /** The space placed above the block's insets, after collapsing. */
+  /**
+   * The space placed above the block's insets, after collapsing. A
+   * continuation has none, unless the profile insets a trimmed first line.
+   */
   marginTop: number;
   /** Whether a table continuation carries its header rows. */
   repeatHeader: boolean;

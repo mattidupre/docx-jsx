@@ -108,6 +108,7 @@ const toBlock = (
   breakBefore: undefined,
   orphans: 2,
   widows: 2,
+  trim: undefined,
   ...spec,
   stackIndex,
   index,
@@ -469,6 +470,105 @@ describe('margins', () => {
     );
     // 40 + (10 + 10) + 40 fills 100; the third keeps its margin on page two.
     expect(marginTopsOf(pages)).toEqual([[0, 20], [10]]);
+  });
+});
+
+describe('trimmed text', () => {
+  // A 15pt line with capitals 7.5pt tall: Word draws the capitals of an
+  // exact line 0.8 × 15 + 0.25 − 7.5 = 4.75pt (19/3 px) below its top and
+  // keeps 0.2 × 15 − 0.25 = 2.75pt (11/3 px) below its baseline.
+  const TRIM = { lineHeight: 20, capHeight: 10 };
+  const INSET = 19 / 3;
+
+  /** A trimmed paragraph of `lines` lines: its bounds are its baselines. */
+  const trimmed = (lines: number, spec: BlockSpec = {}): BlockSpec => {
+    const height = (lines - 1) * TRIM.lineHeight + TRIM.capHeight;
+    return {
+      kind: 'text',
+      height,
+      bounds: [
+        0,
+        ...Array.from(
+          { length: lines - 1 },
+          (_value, index) => TRIM.capHeight + index * TRIM.lineHeight,
+        ),
+        height,
+      ],
+      boundaries: Array.from(
+        { length: lines + 1 },
+        (_value, index): BoundaryKind =>
+          index === 0 || index === lines ? 'edge' : 'line',
+      ),
+      trim: TRIM,
+      ...spec,
+    };
+  };
+
+  const firstMarginTops = (pages: ReadonlyArray<PlacedPage>) =>
+    pages.map((page) => flowPlacements(page)[0]?.marginTop);
+
+  test('insets a first line at the top of a page where Word draws it', () => {
+    const stacks = [{ blocks: [trimmed(2), atomic(30), trimmed(1)] }];
+    const word = run(stacks).pages;
+    expect(firstMarginTops(word)[0]).toBeCloseTo(INSET);
+    // Part way down the page, the margin alone places it.
+    expect(flowPlacements(word[0])[2].marginTop).toBe(0);
+    expect(firstMarginTops(run(stacks, { profile: 'css' }).pages)).toEqual([0]);
+  });
+
+  test('counts a margin kept at the top towards the inset', () => {
+    expect(
+      firstMarginTops(run([{ blocks: [trimmed(1, { marginTop: 4 })] }]).pages),
+    ).toEqual([INSET]);
+    expect(
+      firstMarginTops(run([{ blocks: [trimmed(1, { marginTop: 12 })] }]).pages),
+    ).toEqual([12]);
+  });
+
+  test('insets the continuation of a paragraph on the next page', () => {
+    const stacks = [{ blocks: [atomic(40), trimmed(5)] }];
+    const word = run(stacks).pages;
+    expect(describePages(word)).toEqual([
+      ['0.0[0-1]', '0.1[0-3]'],
+      ['0.1[3-5]'],
+    ]);
+    expect(firstMarginTops(word)[1]).toBeCloseTo(INSET);
+    expect(firstMarginTops(run(stacks, { profile: 'css' }).pages)[1]).toBe(0);
+  });
+
+  test('measures a continuation from the capitals of its first line', () => {
+    const stacks = [{ blocks: [atomic(40), trimmed(5)] }];
+    const [, second] = run(stacks, { profile: 'css' }).pages;
+    // Two lines trimmed: one line height and a cap height.
+    expect(flowPlacements(second)[0].bottom).toBe(30);
+  });
+
+  test("keeps room below a last baseline for the rest of Word's line", () => {
+    // 88 + 10 fits a 100px page, 88 + 10 + 11/3 does not.
+    const stacks = [{ blocks: [atomic(88), trimmed(1)] }];
+    expect(describePages(run(stacks).pages)).toEqual([
+      ['0.0[0-1]'],
+      ['0.1[0-1]'],
+    ]);
+    expect(describePages(run(stacks, { profile: 'css' }).pages)).toEqual([
+      ['0.0[0-1]', '0.1[0-1]'],
+    ]);
+  });
+
+  test('can turn either rule off', () => {
+    const stacks = [{ blocks: [atomic(88), trimmed(1)] }];
+    expect(
+      describePages(
+        run(stacks, { profile: { trim: { reserveAtBottom: false } } }).pages,
+      ),
+    ).toEqual([['0.0[0-1]', '0.1[0-1]']]);
+    expect(
+      firstMarginTops(
+        run([{ blocks: [trimmed(1)] }], {
+          profile: { trim: { insetAtTop: false } },
+        }).pages,
+      ),
+    ).toEqual([0]);
   });
 });
 

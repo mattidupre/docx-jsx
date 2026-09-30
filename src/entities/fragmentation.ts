@@ -76,6 +76,20 @@ export type FragmentationRules = {
      */
     endBeforePage: 'line' | 'minimal' | 'page-break-before';
   };
+  /**
+   * Where a trimmed paragraph (`textBoxTrim: 'both'`) sits against the edges
+   * of a box. Word cannot trim, so its exact lines keep the space a trimmed
+   * CSS box leaves out:
+   * - `insetAtTop`: a trimmed first line at the top of a page or column is
+   *   placed `0.8 L + 0.25pt − cap height` down, where Word draws its
+   *   capitals; a margin kept above it counts towards that;
+   * - `reserveAtBottom`: a trimmed line only fits with `0.2 L − 0.25pt` to
+   *   spare below its baseline, the rest of Word's line.
+   */
+  trim: {
+    insetAtTop: boolean;
+    reserveAtBottom: boolean;
+  };
 };
 
 export const FRAGMENTATION_PROFILE_NAMES = ['word', 'css'] as const;
@@ -103,7 +117,9 @@ export const DEFAULT_FRAGMENTATION: FragmentationProfileName = 'word';
  * - widow/orphan control of two lines, which Word applies by default;
  * - rows split between their lines unless kept together (the library keeps
  *   them together by default), and header rows repeat when the table asks;
- * - columns fill one after another, and the last page is balanced.
+ * - columns fill one after another, and the last page is balanced;
+ * - a trimmed paragraph keeps the room of Word's exact lines at the top and
+ *   the bottom of a box.
  */
 const WORD_RULES: FragmentationRules = {
   margins: {
@@ -113,12 +129,14 @@ const WORD_RULES: FragmentationRules = {
   lines: { orphans: 2, widows: 2 },
   tables: { splitRows: 'unless-kept', repeatHeader: 'option' },
   columns: { fill: 'balance-last', endBeforePage: 'line' },
+  trim: { insetAtTop: true, reserveAtBottom: true },
 };
 
 /**
  * css-break-3: margins are truncated at unforced breaks only, `orphans` and
  * `widows` come from the computed style, tables break between rows without
- * repeating a header, and columns fill as `column-fill` says.
+ * repeating a header, columns fill as `column-fill` says, and a trimmed box
+ * is placed by its trimmed edges.
  */
 const CSS_RULES: FragmentationRules = {
   margins: {
@@ -128,6 +146,7 @@ const CSS_RULES: FragmentationRules = {
   lines: { orphans: 'style', widows: 'style' },
   tables: { splitRows: 'never', repeatHeader: 'never' },
   columns: { fill: 'style', endBeforePage: 'line' },
+  trim: { insetAtTop: false, reserveAtBottom: false },
 };
 
 const BUILT_IN_RULES: Record<FragmentationProfileName, FragmentationRules> = {
@@ -154,6 +173,7 @@ export const mergeFragmentationRules = (
   lines: { ...rules.lines, ...overrides.lines },
   tables: { ...rules.tables, ...overrides.tables },
   columns: { ...rules.columns, ...overrides.columns },
+  trim: { ...rules.trim, ...overrides.trim },
 });
 
 /** The name of the built-in profile an option starts from. */

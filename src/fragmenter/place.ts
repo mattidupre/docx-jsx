@@ -1,4 +1,10 @@
 import {
+  convertUnits,
+  toUnits,
+  wordSpaceAboveCapHeight,
+  wordSpaceBelowBaseline,
+} from '../entities';
+import {
   FIT_EPSILON_PX,
   unitCountOf,
   type BoxSize,
@@ -76,6 +82,41 @@ const sameRegion = (
     ? block.region === undefined
     : block.region?.id === region.region.id &&
       block.stackIndex === region.stackIndex;
+
+const pxToPt = (value: number) => convertUnits(toUnits(value, 'px'), 'pt');
+
+const ptToPx = (value: number) => convertUnits(toUnits(value, 'pt'), 'px');
+
+/**
+ * Where Word draws the capitals of a trimmed block's first line, below the
+ * top of a box, when the profile places trimmed lines as Word does.
+ */
+const trimInsetOf = (
+  profile: FragmentationProfile,
+  block: MeasuredBlock,
+): number =>
+  profile.trim.insetAtTop && block.trim
+    ? ptToPx(
+        wordSpaceAboveCapHeight({
+          lineHeight: pxToPt(block.trim.lineHeight),
+          capHeight: pxToPt(block.trim.capHeight),
+        }),
+      )
+    : 0;
+
+/**
+ * The room below the baseline of a trimmed block's last line that Word's
+ * line still needs, when the profile fits trimmed lines as Word does.
+ */
+const trimReserveOf = (
+  profile: FragmentationProfile,
+  block: MeasuredBlock,
+): number =>
+  profile.trim.reserveAtBottom && block.trim
+    ? ptToPx(
+        wordSpaceBelowBaseline({ lineHeight: pxToPt(block.trim.lineHeight) }),
+      )
+    : 0;
 
 /** CSS margin collapsing: the largest positive and the most negative add. */
 const collapseMargins = (a: number, b: number): number =>
@@ -229,19 +270,28 @@ const fill = (
     const splitter = profile.splitters[block.kind];
     const unitCount = unitCountOf(block);
     const opening = from === 0;
-    const marginTop = !opening
+    const collapsedMarginTop = !opening
       ? 0
       : last
         ? combineMargins(profile, previousMarginBottom, block.marginTop)
         : box.atTop === undefined || profile.margins.keepAtTop[box.atTop]
           ? block.marginTop
           : 0;
+    // A trimmed first line at the top of a box goes where Word puts it; the
+    // margin kept above it is part of that space, not added to it.
+    const trimInset =
+      !last && box.atTop !== undefined ? trimInsetOf(profile, block) : 0;
+    const marginTop =
+      trimInset > 0
+        ? Math.max(collapsedMarginTop, trimInset)
+        : collapsedMarginTop;
     const top = used + marginTop + (opening ? block.insetTop : 0);
     const heightOf = (to: number, repeatHeader: boolean) =>
       splitter.pieceHeight(block, from, to, { repeatHeader }) +
       (to === unitCount ? block.insetBottom : 0);
+    const reserve = trimReserveOf(profile, block);
     const fits = (to: number, repeatHeader: boolean) =>
-      top + heightOf(to, repeatHeader) <= box.height + FIT_EPSILON_PX;
+      top + heightOf(to, repeatHeader) + reserve <= box.height + FIT_EPSILON_PX;
 
     let repeatHeader = !opening && wantsRepeatedHeader(profile, block);
     // A repeated header with no row under it is dropped rather than moved on.
@@ -276,7 +326,7 @@ const fill = (
       profile,
       block,
       from,
-      box.height - top,
+      box.height - top - reserve,
       splitContext,
       false,
     );
@@ -293,7 +343,7 @@ const fill = (
         profile,
         block,
         from,
-        box.height - top,
+        box.height - top - reserve,
         splitContext,
         true,
       );

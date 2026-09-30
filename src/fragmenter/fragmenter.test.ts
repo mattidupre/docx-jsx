@@ -32,6 +32,8 @@ type FragmentedResult = {
   extents: Array<number>;
   /** Per page, the `start` of every `<ol>`. */
   listStarts: Array<Array<number>>;
+  /** Per page, where every `<p>` is drawn, from the top of the page. */
+  paragraphs: Array<Array<{ top: number; height: number }>>;
 };
 
 /**
@@ -82,6 +84,7 @@ describe('Fragmenter', () => {
         const probeWidths: Array<Array<number>> = [];
         const extents: Array<number> = [];
         const listStarts: Array<Array<number>> = [];
+        const paragraphs: FragmentedResult['paragraphs'] = [];
         const pageSizes: Array<{ width: UnitsSize; height: UnitsSize }> = [];
 
         await new api.Fragmenter({
@@ -127,6 +130,12 @@ describe('Fragmenter', () => {
                 (list) => list.start,
               ),
             );
+            paragraphs.push(
+              Array.from(contentElement.querySelectorAll('p'), (element) => {
+                const rect = element.getBoundingClientRect();
+                return { top: rect.top - frameTop, height: rect.height };
+              }),
+            );
             probeWidths.push(
               Array.from(
                 contentElement.querySelectorAll<HTMLElement>(
@@ -139,7 +148,7 @@ describe('Fragmenter', () => {
           },
         });
 
-        return { pages, starts, probeWidths, extents, listStarts };
+        return { pages, starts, probeWidths, extents, listStarts, paragraphs };
       },
       stacks,
       profileName,
@@ -289,6 +298,30 @@ describe('Fragmenter', () => {
       expect(all.split(`para${index} `)).toHaveLength(2);
     }
     expect(all.endsWith('after')).toBe(true);
+  });
+
+  it('places a trimmed first line where Word draws it, under the word profile only', async () => {
+    const trimmed = (text: string) =>
+      `<p style="margin:0 0 10px;font-size:16px;line-height:20px;text-box:trim-both cap alphabetic">${text}</p>`;
+    const html = `${trimmed('one')}${trimmed('two')}`;
+
+    const word = await fragment(single(html));
+    const css = await fragment(single(html), 'css');
+
+    const [first, second] = css.paragraphs[0];
+    // A trimmed one line paragraph is as tall as its capitals.
+    const capHeight = first.height;
+    expect(capHeight).toBeGreaterThan(8);
+    expect(capHeight).toBeLessThan(16);
+    expect(first.top).toBe(0);
+    expect(second.top).toBeCloseTo(capHeight + 10);
+    // 0.8 L + 0.25pt − cap height, in px.
+    const inset = 0.8 * 20 + 1 / 3 - capHeight;
+    // Chrome lays out in 1/64px units.
+    expect(word.paragraphs[0][0].top).toBeCloseTo(inset, 1);
+    expect(word.paragraphs[0][1].top - word.paragraphs[0][0].top).toBeCloseTo(
+      capHeight + 10,
+    );
   });
 
   it('ends with a blank page after a trailing forced break', async () => {
