@@ -490,11 +490,19 @@ export const renderPage = (
         );
       }
     }
+    // In a column the space goes on the outermost element inside it: the
+    // containers outside the region are drawn above every column.
+    const carrier =
+      map === flowClones
+        ? 0
+        : dom.topMarginElements.findIndex((marginElement) =>
+            map.has(marginElement),
+          );
     dom.topMarginElements.forEach((marginElement, index) => {
       const clone = cloneOf(block, marginElement);
       clone?.style.setProperty(
         'margin-top',
-        index === 0 ? `${placement.marginTop}px` : '0',
+        index === carrier ? `${placement.marginTop}px` : '0',
       );
     });
   };

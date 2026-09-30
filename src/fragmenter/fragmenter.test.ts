@@ -92,9 +92,13 @@ describe('Fragmenter', () => {
         const pageSizes: Array<{ width: UnitsSize; height: UnitsSize }> = [];
 
         const layout = await new api.Fragmenter({
-          profile: api.createFragmentationProfile(
-            name === 'css' ? 'css' : 'word',
-          ),
+          // `sum`: Word's rules with adjacent margins added, as ODF does.
+          profile:
+            name === 'sum'
+              ? api.resolveFragmentationProfile({
+                  margins: { adjacent: 'sum' },
+                })
+              : api.createFragmentationProfile(name === 'css' ? 'css' : 'word'),
         }).toPages({
           stacks: stackInputs.map(({ html, continuous }) => {
             const element = document.createElement('div');
@@ -574,6 +578,32 @@ describe('Fragmenter', () => {
       for (const extent of extents) {
         expect(extent).toBeLessThanOrEqual(PAGE_HEIGHT_PX);
       }
+    });
+
+    it('combines the margins between flow and columns by the profile rule', async () => {
+      const block = (name: string, margin: string) =>
+        `<p style="margin:${margin};height:40px">${name}</p>`;
+      const stacks = [
+        { html: block('flow', '0 0 30px'), continuous: false, ...PAGE },
+        {
+          html: `<div ${COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill')}="masonry" style="column-count:2;column-gap:20px"><div>${block('u0', '40px 0 20px')}</div><div>${block('u1', '40px 0 20px')}</div></div>`,
+          continuous: true,
+          ...PAGE,
+        },
+        { html: block('after', '50px 0 0'), continuous: true, ...PAGE },
+      ];
+      const topsOf = async (profile: string) =>
+        (await fragment(stacks, profile)).paragraphs[0].map(({ top }) => top);
+
+      // The columns start 30px below the flow block, at 70px. In the first,
+      // u0 keeps what is left of its 40px margin once it combines with those
+      // 30px; u1 opens the second column, whose top drops its margin. What
+      // follows starts below the 20px under u0, keeping what is left of its
+      // own 50px once the two combine.
+      // Collapsed: 40 + max(30, 40) = 80, and 120 + max(20, 50) = 170.
+      expect(await topsOf('word')).toEqual([0, 80, 70, 170]);
+      // Added: 40 + 30 + 40 = 110, and 150 + 20 + 50 = 220.
+      expect(await topsOf('sum')).toEqual([0, 110, 70, 220]);
     });
   });
 

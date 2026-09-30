@@ -928,7 +928,7 @@ describe('columns', () => {
     );
   });
 
-  test('keeps the margins between flow and columns, which do not collapse', () => {
+  test('keeps the margin between flow and columns, which the columns draw inside', () => {
     // A 20px block with a 30px margin leaves 50px: five lines per column.
     const above = run([
       { blocks: [atomic(20, { marginBottom: 30 })] },
@@ -955,6 +955,44 @@ describe('columns', () => {
       '1.2[0-1]',
       '1.3[0-1]',
     ]);
+  });
+
+  test('combines the margins between flow and columns by the profile rule', () => {
+    const SUM: FragmentationOption = { margins: { adjacent: 'sum' } };
+    // 30px under the flow block, 40px over the first line of the columns.
+    const stacksAbove = [
+      { blocks: [atomic(20, { marginBottom: 30 })] },
+      {
+        blocks: [
+          atomic(10, { region: regionOf('auto'), marginTop: 40 }),
+          // More than the page holds, so the columns are not balanced.
+          ...lines(12, regionOf('auto')),
+        ],
+        continuous: true,
+      },
+    ];
+    const firstInColumns = (option?: FragmentationOption) => {
+      const [, region] = run(stacksAbove, { profile: option }).pages[0].items;
+      return region.kind === 'region' ? region.columns[0][0] : undefined;
+    };
+    // The columns start below the flow block's 30px margin, and the first
+    // line keeps what is left of the combined margin: 40 − 30 when they
+    // collapse, all 40 when they add up.
+    expect(firstInColumns()).toMatchObject({ marginTop: 10, bottom: 20 });
+    expect(firstInColumns(SUM)).toMatchObject({ marginTop: 40, bottom: 50 });
+
+    // 30px under the columns, 40px over the flow block after them.
+    const stacksBelow = [
+      {
+        blocks: [atomic(10, { region: regionOf('auto'), marginBottom: 30 })],
+      },
+      { blocks: [atomic(10, { marginTop: 40 })], continuous: true },
+    ];
+    const flowAfter = (option?: FragmentationOption) =>
+      flowPlacements(run(stacksBelow, { profile: option }).pages[0])[0];
+    // Its box starts below the columns' margin, as theirs below the flow's.
+    expect(flowAfter()).toMatchObject({ marginTop: 10, bottom: 20 });
+    expect(flowAfter(SUM)).toMatchObject({ marginTop: 40, bottom: 50 });
   });
 });
 

@@ -95,6 +95,14 @@ type Box = {
    * combines with it as it would with a block placed in the box.
    */
   marginAbove?: number;
+  /**
+   * The margin the content above leaves between it and the box, drawn
+   * already, for a box that starts below content in another formatting
+   * context (columns below flow content, flow content below columns). The
+   * first block's top margin combines with it by the profile's rule, and
+   * the block keeps only what is left of the combined margin.
+   */
+  spaceAbove?: number;
   context: Omit<PageContext, 'used'>;
 };
 
@@ -312,9 +320,12 @@ const fill = (
       ? 0
       : last || box.marginAbove !== undefined
         ? combineMargins(profile, previousMarginBottom, block.marginTop)
-        : box.atTop === undefined || profile.margins.keepAtTop[box.atTop]
-          ? block.marginTop
-          : 0;
+        : box.spaceAbove !== undefined
+          ? combineMargins(profile, box.spaceAbove, block.marginTop) -
+            box.spaceAbove
+          : box.atTop === undefined || profile.margins.keepAtTop[box.atTop]
+            ? block.marginTop
+            : 0;
     // A trimmed first line at the top of a box goes where Word puts it; the
     // margin kept above it is part of that space, not added to it.
     const trimInset =
@@ -448,6 +459,7 @@ const fillColumns = (
   atTop: undefined | StartKind,
   mustProgress: boolean,
   hasContentAbove: boolean,
+  spaceAbove: undefined | number,
   context: Omit<PageContext, 'used'>,
 ): ColumnsResult => {
   const columns: Array<Array<Placement>> = [];
@@ -470,6 +482,7 @@ const fillColumns = (
         isColumn: true,
         mustProgress: mustProgress && column === 0,
         hasContentAbove: hasContentAbove && column === 0,
+        spaceAbove: column === 0 ? spaceAbove : undefined,
         context: {
           ...context,
           startKind: startKind ?? context.startKind,
@@ -607,6 +620,7 @@ const packMasonry = (
   atTop: undefined | StartKind,
   mustProgress: boolean,
   hasContentAbove: boolean,
+  spaceAbove: undefined | number,
   context: Omit<PageContext, 'used'>,
 ): ColumnsResult => {
   const columns: Array<MasonryColumn> = Array.from(
@@ -616,12 +630,16 @@ const packMasonry = (
   const pending = packingUnitsOf(profile, pieces, { ...context, used: 0 });
   const isPageEmpty = () => columns.every(({ placed }) => placed.length === 0);
 
-  /** The box below the content of a column, or the column when empty. */
+  /**
+   * The box below the content of a column, or the column when empty, on this
+   * page or, for `wholePage`, on an empty one.
+   */
   const boxOf = (
     columnIndex: number,
     boxHeight: number,
     progress: boolean,
     empty = columns[columnIndex].placed.length === 0,
+    wholePage = false,
   ): Box => {
     const startKind = columnIndex === 0 ? atTop : 'column';
     return {
@@ -632,6 +650,8 @@ const packMasonry = (
       mustProgress: progress,
       hasContentAbove: false,
       marginAbove: empty ? undefined : columns[columnIndex].marginBottom,
+      spaceAbove:
+        empty && columnIndex === 0 && !wholePage ? spaceAbove : undefined,
       context: {
         ...context,
         startKind: (empty ? startKind : undefined) ?? context.startKind,
@@ -691,7 +711,7 @@ const packMasonry = (
         fill(
           profile,
           unit,
-          boxOf(columnIndex, context.boxHeight, false, true),
+          boxOf(columnIndex, context.boxHeight, false, true, true),
           region,
         ).rest.length > 0,
     );
@@ -914,6 +934,7 @@ const fillRegion = (
   available: number,
   atTop: undefined | StartKind,
   mustProgress: boolean,
+  spaceAbove: undefined | number,
   context: Omit<PageContext, 'used'>,
 ): ColumnsResult => {
   const run = (height: number, progress: boolean) =>
@@ -925,6 +946,7 @@ const fillRegion = (
       atTop,
       progress,
       !mustProgress,
+      spaceAbove,
       context,
     );
   const result = run(available, mustProgress);
@@ -1161,9 +1183,12 @@ export const placePages = ({
     const items: Array<PageItem> = [];
     let used = 0;
     /**
-     * The bottom margin of the last flow block placed. A region's columns are
-     * formatting contexts of their own, so it does not collapse with the
-     * margins inside them: the columns start below it.
+     * The margin below what was placed last, which is drawn already and which
+     * `used` stops above: the bottom margin of a flow block, or those at the
+     * bottoms of a region's columns, which stay inside them. The columns are
+     * formatting contexts of their own, so what comes next in another one
+     * starts below it, and its first block keeps only what is left of its top
+     * margin once the two combine by the profile's rule.
      */
     let marginBelow = 0;
     let boxStart: undefined | StartKind = startKind;
@@ -1207,6 +1232,7 @@ export const placePages = ({
           size.height - used - marginBelow,
           boxStart,
           mustProgress,
+          mustProgress ? undefined : marginBelow,
           context(),
         );
         if (result.columns.some((column) => column.length > 0)) {
@@ -1216,10 +1242,8 @@ export const placePages = ({
             columns: result.columns,
           });
         }
-        // What follows the region starts below its columns' margins, and
-        // keeps its own top margin in addition.
-        used += marginBelow + result.extent;
-        marginBelow = 0;
+        used += marginBelow + result.used;
+        marginBelow = result.extent - result.used;
         queue = [...result.rest, ...queue.slice(segment.length)];
         boxStart = undefined;
         if (result.rest.length > 0 || result.forcedPage) {
@@ -1233,11 +1257,12 @@ export const placePages = ({
         profile,
         queue,
         {
-          height: size.height - used,
+          height: size.height - used - marginBelow,
           atTop: boxStart,
           isColumn: false,
           mustProgress,
           hasContentAbove: !mustProgress,
+          spaceAbove: mustProgress ? undefined : marginBelow,
           context: context(),
         },
         undefined,
@@ -1249,9 +1274,9 @@ export const placePages = ({
           placement,
         })),
       );
-      used += result.used;
       queue = result.rest;
       if (result.placed.length > 0) {
+        used += marginBelow + result.used;
         boxStart = undefined;
         marginBelow = marginBelowOf(result.placed);
       }
