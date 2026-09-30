@@ -2,9 +2,12 @@ import type {
   LayoutType,
   DocumentElement,
   FontsConfig,
+  FragmentationOption,
   StyleSheetsValue,
 } from '../../entities';
-import { Pager } from '../../utils/pager';
+import { Fragmenter } from '../../fragmenter/fragmenter';
+import type { FragmentationProfile } from '../../fragmenter/profile';
+import { resolveFragmentationProfile } from '../../fragmenter/profiles';
 import { toCssStyleSheets } from '../../utils/css';
 import { mapHtmlToDocument } from '../../lib/mapHtmlToDocument';
 import { PAGE_CLASS_NAMES, PAGE_DATA_ATTRIBUTES } from '../../entities';
@@ -18,54 +21,23 @@ import { hashString } from '../../utils/string';
 import { PageTemplate } from './pageTemplate';
 import { toCssText, toScopedStyleSheet } from './scopedStyleSheets';
 import { createDocumentStyles, type DocumentStyles } from './documentStyles';
-import { stacksToFragment } from './stacksToFragment';
+import { createStackElements } from './createStackElements';
 import { nodeToDom } from './nodeToDom';
 import { DATA_STACK_INDEX } from './constants';
 
 export type DocumentDom = DocumentElement<HTMLElement>;
-
-/**
- * True when nothing of `stackEl` is rendered before `node`, i.e. a page opened
- * at `node` opens the stack itself.
- */
-const isStartOfStack = (stackEl: Element, node: Node): boolean => {
-  let currentNode: null | Node = node;
-  while (currentNode && currentNode !== stackEl) {
-    for (
-      let sibling = currentNode.previousSibling;
-      sibling;
-      sibling = sibling.previousSibling
-    ) {
-      if (
-        sibling.nodeType === Node.ELEMENT_NODE ||
-        sibling.textContent?.trim()
-      ) {
-        return false;
-      }
-    }
-    currentNode = currentNode.parentNode;
-  }
-  return currentNode === stackEl;
-};
-
-/**
- * Pagination measures text, so every face registered on `targetDocument` has
- * to be fetched before the first layout rather than after it.
- */
-const loadFontFaces = (targetDocument: Document) =>
-  Promise.all(
-    Array.from(targetDocument.fonts, (fontFace) =>
-      fontFace.load().catch((error: unknown) => {
-        console.error(`Could not load the font ${fontFace.family}`, error);
-      }),
-    ),
-  );
 
 export type HtmlToDomOptions = {
   initialStyleSheets?: ReadonlyArray<StyleSheetsValue>;
   styleSheets?: ReadonlyArray<StyleSheetsValue>;
   pageClassName?: string;
   fonts?: FontsConfig;
+  /**
+   * The conventions the pages are broken by. Overrides the document's own
+   * `fragmentation` option; a full profile may carry hooks, which cannot
+   * travel through the document's HTML.
+   */
+  fragmentation?: FragmentationOption | FragmentationProfile;
   onDocument?: (document: DocumentDom) => void;
   /**
    * Where the rendered pages' stylesheets are adopted, which is the document
@@ -83,6 +55,7 @@ export const htmlToDom = async (
     styleSheets: styleSheetsOption = [],
     pageClassName,
     fonts,
+    fragmentation,
     onDocument,
     documentStyles = createDocumentStyles(document),
   }: HtmlToDomOptions = {},
@@ -101,6 +74,7 @@ export const htmlToDom = async (
       styleSheetsOption,
       pageClassName,
       fonts,
+      fragmentation,
       onDocument,
       documentStyles,
       measureStyles,
@@ -119,6 +93,7 @@ const renderPages = async (
     styleSheetsOption,
     pageClassName,
     fonts,
+    fragmentation,
     onDocument,
     documentStyles,
     measureStyles,
@@ -127,6 +102,7 @@ const renderPages = async (
     styleSheetsOption: ReadonlyArray<StyleSheetsValue>;
     pageClassName: undefined | string;
     fonts: undefined | FontsConfig;
+    fragmentation: HtmlToDomOptions['fragmentation'];
     onDocument: HtmlToDomOptions['onDocument'];
     documentStyles: DocumentStyles;
     measureStyles: DocumentStyles;
@@ -144,6 +120,7 @@ const renderPages = async (
     stacks: stacksOptions,
     prefixes,
     fonts: documentFonts,
+    fragmentation: documentFragmentation,
   } = documentObj;
 
   // The library's own rules (compiled at build time, instantiated for this
@@ -163,11 +140,11 @@ const renderPages = async (
   });
   if (fontFaceCss) {
     // `@font-face` is ignored inside a shadow root, so custom fonts are
-    // registered on the documents themselves.
+    // registered on the documents themselves. The Fragmenter loads every face
+    // before it measures.
     for (const styles of new Set([measureStyles, documentStyles])) {
       styles.adopt(fontFaceCss);
     }
-    await loadFontFaces(document);
   }
 
   const [
@@ -221,8 +198,9 @@ const renderPages = async (
 
   // const perf = performance.now();
 
-  // Create a temporary element in which to calculate / render pages. Pager and
-  // PageTemplate operate in their own respective Shadow DOMs.
+  // Create a temporary element in which to lay out the page templates. The
+  // Fragmenter measures content in a shadow root of its own, and the page
+  // chrome lives in each page element's.
   const renderEl = document.createElement('div');
   renderEl.style.visibility = 'hidden';
   renderEl.style.position = 'absolute';
@@ -231,19 +209,20 @@ const renderPages = async (
   document.body.appendChild(renderEl);
 
   const stackTemplates: Array<Partial<Record<LayoutType, PageTemplate>>> = [];
-  const mergedStacksEl = stacksToFragment(stacksOptions, {});
-
-  // renderEl.appendChild(mergedStacksEl);
 
   // Pagination measures the content under the same rules it is displayed
   // with: every stylesheet is scoped to the content root there exactly as it
   // is scoped to the page root on screen.
   const contentClassName = PAGE_CLASS_NAMES.name('contentRoot');
-  const pager = new Pager({
+  const fragmenter = new Fragmenter({
     styles: styleSheets.map((styleSheet) =>
       toScopedStyleSheet(styleSheet, `.${contentClassName}`),
     ),
     contentClassName,
+    // A call-level choice wins over the document's, as it does for fonts.
+    profile: resolveFragmentationProfile(
+      fragmentation ?? documentFragmentation,
+    ),
   });
 
   // A page belongs to the stack whose content starts it: that stack's header,
@@ -253,12 +232,10 @@ const renderPages = async (
   // them, which is the only attribution a single header/footer pair can have.
   const extendedTemplates: Array<PageTemplate> = [];
   {
-    let isFirst = true;
-    let stackIndex = 0;
-    const unextendedTemplates: Array<PageTemplate> = [];
-    await pager.toPages({
-      content: mergedStacksEl,
-      onPageStart: ({ pageIndex, setPageVars }) => {
+    const pageTemplates: Array<PageTemplate> = [];
+    await fragmenter.toPages({
+      stacks: createStackElements(stacksOptions, {}),
+      onPageStart: ({ pageIndex, stackIndex, first }) => {
         const {
           margin,
           layouts,
@@ -268,12 +245,13 @@ const renderPages = async (
           innerPageDataAttributes,
         } = stacksOptions[stackIndex];
 
-        const layoutType: LayoutType = isFirst ? 'first' : 'subsequent';
+        const layoutType: LayoutType = first ? 'first' : 'subsequent';
 
         const stackTemplate = (stackTemplates[stackIndex] ??= {});
 
-        if (!stackTemplate[layoutType]) {
-          const template = new PageTemplate({
+        let template = stackTemplate[layoutType];
+        if (!template) {
+          template = new PageTemplate({
             prefixes,
             size,
             margin,
@@ -299,50 +277,12 @@ const renderPages = async (
           stackTemplate[layoutType] = template;
         }
 
-        const template = stackTemplate[layoutType]!;
+        pageTemplates[pageIndex] = template;
 
-        const { width, height } = template.contentSize;
-
-        setPageVars({
-          // PagerJS doesn't like 0 margins so use 0.5in margins
-          // temporarily.
-          width: `calc(${width} + 1in)`,
-          height: `calc(${height} + 1in)`,
-          marginTop: '0.5in',
-          marginRight: '0.5in',
-          marginBottom: '0.5in',
-          marginLeft: '0.5in',
-        });
-
-        unextendedTemplates[pageIndex] = template;
-      },
-      onPageBreak: ({ breakElement }) => {
-        const element =
-          breakElement instanceof HTMLElement
-            ? breakElement
-            : breakElement.parentElement;
-
-        const stackEl = element?.closest(`[${DATA_STACK_INDEX}]`);
-
-        if (!stackEl) {
-          // The break landed outside every stack (an element pagedjs moved out
-          // of the source, for instance). Keep paging the current stack.
-          return;
-        }
-
-        stackIndex = Number.parseInt(
-          stackEl.getAttribute(DATA_STACK_INDEX)!,
-          10,
-        );
-
-        // Resuming part way through a text run is never the start of a stack,
-        // so only an element break token can open a `first` layout.
-        isFirst =
-          breakElement instanceof HTMLElement &&
-          isStartOfStack(stackEl, breakElement);
+        return template.contentSize;
       },
       onPageRendered: ({ pageIndex, contentElement }) => {
-        const template = unextendedTemplates[pageIndex];
+        const template = pageTemplates[pageIndex];
 
         if (!template) {
           throw new Error(
@@ -350,13 +290,13 @@ const renderPages = async (
           );
         }
 
-        // Note that contentElement is NOT cloned. It will be detached from
-        // pager. A page can hold content from several continuous stacks; all
-        // of it is kept, in document order, inside the template of the stack
-        // that starts the page. Each stack keeps its own element, as it had
-        // while pagedjs measured it: unwrapping it changes which selectors
-        // match (`:first-child`, the stack's class and data attributes), so
-        // the page would no longer be the height pagedjs filled.
+        // Note that contentElement is NOT cloned. A page can hold content
+        // from several continuous stacks; all of it is kept, in document
+        // order, inside the template of the stack that starts the page. Each
+        // stack keeps its own element, as it had while it was measured:
+        // unwrapping it changes which selectors match (`:first-child`, the
+        // stack's class and data attributes), so the page would no longer be
+        // the height the Fragmenter filled.
         extendedTemplates.push(
           template.extend({
             content: contentElement.querySelectorAll(`[${DATA_STACK_INDEX}]`),

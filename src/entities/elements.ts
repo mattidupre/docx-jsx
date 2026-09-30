@@ -136,8 +136,8 @@ export type ListFormat = (typeof LIST_FORMATS)[number];
 
 /**
  * The CSS `list-style-type` that draws the same marker as a {@link ListFormat}.
- * Browsers -- and therefore pagedjs and the PDF -- read this, Word reads the
- * numbering format, and the two have to name the same marker.
+ * Browsers -- and therefore the DOM and PDF targets -- read this, Word reads
+ * the numbering format, and the two have to name the same marker.
  */
 export const LIST_FORMAT_STYLE_TYPES = {
   decimal: 'decimal',

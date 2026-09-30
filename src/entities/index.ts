@@ -3,6 +3,7 @@ export * from './context';
 export * from './documentNames';
 export * from './elements';
 export * from './fonts';
+export * from './fragmentation';
 export * from './html';
 export * from './options';
 export * from './typography';

@@ -26,7 +26,7 @@ type PreviewResult = {
   afterUnmount: {
     childElementCount: number;
   };
-  /** Only the observers watching the preview element, not pagedjs's own. */
+  /** Only the observers watching the preview element. */
   previewObservers: {
     created: number;
     disconnected: number;

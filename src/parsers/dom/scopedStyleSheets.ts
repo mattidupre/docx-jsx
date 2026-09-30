@@ -60,9 +60,9 @@ const replaceHostSelectors = (rules: CSSRuleList): void => {
  * one-way containment in the light DOM, and the prelude adds no specificity.
  *
  * The library's own rules and a consumer's are scoped the same way in every
- * realm -- to the page root on screen and to the content root pagedjs measures
- * in -- so they keep the same order, specificity and proximity against each
- * other wherever they apply.
+ * realm -- to the page root on screen and to the content root the Fragmenter
+ * measures in -- so they keep the same order, specificity and proximity
+ * against each other wherever they apply.
  */
 export const toScopedStyleSheet = (
   style: StyleSheetSource,

@@ -8,7 +8,8 @@ export const PAGE_ELEMENT_TAG_NAME = 'matti-docs-page';
 
 /**
  * The slot a light DOM child of a page is placed in. Content takes the
- * default slot, so the nodes pagedjs hands over are appended as they are.
+ * default slot, so the nodes the Fragmenter hands over are appended as they
+ * are.
  */
 export const PAGE_SLOTS = {
   header: 'header',

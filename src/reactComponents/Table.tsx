@@ -144,11 +144,10 @@ const TableRowContext = createContext<undefined | TableRowContextValue>(
 /**
  * Where one cell sits in the table's grid.
  *
- * A `<col>` width is lost as soon as a table is paginated -- pagedjs rebuilds
- * the ancestors of the row it broke at and a `<colgroup>` is not one of them --
- * so the width is written onto every cell as well, which is what keeps the
- * continuation table on the next page the same shape as the first. Word is told
- * the same thing through the `w:tcW` of every cell.
+ * The width is written onto every cell as well as onto its `<col>`, so a cell
+ * keeps the table's shape wherever it is laid out, including the continuation
+ * table on the next page. Word is told the same thing through the `w:tcW` of
+ * every cell.
  */
 type TableCellContextValue = {
   columnStart: number;
@@ -176,17 +175,16 @@ const isHeaderRow = (child: ReactNode): boolean =>
  * | Target | Rendering |
  * | --- | --- |
  * | HTML / DOM | A `<table>` with `border-collapse: collapse`, an optional `<colgroup>` of `<col>` widths (with `table-layout: fixed`), a `<thead>` of the header rows and a `<tbody>` of the rest. Borders and padding are written as inline styles on every `<th>`/`<td>`, because the library's own `*` rule resets `border-width` and would otherwise win over a user-agent default. |
- * | PDF | The same `<table>`, paginated by pagedjs. A row whose `keepTogether` is set moves to the next page whole. |
+ * | PDF | The same `<table>`, paginated by the Fragmenter. A row whose `keepTogether` is set moves to the next page whole unless it is taller than a page; header rows repeat on every page the table spans when `repeatHeader` is set and the document's fragmentation profile repeats headers (`word`, the default). |
  * | DOCX | A `Table` whose `w:tblW` is a percentage or a whole number of twips, whose `w:tblGrid` holds the column widths in twips, whose `w:tblBorders` carries all six sides, and whose `w:tblCellMar` carries `cellPadding`. Header rows get `w:tblHeader`, so Word repeats them at the top of every page the table spans. |
  *
  * A header row is hoisted into `<thead>` when it is a direct {@link TableRow}
  * child of the table; one built by a component of its own still carries
  * `header` to Word but stays in `<tbody>` in the browser.
  *
- * Header repetition is DOCX only: pagedjs 0.4 rebuilds a split table's
- * ancestors without their children, so the continuation table on the next page
- * has no `<thead>`. The header therefore repeats in Word and not in the browser
- * or the PDF.
+ * Header repetition follows `repeatHeader` in Word and, under the `word`
+ * fragmentation profile, in the DOM and the PDF. The `css` profile never
+ * repeats a header, as CSS fragmentation does not.
  *
  * @example
  * <Table columnWidths={[2, 1]} borders={{ color: '#999999' }} cellPadding="6px">
@@ -288,12 +286,12 @@ export type TableRowProps = ExtendableProps &
  * | Target | Rendering |
  * | --- | --- |
  * | HTML / DOM | A `<tr>`. `height` becomes a CSS `height`, which a table row treats as a minimum. |
- * | PDF | The same `<tr>`. `keepTogether` puts `break-inside: avoid` on the row and on its cells, which is what pagedjs reads to move a whole row to the next page instead of splitting it. |
+ * | PDF | The same `<tr>`. `keepTogether` puts `break-inside: avoid` on the row and on its cells, which is what the Fragmenter reads to move a whole row to the next page instead of splitting it. |
  * | DOCX | A `TableRow` with `w:cantSplit` for `keepTogether`, `w:tblHeader` for `header` (unless the table turned `repeatHeader` off) and a `w:trHeight` of `atLeast` twips for `height`. |
  *
  * `keepTogether` defaults to true: a row split down the middle reads as two
- * broken rows in every target, and Word and pagedjs both need to be told not
- * to do it.
+ * broken rows in every target, and Word and the Fragmenter both split rows
+ * unless they are told not to.
  */
 export function TableRow({
   header = false,
@@ -427,8 +425,8 @@ export function TableCell({
           borderStyle: TABLE_BORDER_CSS_STYLES[borders.style],
           borderColor: borders.color,
         }),
-        // pagedjs moves the whole row when a cell it is breaking inside says
-        // not to, so the rule has to be on the cell as well as on the row.
+        // On the cell as well as on the row, for a browser's own fragmentation,
+        // which looks for it on the box it is breaking inside.
         ...(keepTogether && { breakInside: 'avoid' }),
         ...(verticalAlign && {
           verticalAlign: VERTICAL_ALIGN_CSS[verticalAlign],

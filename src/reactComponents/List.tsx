@@ -34,8 +34,8 @@ export type ListProps = ExtendableProps &
  *
  * Per target:
  * - HTML/DOM/PDF: `<ol>` or `<ul>` carrying `list-style-type`, `start` and the
- *   `<ol>` `type` attribute, so a browser, pagedjs and the PDF all draw the
- *   markers the CSS asks for.
+ *   `<ol>` `type` attribute, so a browser and the PDF both draw the markers
+ *   the CSS asks for. A list continued on the next page keeps counting.
  * - DOCX: an abstract numbering with nine levels of that format, indent and
  *   start, plus a `w:numPr` on every item paragraph naming it. Lists that draw
  *   the same markers share the definition but never the instance, so their

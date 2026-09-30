@@ -108,7 +108,6 @@
     "hast-util-to-html": "^9.0.0",
     "jszip": "^3.10.2",
     "lodash": "^4.18.1",
-    "pagedjs": "^0.4.3",
     "puppeteer-core": "25.12"
   },
   "scripts": {

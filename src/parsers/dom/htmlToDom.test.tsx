@@ -85,8 +85,8 @@ function StraddlingStacksDocument() {
 }
 
 /**
- * `data-break-before` is the attribute pagedjs's chunker reads, so page two
- * starts exactly at the first element of the continuous stack B.
+ * A forced break before the first element of the continuous stack B, so page
+ * two starts exactly at the start of B.
  */
 function ContinuousStackOnItsOwnPageDocument() {
   return (
@@ -95,7 +95,7 @@ function ContinuousStackOnItsOwnPageDocument() {
         <p>A0</p>
       </Stack>
       <Stack continuous layouts={createLayouts('B')}>
-        <p data-break-before="page">B0</p>
+        <p style={{ breakBefore: 'page' }}>B0</p>
         <p>B1</p>
       </Stack>
     </DocumentProvider>
@@ -394,7 +394,7 @@ describe('htmlToDom', () => {
   it('keeps content inside the page area when styles depend on the stack element', async () => {
     const overflows = await harness.evaluate(
       async (api, pageHtml: string) => {
-        // B0 is the first child of stack B while pagedjs measures it. Unwrapped
+        // B0 is the first child of stack B while it is measured. Unwrapped
         // onto a page after A's paragraphs, it would gain this margin and push
         // the page past its content area.
         const pagesEl = await api.htmlToDom(pageHtml, {

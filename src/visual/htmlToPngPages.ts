@@ -87,8 +87,8 @@ const renderHtmlPages = async (
       : '';
   try {
     await page.setViewport({ width: 1000, height: 1200, deviceScaleFactor });
-    // pagedjs drives pagination from timers; a backgrounded tab is throttled
-    // and pagination stalls indefinitely.
+    // Pagination waits for fonts to load; a backgrounded tab is throttled and
+    // can stall it.
     await page.bringToFront();
     await page.setContent(markup, { waitUntil: 'domcontentloaded', timeout });
 

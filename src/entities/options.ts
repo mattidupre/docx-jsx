@@ -5,6 +5,7 @@ import { pluckFromArray } from '../utils/array';
 import type { DataAttributes } from '../utils/dataAttributes';
 import { type Variants, assignVariants } from './typography';
 import type { FontsConfig } from './fonts';
+import type { FragmentationOption } from './fragmentation';
 import type { UnitsSize } from './units';
 
 export const APP_NAME = 'Matti Docs';
@@ -211,6 +212,11 @@ export type DocumentOptions = {
   variants?: Variants;
   prefixes?: PrefixesOptions;
   fonts?: FontsConfig;
+  /**
+   * The conventions the DOM and PDF targets break pages by: `word` (the
+   * default) or `css`, or rules over either.
+   */
+  fragmentation?: FragmentationOption;
 };
 
 export type DocumentConfig = {
@@ -223,6 +229,20 @@ export type DocumentConfig = {
    * rather than carry `{}` into every target.
    */
   fonts?: FontsConfig;
+  /** Optional, like `fonts`: a document that chooses none carries nothing. */
+  fragmentation?: FragmentationOption;
+};
+
+/**
+ * The last declared choice wins, as for every other document option. The
+ * result is spread into the config, so a document that makes no choice has
+ * no `fragmentation` key.
+ */
+const assignFragmentation = (
+  ...args: ReadonlyArray<undefined | FragmentationOption>
+): Pick<DocumentConfig, 'fragmentation'> | Record<string, never> => {
+  const fragmentation = args.findLast((value) => value !== undefined);
+  return fragmentation === undefined ? {} : { fragmentation };
 };
 
 /**
@@ -251,6 +271,7 @@ export const assignDocumentOptions = (
     // Spread conditionally so a document with no fonts has no `fonts` key at
     // all, rather than one holding `undefined`.
     ...assignFonts(...pluckFromArray(args, 'fonts')),
+    ...assignFragmentation(...pluckFromArray(args, 'fragmentation')),
   });
 
 type ColumnCount = 1 | 2 | 3 | 4;
