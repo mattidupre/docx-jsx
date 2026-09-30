@@ -9,6 +9,13 @@ import type { FontsConfig } from '../../entities';
  */
 export const FLOW_PARITY_FONT_SRC = '/arial.ttf';
 
+/**
+ * A font Word does not ship, served from the repository's mock assets. It has
+ * no `docx` source, so the DOCX embeds its file and Word can only lay the
+ * embedding probe out in the same font as the PDF if the embedding works.
+ */
+export const FLOW_PARITY_EMBEDDED_FONT_SRC = '/Merriweather-Regular.ttf';
+
 export const FLOW_PARITY_FONTS: FontsConfig = {
   Arial: {
     fontFaces: [
@@ -22,6 +29,21 @@ export const FLOW_PARITY_FONTS: FontsConfig = {
             format: 'truetype',
           },
           { documentType: 'docx', src: 'Arial', format: 'truetype' },
+        ],
+      },
+    ],
+  },
+  Merriweather: {
+    fontFaces: [
+      {
+        fontWeight: '400',
+        fontStyle: 'normal',
+        sources: [
+          {
+            documentType: 'pdf',
+            src: FLOW_PARITY_EMBEDDED_FONT_SRC,
+            format: 'truetype',
+          },
         ],
       },
     ],

@@ -129,6 +129,22 @@ describe('reactToDocx with masonry columns', () => {
       lineText(2, 0),
     ]);
 
+    // A column break has a one twip paragraph of its own: ending a text
+    // paragraph with it would carry that paragraph's mark into the next
+    // column as an empty line.
+    const { document } = await inspectDocx(docx);
+    const [columnBreakParagraph] = paragraphs(
+      findAll(document, 'w:body'),
+    ).filter((paragraph: XmlNode) =>
+      findAll(paragraph, 'w:br').some(
+        (docxBreak) => attribute(docxBreak, 'w:type') === 'column',
+      ),
+    );
+    expect(textOf(columnBreakParagraph)).toBe('');
+    expect(
+      attribute(findAll(columnBreakParagraph, 'w:spacing')[0], 'w:line'),
+    ).toBe('1');
+
     // The PDF shows the groups in the same order.
     const pdf = await reactToPdf(Document, { browser });
     if (isErrorObject(pdf)) {

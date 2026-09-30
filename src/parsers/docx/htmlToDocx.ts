@@ -658,12 +658,17 @@ const toDocxBreaks = (masonryBreak: MasonryBreak) =>
     ? [new PageBreak()]
     : range(masonryBreak.count).map(() => new ColumnBreak());
 
-/** A unit's last block ending with a column or page break, when it can. */
+/**
+ * A unit's last block ending with a page break, when it can. A column break
+ * cannot end a paragraph: Word carries the paragraph mark after it into the
+ * next column as an empty line, which pushes that column one line down (Word
+ * print, 2026-09-30). Column breaks get a paragraph of their own instead.
+ */
 const withMasonryBreakAfter = (
   block: BlockChild,
   masonryBreak: MasonryBreak,
 ): undefined | BlockChild => {
-  if (!(block instanceof Paragraph)) {
+  if (!(block instanceof Paragraph) || masonryBreak.kind !== 'page') {
     return undefined;
   }
   const options = block[PARAGRAPH_OPTIONS_KEY];
@@ -679,7 +684,11 @@ const withMasonryBreakAfter = (
   );
 };
 
-/** A paragraph that holds only a break, after a table. */
+/**
+ * A paragraph that holds only a break: every column break, and a page break
+ * after a table. Its line is one twip high, so neither the line that holds the
+ * break nor the paragraph mark Word carries past it takes any room.
+ */
 const createMasonryBreak = (masonryBreak: MasonryBreak): BlockChild =>
   new DocxParagraph({
     spacing: { before: 0, after: 0, line: 1, lineRule: LineRuleType.EXACT },

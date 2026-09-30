@@ -26,9 +26,11 @@
 import { copyFile, mkdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { closeTestBrowser, launchTestBrowser } from '../src/fixtures/browser';
 import {
+  FLOW_PARITY_EMBEDDED_FONT_SRC,
   FLOW_PARITY_FONT_SRC,
   FLOW_PARITY_FONTS,
   FLOW_PARITY_SECTIONS,
@@ -129,6 +131,15 @@ if (values.compare) {
 
   await mkdir(publicDirectory, { recursive: true });
   await copyFile(fontPath, path.join(publicDirectory, FLOW_PARITY_FONT_SRC));
+  await copyFile(
+    fileURLToPath(
+      new URL(
+        `../src/fixtures/mockAssets${FLOW_PARITY_EMBEDDED_FONT_SRC}`,
+        import.meta.url,
+      ),
+    ),
+    path.join(publicDirectory, FLOW_PARITY_EMBEDDED_FONT_SRC),
+  );
 
   const browser = await launchTestBrowser();
   try {
