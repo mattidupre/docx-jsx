@@ -60,6 +60,19 @@ export type FontMetrics = {
   capHeight: number;
 };
 
+/**
+ * A font file as Word knows it: the family the file names itself (its legacy
+ * family name, name ID 1, which is how Word and Windows group a family's
+ * styles) and which of the family's four styles, regular, bold, italic or
+ * bold italic, it is (OS/2 `fsSelection`). A run picks the style with its
+ * bold and italic toggles.
+ */
+export type WordFont = {
+  fontName: string;
+  bold: boolean;
+  italic: boolean;
+};
+
 export type FontFace = FontFaceOptions & {
   src?: string;
   sources: ReadonlyArray<
@@ -81,6 +94,11 @@ export type FontFace = FontFaceOptions & {
    * browser declares them here.
    */
   metrics?: FontMetrics;
+  /**
+   * How Word names a face that has no `docx` source, read from its font file
+   * by the DOCX target, which embeds the file under that name.
+   */
+  wordFont?: WordFont;
 };
 
 export type Font = {

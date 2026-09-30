@@ -1,10 +1,26 @@
 import JSZip from 'jszip';
+import {
+  type EmbeddedFont,
+  readRunFontNames,
+  toFontTableParts,
+  writeEmbedTrueTypeFonts,
+  writeFontContentType,
+  writeFontTable,
+} from './fontsToDocx';
 
 const DOCUMENT_PATH = 'word/document.xml';
 
 const STYLES_PATH = 'word/styles.xml';
 
 const SETTINGS_PATH = 'word/settings.xml';
+
+const FONT_TABLE_PATH = 'word/fontTable.xml';
+
+const FONT_TABLE_RELATIONSHIPS_PATH = 'word/_rels/fontTable.xml.rels';
+
+const CONTENT_TYPES_PATH = '[Content_Types].xml';
+
+const WORD_PART_EXP = /^word\/[^/]+\.xml$/;
 
 /**
  * What the document's fragmentation rules ask of Word that `docx` cannot
@@ -18,6 +34,11 @@ export type PackedDocxPatches = {
    * one winning.
    */
   sumAdjacentMargins: boolean;
+  /**
+   * The font files to embed, by family. Only the families some run, style
+   * or default names are embedded.
+   */
+  embeddedFonts: ReadonlyArray<EmbeddedFont>;
 };
 
 /**
@@ -112,14 +133,47 @@ const patchPart = async (
   zip.file(path, patch(await file.async('string')));
 };
 
+/** Every font the parts of the document body, styles and numbering name. */
+const readUsedFontNames = async (zip: JSZip): Promise<ReadonlySet<string>> => {
+  const parts = zip.file(WORD_PART_EXP);
+  const xmls = await Promise.all(parts.map((part) => part.async('string')));
+  return new Set(xmls.flatMap(readRunFontNames));
+};
+
+/**
+ * The font table with the files of every embedded family the document uses,
+ * each style in its own obfuscated part, and the setting that keeps Word
+ * embedding them.
+ */
+const embedFonts = async (
+  zip: JSZip,
+  embeddedFonts: ReadonlyArray<EmbeddedFont>,
+) => {
+  const usedFontNames = await readUsedFontNames(zip);
+  const usedFonts = embeddedFonts.filter(({ fontName }) =>
+    usedFontNames.has(fontName),
+  );
+  if (usedFonts.length === 0) {
+    return;
+  }
+  const { fonts, relationships, files } = toFontTableParts(usedFonts);
+  await patchPart(zip, FONT_TABLE_PATH, (xml) => writeFontTable(xml, fonts));
+  zip.file(FONT_TABLE_RELATIONSHIPS_PATH, relationships);
+  for (const { path, data } of files) {
+    zip.file(path, data);
+  }
+  await patchPart(zip, CONTENT_TYPES_PATH, writeFontContentType);
+  await patchPart(zip, SETTINGS_PATH, writeEmbedTrueTypeFonts);
+};
+
 /**
  * The parts of a packed DOCX that `docx` has no way to write: the section
- * breaks inside the last paragraph of their section, and the widow control
- * default.
+ * breaks inside the last paragraph of their section, the widow control
+ * default, and the embedded fonts.
  */
 export const patchPackedDocx = async (
   content: Uint8Array,
-  { widowControl, sumAdjacentMargins }: PackedDocxPatches,
+  { widowControl, sumAdjacentMargins, embeddedFonts }: PackedDocxPatches,
 ): Promise<Buffer> => {
   const zip = await JSZip.loadAsync(content);
   await patchPart(zip, DOCUMENT_PATH, inlineSectionBreaks);
@@ -129,5 +183,6 @@ export const patchPackedDocx = async (
   if (sumAdjacentMargins) {
     await patchPart(zip, SETTINGS_PATH, writeSummedMargins);
   }
+  await embedFonts(zip, embeddedFonts);
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 };
