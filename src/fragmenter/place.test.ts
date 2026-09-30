@@ -642,7 +642,7 @@ describe('columns', () => {
     fill,
     masonry: undefined,
   });
-  const lines = (count: number, region: MeasuredRegion) =>
+  const lines = (count: number, region: undefined | MeasuredRegion) =>
     Array.from({ length: count }, () => atomic(10, { region }));
 
   test('balances the last page', () => {
@@ -695,6 +695,35 @@ describe('columns', () => {
     expect(item.kind === 'region' && item.columns.map((c) => c.length)).toEqual(
       [1, 1],
     );
+  });
+
+  test('keeps the margins between flow and columns, which do not collapse', () => {
+    // A 20px block with a 30px margin leaves 50px: five lines per column.
+    const above = run([
+      { blocks: [atomic(20, { marginBottom: 30 })] },
+      { blocks: lines(12, regionOf('auto')), continuous: true },
+    ]);
+    const [, region] = above.pages[0].items;
+    expect(
+      region.kind === 'region' && region.columns.map((c) => c.length),
+    ).toEqual([5, 5]);
+
+    // Columns of three lines with a 30px margin under the last leave 40px.
+    const below = run([
+      {
+        blocks: [
+          ...lines(5, regionOf('balance')),
+          atomic(10, { region: regionOf('balance'), marginBottom: 30 }),
+        ],
+      },
+      { blocks: lines(5, undefined), continuous: true },
+    ]);
+    expect(describePages(below.pages)[0].slice(1)).toEqual([
+      '1.0[0-1]',
+      '1.1[0-1]',
+      '1.2[0-1]',
+      '1.3[0-1]',
+    ]);
   });
 });
 

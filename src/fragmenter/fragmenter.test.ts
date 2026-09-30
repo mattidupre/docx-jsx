@@ -399,6 +399,58 @@ describe('Fragmenter', () => {
         ),
       ).toEqual(['0:0.0', '1:0.0', '1:0.1', '1:1.0', '1:1.1', '2:1.1']);
     });
+
+    it('starts the columns below the margin of the block above them', async () => {
+      const { pages, extents } = await fragment([
+        {
+          html: '<div style="height:80px;margin:0 0 70px">head</div>',
+          continuous: false,
+          ...PAGE,
+        },
+        {
+          html: masonry(
+            Array.from({ length: 20 }, (_value, index) => [`u${index}-`, 1]),
+          ),
+          continuous: true,
+          ...PAGE,
+        },
+      ]);
+
+      // 864px less the block and its margin holds eight lines per column,
+      // which the units fill alternately.
+      const units = (indexes: ReadonlyArray<number>) =>
+        indexes.map((index) => `u${index}-0`).join('');
+      const even = [0, 2, 4, 6, 8, 10, 12, 14];
+      expect(pages).toEqual([
+        `head${units(even)}${units(even.map((index) => index + 1))}`,
+        units([16, 18, 17, 19]),
+      ]);
+      for (const extent of extents) {
+        expect(extent).toBeLessThanOrEqual(PAGE_HEIGHT_PX);
+      }
+    });
+
+    it('starts what follows the columns below their last margins', async () => {
+      const unit = (name: string) =>
+        `<div style="margin:0 0 70px">${lines(name, 4)}</div>`;
+      const { pages, extents } = await fragment([
+        {
+          html: `<div ${COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill')}="masonry" style="column-count:2;column-gap:20px">${unit('a')}${unit('b')}</div>`,
+          continuous: false,
+          ...PAGE,
+        },
+        { html: lines('after', 6), continuous: true, ...PAGE },
+      ]);
+
+      // The columns take 320px and their 70px margins; five lines fit below.
+      expect(pages).toEqual([
+        [...texts('a', 4), ...texts('b', 4), ...texts('after', 5)].join(''),
+        'after5',
+      ]);
+      for (const extent of extents) {
+        expect(extent).toBeLessThanOrEqual(PAGE_HEIGHT_PX);
+      }
+    });
   });
 
   it('loads only the faces of the families the document uses', async () => {

@@ -395,8 +395,22 @@ const fill = (
 type ColumnsResult = {
   columns: Array<Array<Placement>>;
   used: number;
+  /**
+   * Where the columns end with the bottom margins of their last blocks: each
+   * column is a formatting context of its own, which holds those margins, so
+   * the region takes that much of the page.
+   */
+  extent: number;
   rest: Array<Piece>;
   forcedPage: boolean;
+};
+
+/** The margin a column's last placement leaves below it inside the column. */
+const marginBelowOf = (placements: ReadonlyArray<Placement>): number => {
+  const last = placements.at(-1);
+  return last && last.to === unitCountOf(last.block)
+    ? last.block.marginBottom
+    : 0;
 };
 
 const fillColumns = (
@@ -412,6 +426,7 @@ const fillColumns = (
   const columns: Array<Array<Placement>> = [];
   let rest: Array<Piece> = [...pieces];
   let used = 0;
+  let extent = 0;
   let forcedPage = false;
   for (
     let column = 0;
@@ -439,13 +454,14 @@ const fillColumns = (
     );
     columns.push(result.placed);
     used = Math.max(used, result.used);
+    extent = Math.max(extent, result.used + marginBelowOf(result.placed));
     rest = result.rest;
     if (result.stop === 'forced-page') {
       forcedPage = true;
       break;
     }
   }
-  return { columns, used, rest, forcedPage };
+  return { columns, used, extent, rest, forcedPage };
 };
 
 /**
@@ -759,6 +775,10 @@ const packMasonry = (
   return {
     columns: columns.map(({ placed }) => placed),
     used: Math.max(0, ...columns.map(({ bottom }) => bottom)),
+    extent: Math.max(
+      0,
+      ...columns.map(({ bottom, marginBottom }) => bottom + marginBottom),
+    ),
     rest: pending.flat(),
     forcedPage,
   };
@@ -1029,6 +1049,12 @@ export const placePages = ({
 
     const items: Array<PageItem> = [];
     let used = 0;
+    /**
+     * The bottom margin of the last flow block placed. A region's columns are
+     * formatting contexts of their own, so it does not collapse with the
+     * margins inside them: the columns start below it.
+     */
+    let marginBelow = 0;
     let boxStart: undefined | StartKind = startKind;
     let nextStartKind: undefined | StartKind = undefined;
     const context = (): Omit<PageContext, 'used'> => ({
@@ -1067,7 +1093,7 @@ export const placePages = ({
           profile,
           segment,
           region,
-          size.height - used,
+          size.height - used - marginBelow,
           boxStart,
           mustProgress,
           context(),
@@ -1079,7 +1105,10 @@ export const placePages = ({
             columns: result.columns,
           });
         }
-        used += result.used;
+        // What follows the region starts below its columns' margins, and
+        // keeps its own top margin in addition.
+        used += marginBelow + result.extent;
+        marginBelow = 0;
         queue = [...result.rest, ...queue.slice(segment.length)];
         boxStart = undefined;
         if (result.rest.length > 0 || result.forcedPage) {
@@ -1113,6 +1142,7 @@ export const placePages = ({
       queue = result.rest;
       if (result.placed.length > 0) {
         boxStart = undefined;
+        marginBelow = marginBelowOf(result.placed);
       }
       if (result.stop === 'region') {
         continue;
