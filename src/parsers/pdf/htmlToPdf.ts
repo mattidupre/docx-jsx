@@ -9,6 +9,13 @@ import type { ErrorObject } from '../../utils';
 
 const EMPTY_URL = 'file://empty.html';
 
+/**
+ * Chrome gives `body` an 8px margin, print media included. It would make the
+ * document 16px wider than the page, and Chrome then shrinks every PDF page to
+ * fit and shifts it.
+ */
+const EMPTY_DOCUMENT = `<html><head><style>html, body { margin: 0; padding: 0; }</style></head><body></body></html>`;
+
 export type HtmlToPdfOptions = {
   publicDirectory?: string;
   pageStyleSheets?: ReadonlyArray<string>;
@@ -43,7 +50,7 @@ export const htmlToPdf = async (
       if (relativePath === '/') {
         return interceptedRequest.respond({
           contentType: 'text/html',
-          body: '<html><head></head><body></body></html>',
+          body: EMPTY_DOCUMENT,
         });
       }
       if (publicDirectory) {

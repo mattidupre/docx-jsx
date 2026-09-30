@@ -38,6 +38,13 @@ export const reactToHtmlDocument = async (
       box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
       margin-bottom: 2rem;
     }
+    /* Chrome's default 8px body margin would shift printed pages off the sheet. */
+    @media print {
+      html, body {
+        margin: 0;
+        padding: 0;
+      }
+    }
   </style>
 </head>
 <body>
