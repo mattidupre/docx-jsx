@@ -38,6 +38,12 @@ export type FragmenterOptions = {
    */
   contentClassName?: string;
   profile?: FragmentationProfile;
+  /**
+   * The font families the document configures (its `fonts`). Their faces are
+   * loaded before measuring, as are those of every family the content's
+   * elements resolve `font-family` to.
+   */
+  fontFamilies?: ReadonlyArray<string>;
 };
 
 export type FragmentedStack = {
@@ -53,18 +59,38 @@ export type ToPagesOptions = {
   onPageRendered?: OnPageRendered;
 };
 
+/** A family name as `font-family` and `FontFace.family` spell it, unquoted. */
+const toFamilyKey = (family: string): string =>
+  family
+    .trim()
+    .replace(/^(['"])(.*)\1$/, '$2')
+    .toLowerCase();
+
 /**
- * Pagination measures text, so every face has to be loaded first, not only
- * the ones already used.
+ * Every family `root`'s content resolves `font-family` to, read off its laid
+ * out elements, whether or not the browser picked that family in the end.
  */
-const loadFonts = async () => {
+const resolvedFamiliesOf = (root: Element): Array<string> =>
+  [root, ...Array.from(root.querySelectorAll('*'))].flatMap((element) =>
+    getComputedStyle(element).fontFamily.split(','),
+  );
+
+/**
+ * Pagination measures text, so the faces of every family the content uses
+ * are loaded first, not only those of the text shown so far. A face of a
+ * family the content never names (the host page's own fonts) is left alone.
+ */
+const loadFonts = async (families: ReadonlyArray<string>) => {
+  const used = new Set(families.map(toFamilyKey));
   await document.fonts.ready;
   await Promise.all(
-    Array.from(document.fonts, (fontFace) =>
-      fontFace.load().catch((error: unknown) => {
-        console.error(`Could not load the font ${fontFace.family}`, error);
-      }),
-    ),
+    Array.from(document.fonts)
+      .filter((fontFace) => used.has(toFamilyKey(fontFace.family)))
+      .map((fontFace) =>
+        fontFace.load().catch((error: unknown) => {
+          console.error(`Could not load the font ${fontFace.family}`, error);
+        }),
+      ),
   );
 };
 
@@ -77,10 +103,13 @@ export class Fragmenter {
 
   readonly profile: FragmentationProfile;
 
+  readonly fontFamilies: ReadonlyArray<string>;
+
   constructor({
     styles = [],
     contentClassName,
     profile = createFragmentationProfile('word'),
+    fontFamilies = [],
   }: FragmenterOptions = {}) {
     this.styleSheets = styles.filter(
       (style): style is CSSStyleSheet => style instanceof CSSStyleSheet,
@@ -90,6 +119,7 @@ export class Fragmenter {
     );
     this.contentClassName = contentClassName;
     this.profile = profile;
+    this.fontFamilies = fontFamilies;
   }
 
   /**
@@ -102,8 +132,6 @@ export class Fragmenter {
     onPageStart,
     onPageRendered,
   }: ToPagesOptions): Promise<FragmentationLayout> {
-    await loadFonts();
-
     const hostElement = document.createElement('div');
     hostElement.style.setProperty('visibility', 'hidden');
     hostElement.style.setProperty('position', 'absolute');
@@ -121,6 +149,18 @@ export class Fragmenter {
         root.classList.add(this.contentClassName);
       }
       shadowRoot.appendChild(root);
+
+      // The families come from the content laid out under its own styles.
+      const families = [...this.fontFamilies];
+      for (const { element } of stacks) {
+        const clone = element.cloneNode(true);
+        if (clone instanceof Element) {
+          root.appendChild(clone);
+          families.push(...resolvedFamiliesOf(clone));
+          clone.remove();
+        }
+      }
+      await loadFonts(families);
 
       const sizes = new Map<string, BoxSize>();
       const resolveSize = ({ width, height }: PageSize): BoxSize => {

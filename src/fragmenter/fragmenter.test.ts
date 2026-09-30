@@ -401,6 +401,31 @@ describe('Fragmenter', () => {
     });
   });
 
+  it('loads only the faces of the families the document uses', async () => {
+    const statuses = await harness.evaluate(async (api) => {
+      // No face has a usable file: one whose load was attempted ends up in
+      // `error`, one left alone stays `unloaded`.
+      const faces = ['Used Family', 'Configured', 'Host Only'].map(
+        (family) => new FontFace(family, 'url(data:font/woff2;base64,AAAA)'),
+      );
+      faces.forEach((face) => document.fonts.add(face));
+      const element = document.createElement('div');
+      element.innerHTML =
+        '<p style="font-family:\'Used Family\', serif">text</p>';
+      try {
+        await new api.Fragmenter({ fontFamilies: ['Configured'] }).toPages({
+          stacks: [{ element, continuous: false }],
+          onPageStart: () => ({ width: '6.5in', height: '9in' }),
+        });
+        return faces.map((face) => face.status);
+      } finally {
+        faces.forEach((face) => document.fonts.delete(face));
+      }
+    });
+
+    expect(statuses).toEqual(['error', 'error', 'unloaded']);
+  });
+
   it('ends with a blank page after a trailing forced break', async () => {
     const { pages, starts } = await fragment(
       single('<p>only</p><div style="break-after:page"></div>'),
