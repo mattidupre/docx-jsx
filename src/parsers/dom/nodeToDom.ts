@@ -156,7 +156,9 @@ export const nodeToDom = (
     } = elementsContext;
 
     const element = document.createDocumentFragment();
-    if (columnCount > 1) {
+    // Masonry packs even a single column, so it always has the element the
+    // Fragmenter reads the mode from.
+    if (columnCount > 1 || fill === 'masonry') {
       const columnsEl = document.createElement('div');
       columnsEl.style.setProperty('column-count', String(columnCount));
       columnsEl.style.setProperty('column-gap', resolveRemSize(columnGap));

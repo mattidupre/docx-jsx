@@ -51,8 +51,8 @@ export type MeasuredRegion = {
   fill: ColumnFill;
   /**
    * For masonry columns, how many units the region holds: its element
-   * children, which move whole to the shortest column. `undefined` for
-   * columns that flow.
+   * children other than a Break or a `<br>`, which move whole to the
+   * shortest column. `undefined` for columns that flow.
    */
   masonry: undefined | { unitCount: number };
 };

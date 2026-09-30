@@ -120,6 +120,20 @@ export const TABLE_BORDER_CSS_STYLES = {
 export type ElementType = keyof ConfigByElementType;
 
 /**
+ * Whether a direct child of a masonry stack is one of the units its packing
+ * moves. A `Break` is not: it ends a column or a page between the units
+ * around it. Nor is a bare `<br>`, which holds nothing to pack. Every target
+ * lists the units by this one rule, so their indexes agree.
+ */
+export const isMasonryUnit = ({
+  tagName,
+  elementType,
+}: {
+  tagName: string;
+  elementType: undefined | ElementType;
+}): boolean => tagName.toLowerCase() !== 'br' && elementType !== 'break';
+
+/**
  * The marker a list draws beside each of its items, named after the OOXML
  * `w:numFmt` values it maps onto. CSS names the same markers differently, so
  * the DOM target translates through {@link LIST_FORMAT_STYLE_TYPES}.

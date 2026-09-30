@@ -2,6 +2,7 @@ import {
   COLUMNS_DATA_ATTRIBUTES,
   decodeElementData,
   isElementOfType,
+  isMasonryUnit,
   type ElementData,
 } from '../entities';
 import {
@@ -163,6 +164,13 @@ const elementDataOf = (element: Element): undefined | ElementData => {
     return undefined;
   }
 };
+
+/** Whether a child of a masonry region is one of its units. */
+const isMasonryUnitElement = (element: Element): boolean =>
+  isMasonryUnit({
+    tagName: element.tagName,
+    elementType: elementDataOf(element)?.elementType,
+  });
 
 type Edge =
   | { margin: number; element: StyledElement }
@@ -506,18 +514,23 @@ export const measureStack = ({
       const measured = measuredOf(element);
       const style = getComputedStyle(measured);
       const columnCount = toCount(style.columnCount, 1);
-      if (columnCount > 1) {
+      // Masonry packs even a single column, where it reorders the units.
+      const masonry =
+        element.getAttribute(
+          COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill'),
+        ) === 'masonry'
+          ? {
+              unitCount:
+                Array.from(element.children).filter(isMasonryUnitElement)
+                  .length,
+            }
+          : undefined;
+      if (columnCount > 1 || masonry) {
         const columnGap = toPx(style.columnGap);
         const fill: ColumnFill =
           style.columnFill === 'auto' || style.columnFill === 'balance-all'
             ? style.columnFill
             : 'balance';
-        const masonry =
-          element.getAttribute(
-            COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill'),
-          ) === 'masonry'
-            ? { unitCount: Array.from(element.children).length }
-            : undefined;
         regionSource = element;
         region = {
           id: regions.size,
@@ -784,15 +797,24 @@ export const measureStack = ({
         const group: undefined | Array<MeasuredBlock> = groupsChildren
           ? []
           : keepGroup;
-        // Every element child of a masonry region is one unit; the index
-        // counts the children as the DOCX mapping does, all of them.
+        // Every unit child of a masonry region is one unit, counted as the
+        // DOCX mapping counts them. A Break between two units is none: its
+        // break applies to the unit after it.
         const masonry = source === regionSource && region?.masonry;
-        Array.from(source.children).forEach((child, childIndex) => {
+        let unitIndex = 0;
+        Array.from(source.children).forEach((child) => {
           if (!isStyledElement(child)) {
             return;
           }
           if (masonry) {
-            currentUnit = { index: childIndex, opens: true };
+            if (!isMasonryUnitElement(child)) {
+              const childStyle = styleOf(child);
+              addBreak(forcedBreakOf(childStyle.breakBefore));
+              addBreak(forcedBreakOf(childStyle.breakAfter));
+              return;
+            }
+            currentUnit = { index: unitIndex, opens: true };
+            unitIndex += 1;
           }
           visit(child, group);
         });

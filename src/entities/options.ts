@@ -306,7 +306,10 @@ type ColumnCount = 1 | 2 | 3 | 4;
  *   between columns and pages by the document's fragmentation rules;
  * - `masonry`: every direct child of the stack (or `MasonryGroup`) is a unit
  *   that moves whole, packed into the shortest column. The packed order is
- *   the reading order in every target, so a DOCX needs a layout run.
+ *   the reading order in every target, so a DOCX needs a layout run. A
+ *   `Break` is not a unit: it moves on to the next column (or page), and
+ *   nothing after it is packed ahead of what comes before it. One column
+ *   packs too, in order apart from the lookahead.
  */
 export type StackColumnFill = 'flow' | 'masonry';
 

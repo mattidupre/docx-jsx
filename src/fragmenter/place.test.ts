@@ -985,14 +985,92 @@ describe('masonry', () => {
     ]);
   });
 
+  test('moves the units after a column break right of every column with content', () => {
+    const breakBefore = 'column';
+    const twoColumns = run(
+      [{ blocks: masonry([3, [text(2, { breakBefore })], 1]) }],
+      { profile: SEQUENTIAL },
+    );
+    // The first column is closed: the units after the break share the second.
+    expect(packed(twoColumns)).toEqual(['0:0.0', '1:0.1', '2:0.1']);
+
+    const threeColumns = run(
+      [{ blocks: masonry([3, 2, [text(2, { breakBefore })], 1], 3) }],
+      { profile: SEQUENTIAL },
+    );
+    expect(packed(threeColumns)).toEqual(['0:0.0', '1:0.1', '2:0.2', '3:0.2']);
+
+    // With no column left, they start the next page, in source order.
+    const full = run(
+      [{ blocks: masonry([3, 2, [text(2, { breakBefore })], 1]) }],
+      { profile: SEQUENTIAL },
+    );
+    expect(packed(full)).toEqual(['0:0.0', '1:0.1', '2:1.0', '3:1.1']);
+  });
+
+  test('carries the rest of a unit to the next column at a column break inside it', () => {
+    const result = run(
+      [
+        {
+          blocks: masonry([
+            2,
+            [text(2), text(3, { breakBefore: 'column' })],
+            1,
+          ]),
+        },
+      ],
+      { profile: SEQUENTIAL },
+    );
+    expect(describePages(result.pages)).toEqual([
+      ['columns(0.0[0-2] 0.1[0-2] | 0.2[0-3] 0.3[0-1])'],
+    ]);
+    expect(packed(result)).toEqual(['0:0.0', '1:0.0', '1:0.1', '2:0.1']);
+  });
+
+  test('ends the page at a page break inside a unit', () => {
+    const result = run(
+      [
+        {
+          blocks: masonry([2, [text(2), text(3, { breakBefore: 'page' })], 1]),
+        },
+      ],
+      { profile: SEQUENTIAL },
+    );
+    // Nothing is packed after the break on its page, not even in the empty
+    // column.
+    expect(describePages(result.pages)).toEqual([
+      ['columns(0.0[0-2] 0.1[0-2] | )'],
+      ['columns(0.2[0-3] | 0.3[0-1])'],
+    ]);
+    expect(result.pages[1].startKind).toBe('break');
+  });
+
+  test('packs a single column in order, with the lookahead', () => {
+    const result = run([{ blocks: masonry([6, 6, 3], 1) }], {
+      profile: SEQUENTIAL,
+    });
+    expect(packed(result)).toEqual(['0:0.0', '2:0.0', '1:1.0']);
+  });
+
   /** A deterministic pseudo-random sequence. */
   const random = (seed: number) => () => {
     seed = (seed * 1103515245 + 12345) % 2147483648;
     return seed / 2147483648;
   };
 
-  const randomUnits = (seed: number): Array<UnitSpec> => {
+  const randomUnits = (
+    seed: number,
+    { withBreaks = false } = {},
+  ): Array<UnitSpec> => {
     const next = random(seed);
+    const breakOf = (): BlockSpec['breakBefore'] => {
+      const value = next();
+      return !withBreaks || value >= 0.1
+        ? undefined
+        : value < 0.04
+          ? 'page'
+          : 'column';
+    };
     return Array.from({ length: 25 }, () =>
       Array.from({ length: Math.floor(next() * 3) + 1 }, () => {
         const flags: BlockSpec = {
@@ -1000,6 +1078,7 @@ describe('masonry', () => {
           keepLines: next() < 0.1,
           marginTop: Math.floor(next() * 20),
           marginBottom: Math.floor(next() * 20),
+          breakBefore: breakOf(),
         };
         return next() < 0.2
           ? atomic(Math.floor(next() * 120) + 1, flags)
@@ -1009,8 +1088,9 @@ describe('masonry', () => {
   };
 
   test('is deterministic, places every line once and reads every unit on from column to column', () => {
-    for (let seed = 1; seed <= 30; seed += 1) {
-      const specs = randomUnits(seed);
+    for (let seed = 1; seed <= 60; seed += 1) {
+      // Half the runs have forced breaks, between units and inside them.
+      const specs = randomUnits(seed, { withBreaks: seed > 30 });
       for (const columnCount of [2, 3]) {
         for (const profile of ['word', 'css'] as const) {
           const stacks = [{ blocks: masonry(specs, columnCount) }];
@@ -1056,6 +1136,27 @@ describe('masonry', () => {
               current = unit;
             }
           }
+
+          // Nothing after a forced break between units is read before what
+          // comes before it, and after a page break it starts a later page.
+          const firstEntry = (unit: number) =>
+            result.packedOrder.findIndex((entry) => entry.unit === unit);
+          specs.forEach((spec, unit) => {
+            const opening = typeof spec === 'number' ? undefined : spec[0];
+            if (unit === 0 || opening?.breakBefore === undefined) {
+              return;
+            }
+            const before = result.packedOrder
+              .map((entry, position) => ({ ...entry, position }))
+              .filter((entry) => entry.unit < unit);
+            const at = result.packedOrder[firstEntry(unit)];
+            for (const entry of before) {
+              expect(entry.position).toBeLessThan(firstEntry(unit));
+              if (opening.breakBefore === 'page') {
+                expect(entry.pageIndex).toBeLessThan(at.pageIndex);
+              }
+            }
+          });
         }
       }
     }

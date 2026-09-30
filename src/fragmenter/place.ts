@@ -481,9 +481,18 @@ type MasonryColumn = {
   sealed: boolean;
 };
 
-/** Whether a packing unit opens with a forced page break. */
-const opensWithPageBreak = (pieces: ReadonlyArray<Piece>): boolean =>
-  pieces[0]?.from === 0 && pieces[0].block.breakBefore === 'page';
+/** The forced break a packing unit opens with, if any. */
+const openingBreakOf = (
+  pieces: ReadonlyArray<Piece>,
+): undefined | 'page' | 'column' =>
+  pieces[0]?.from === 0 ? pieces[0].block.breakBefore : undefined;
+
+/** Whether a packing unit breaks by force after its first piece. */
+const breaksInside = (pieces: ReadonlyArray<Piece>): boolean =>
+  pieces.some(
+    ({ block, from }, index) =>
+      index > 0 && from === 0 && block.breakBefore !== undefined,
+  );
 
 /** Whether a packing unit goes on with a unit begun on an earlier page. */
 const continuesUnit = (pieces: ReadonlyArray<Piece>): boolean =>
@@ -499,9 +508,9 @@ const withoutBreak = (piece: Piece): Piece =>
 /**
  * The packing units of a masonry region: its units (the pieces of one child
  * of the region), with a unit that keeps with the next one (a heading, or a
- * group marked keep-with-next) chained to it, so they move as one. Packing
- * decides where columns end, so only a page break at the start of a unit is
- * kept, and it starts a packing unit of its own.
+ * group marked keep-with-next) chained to it, so they move as one. A unit
+ * that opens with a forced break (a Break between two units) starts a
+ * packing unit of its own.
  */
 const packingUnitsOf = (
   profile: FragmentationProfile,
@@ -512,11 +521,9 @@ const packingUnitsOf = (
   for (const piece of pieces) {
     const unit = units.at(-1);
     if (unit && unit[0].block.unit?.index === piece.block.unit?.index) {
-      unit.push(withoutBreak(piece));
+      unit.push(piece);
     } else {
-      units.push([
-        piece.block.breakBefore === 'column' ? withoutBreak(piece) : piece,
-      ]);
+      units.push([piece]);
     }
   }
   const packing: Array<Array<Piece>> = [];
@@ -526,7 +533,7 @@ const packingUnitsOf = (
     if (
       chain &&
       previous &&
-      !opensWithPageBreak(unit) &&
+      openingBreakOf(unit) === undefined &&
       keepsTogether(profile, previous.block, unit[0].block, context)
     ) {
       chain.push(...unit);
@@ -546,17 +553,24 @@ const packingUnitsOf = (
  * - when the next one fits in no column, the next {@link MASONRY_LOOKAHEAD}
  *   are tried in its place, in order, and the first that fits is placed;
  *   when none fits, the page ends;
- * - a packing unit too tall for an empty column of a whole page splits as
- *   flow does, under the page's rules: it starts below the last column with
- *   content, and each piece that does not end it carries on at the top of the
- *   next column, which is empty, so the unit reads on from column to column.
- *   A column whose last piece carries on takes nothing more, and what does
- *   not fit on the page goes on at the top of the next page's first column
- *   before anything else is packed there.
+ * - a packing unit too tall for an empty column of a whole page, or one with
+ *   a forced break inside it, splits as flow does, under the page's rules: it
+ *   starts below the last column with content, and each piece that does not
+ *   end it carries on at the top of the next column, which is empty, so the
+ *   unit reads on from column to column. A column whose last piece carries on
+ *   takes nothing more, and what does not fit on the page goes on at the top
+ *   of the next page's first column before anything else is packed there.
  *
  * The columns are then read top to bottom, left to right: that is the packed
- * order. A packing unit that starts with a forced page break waits for a new
- * page, and nothing after it is packed ahead of it.
+ * order. Forced breaks keep it in source order:
+ * - a page break ends the page: a packing unit that starts with one waits for
+ *   a new page, and one inside a unit carries the rest of the unit to the
+ *   next page, with nothing packed on this page after it;
+ * - a column break moves on to the next column: a packing unit that starts
+ *   with one goes into the columns right of every column with content, and
+ *   one inside a unit carries the rest of the unit to the top of the next
+ *   column;
+ * - nothing after a forced break is packed ahead of what comes before it.
  */
 const packMasonry = (
   profile: FragmentationProfile,
@@ -586,8 +600,8 @@ const packMasonry = (
     return {
       height: empty ? boxHeight : boxHeight - columns[columnIndex].bottom,
       atTop: empty ? startKind : undefined,
-      // A forced column break means nothing to a packing.
-      isColumn: false,
+      // A forced break inside a packing unit ends its piece in the column.
+      isColumn: true,
       mustProgress: progress,
       hasContentAbove: false,
       marginAbove: empty ? undefined : columns[columnIndex].marginBottom,
@@ -640,8 +654,9 @@ const packMasonry = (
   };
 
   /**
-   * Whether a packing unit is too tall for an empty column of a whole page,
-   * the first one or any other (their top margins may differ).
+   * Whether a packing unit cannot go whole into an empty column of a whole
+   * page, the first one or any other (their top margins may differ): it is
+   * too tall, or it breaks by force inside.
    */
   const isOversized = (unit: ReadonlyArray<Piece>): boolean =>
     [0, columns.length - 1].every(
@@ -656,12 +671,13 @@ const packMasonry = (
 
   /**
    * Splits a packing unit as flow does, from below the last column with
-   * content onwards. Returns what did not fit on the page.
+   * content onwards. Returns what did not fit on the page, and whether a
+   * forced page break inside the unit ended the page.
    */
   const placeFlowing = (
     unit: ReadonlyArray<Piece>,
     progress: boolean,
-  ): { rest: Array<Piece>; placed: boolean } => {
+  ): { rest: Array<Piece>; placed: boolean; pageBreak: boolean } => {
     const start = Math.max(
       0,
       columns.findLastIndex(({ placed }) => placed.length > 0),
@@ -669,11 +685,22 @@ const packMasonry = (
     let rest = [...unit];
     let first: undefined | number = undefined;
     let last = start;
+    let pageBreak = false;
     for (
       let columnIndex = start;
       columnIndex < columns.length && rest.length > 0;
       columnIndex += 1
     ) {
+      if (first !== undefined && openingBreakOf(rest) === 'page') {
+        pageBreak = true;
+        break;
+      }
+      if (columns[columnIndex].sealed) {
+        if (first !== undefined) {
+          break;
+        }
+        continue;
+      }
       const result = fill(
         profile,
         rest,
@@ -691,9 +718,13 @@ const packMasonry = (
       rest = result.rest;
       first ??= columnIndex;
       last = columnIndex;
+      if (result.stop === 'forced-page') {
+        pageBreak = true;
+        break;
+      }
     }
     if (first === undefined) {
-      return { rest, placed: false };
+      return { rest, placed: false, pageBreak: false };
     }
     // Nothing may come between the pieces: the columns the unit carries on
     // from take nothing more, nor, when it goes on to the next page, does
@@ -703,7 +734,7 @@ const packMasonry = (
       .forEach((column) => {
         column.sealed = true;
       });
-    return { rest, placed: true };
+    return { rest, placed: true, pageBreak };
   };
 
   let forcedPage = false;
@@ -711,9 +742,12 @@ const packMasonry = (
   let headWaits = false;
   /** Splits the head as flow does; false when none of it fits. */
   const flowHead = (progress: boolean): boolean => {
-    const { rest, placed } = placeFlowing(pending[0], progress);
+    const { rest, placed, pageBreak } = placeFlowing(pending[0], progress);
     if (!placed) {
       return false;
+    }
+    if (pageBreak) {
+      forcedPage = true;
     }
     if (rest.length === 0) {
       pending.shift();
@@ -724,11 +758,27 @@ const packMasonry = (
     return true;
   };
 
-  while (pending.length > 0) {
+  while (pending.length > 0 && !forcedPage) {
     const head = pending[0];
-    if (opensWithPageBreak(head) && (!isPageEmpty() || hasContentAbove)) {
+    const openingBreak = openingBreakOf(head);
+    if (openingBreak === 'page' && (!isPageEmpty() || hasContentAbove)) {
       forcedPage = true;
       break;
+    }
+    if (openingBreak === 'column') {
+      // The unit and everything after it go on right of every column with
+      // content, or on the next page when no column is left.
+      const lastFilled = columns.findLastIndex(
+        ({ placed }) => placed.length > 0,
+      );
+      columns.slice(0, lastFilled + 1).forEach((column) => {
+        column.sealed = true;
+      });
+      pending[0] = [withoutBreak(head[0]), ...head.slice(1)];
+      if (columns.every(({ sealed }) => sealed)) {
+        break;
+      }
+      continue;
     }
     if (!headWaits) {
       // A unit begun on the page before goes on at the top of the first
@@ -743,7 +793,7 @@ const packMasonry = (
         pending.shift();
         continue;
       }
-      if (isOversized(head) && flowHead(mustProgress)) {
+      if ((breaksInside(head) || isOversized(head)) && flowHead(mustProgress)) {
         continue;
       }
     }
@@ -753,7 +803,7 @@ const packMasonry = (
       index < pending.length && index <= MASONRY_LOOKAHEAD;
       index += 1
     ) {
-      if (opensWithPageBreak(pending[index])) {
+      if (openingBreakOf(pending[index]) !== undefined) {
         break;
       }
       if (placeWhole(pending[index])) {
@@ -768,7 +818,7 @@ const packMasonry = (
   }
 
   // Every page takes something: an empty page flows the head from the top.
-  if (mustProgress && isPageEmpty() && pending.length > 0) {
+  if (mustProgress && isPageEmpty() && pending.length > 0 && !forcedPage) {
     flowHead(true);
   }
 
