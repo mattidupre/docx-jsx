@@ -6,6 +6,7 @@ import type {
   StyleSheetsValue,
 } from '../../entities';
 import { Fragmenter } from '../../fragmenter/fragmenter';
+import type { FragmentationLayout } from '../../fragmenter/model';
 import type { FragmentationProfile } from '../../fragmenter/profile';
 import { resolveFragmentationProfile } from '../../fragmenter/profiles';
 import { toCssStyleSheets } from '../../utils/css';
@@ -40,6 +41,11 @@ export type HtmlToDomOptions = {
   fragmentation?: FragmentationOption | FragmentationProfile;
   onDocument?: (document: DocumentDom) => void;
   /**
+   * Called once the pages are made, with the layout a target that cannot
+   * lay out follows: the packed order of masonry columns.
+   */
+  onLayout?: (layout: FragmentationLayout) => void;
+  /**
    * Where the rendered pages' stylesheets are adopted, which is the document
    * the pages will be shown in. Defaults to a registry of its own on the
    * current document, kept for the life of the page; a preview passes one it
@@ -57,6 +63,7 @@ export const htmlToDom = async (
     fonts,
     fragmentation,
     onDocument,
+    onLayout,
     documentStyles = createDocumentStyles(document),
   }: HtmlToDomOptions = {},
 ): Promise<HTMLElement> => {
@@ -76,6 +83,7 @@ export const htmlToDom = async (
       fonts,
       fragmentation,
       onDocument,
+      onLayout,
       documentStyles,
       measureStyles,
     });
@@ -95,6 +103,7 @@ const renderPages = async (
     fonts,
     fragmentation,
     onDocument,
+    onLayout,
     documentStyles,
     measureStyles,
   }: {
@@ -104,6 +113,7 @@ const renderPages = async (
     fonts: undefined | FontsConfig;
     fragmentation: HtmlToDomOptions['fragmentation'];
     onDocument: HtmlToDomOptions['onDocument'];
+    onLayout: HtmlToDomOptions['onLayout'];
     documentStyles: DocumentStyles;
     measureStyles: DocumentStyles;
   },
@@ -235,7 +245,7 @@ const renderPages = async (
   const extendedTemplates: Array<PageTemplate> = [];
   {
     const pageTemplates: Array<PageTemplate> = [];
-    await fragmenter.toPages({
+    const layout = await fragmenter.toPages({
       stacks: createStackElements(stacksOptions, {}),
       onPageStart: ({ pageIndex, stackIndex, first }) => {
         const {
@@ -306,6 +316,7 @@ const renderPages = async (
         );
       },
     });
+    onLayout?.(layout);
   }
 
   const pagesEl = document.createElement('div');
