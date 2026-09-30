@@ -2,6 +2,7 @@ import { DocumentProvider } from '../../reactComponents';
 import { BreakSections } from './breakSections';
 import { ColumnSections } from './columnSections';
 import { FlowSections } from './flowSections';
+import { MasonrySections } from './masonrySections';
 import { TrimSections } from './trimSections';
 import { FLOW_PARITY_FONTS } from './shared';
 
@@ -12,6 +13,7 @@ export const FLOW_PARITY_SECTIONS = [
   'breaks',
   'columns',
   'trim',
+  'masonry',
 ] as const;
 
 export type FlowParitySection = (typeof FLOW_PARITY_SECTIONS)[number];
@@ -27,6 +29,7 @@ export const createFlowParityDocument = (
         {sections.includes('breaks') && <BreakSections />}
         {sections.includes('columns') && <ColumnSections />}
         {sections.includes('trim') && <TrimSections />}
+        {sections.includes('masonry') && <MasonrySections />}
       </DocumentProvider>
     );
   };
