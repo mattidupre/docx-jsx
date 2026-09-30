@@ -97,9 +97,8 @@ describe('Table', () => {
   });
 
   test('repeats the column width on every cell, which survives a page break', () => {
-    // pagedjs rebuilds the ancestors of the row it broke at, and a `<colgroup>`
-    // is not one of them, so the continuation table only keeps its shape if
-    // the cells carry the widths too.
+    // The cells carry the widths as well as the `<colgroup>`, so a cell keeps
+    // its shape wherever it is laid out.
     const html = render(
       <Table columnWidths={[3, 1, 1]}>
         <TableRow>
@@ -193,8 +192,8 @@ describe('TableRow', () => {
 
   test('keeps a row together in the browser by default', () => {
     const html = renderTable();
-    // pagedjs moves the whole row only when the cell it breaks inside says
-    // not to, so the rule is on the row and on its cells.
+    // The Fragmenter reads the rule on the row; a browser's own
+    // fragmentation reads it on the cell it breaks inside.
     expect(html.split('break-inside:avoid').length - 1).toBe(6);
   });
 

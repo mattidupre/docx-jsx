@@ -83,10 +83,11 @@ export const createPageShadowStyleArray = (): CssRulesArray => [
 ];
 
 /**
- * The rules pagedjs's own stylesheet applies to an element it split across
- * two pages, for the page the element ends up displayed on. They select the
- * light DOM content below the page element, rooted at `root` as the other
- * content rules are, and keep the specificity they always had.
+ * The rules for an element the Fragmenter split across two pages, which it
+ * marks `data-split-from` / `data-split-to`, for the page the element ends up
+ * displayed on. They select the light DOM content below the page element,
+ * rooted at `root` as the other content rules are, and keep the specificity
+ * they always had.
  */
 export const createPageSplitStyleArray = ({
   root,

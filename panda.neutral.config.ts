@@ -6,8 +6,8 @@ import { createNeutralStyleArray } from './src/lib/styles';
 /**
  * The rules the library installs ahead of a consumer's `initialStyleSheets`:
  * the neutral half of `createMattiDocsPreset`, which undoes what a host page
- * leaks into a document, and pagedjs's rules for split elements. Neither
- * depends on the document.
+ * leaks into a document, and the rules for elements the Fragmenter splits.
+ * Neither depends on the document.
  */
 export default defineConfig({
   preflight: false,

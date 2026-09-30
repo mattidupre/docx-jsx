@@ -16,6 +16,7 @@ export function DocumentProvider({
   variants,
   prefixes,
   fonts,
+  fragmentation,
   children,
 }: DocumentProviderProps) {
   const prevDocumentOptions = (useContext(ReactContentContext) ??
@@ -25,10 +26,10 @@ export function DocumentProvider({
     () =>
       assignDocumentOptions(
         {},
-        { size, variants, prefixes, fonts },
+        { size, variants, prefixes, fonts, fragmentation },
         prevDocumentOptions,
       ),
-    [size, variants, prefixes, fonts, prevDocumentOptions],
+    [size, variants, prefixes, fonts, fragmentation, prevDocumentOptions],
   );
 
   const documentContextValue = useMemo(

@@ -202,8 +202,8 @@ const HOSTS: ReadonlyArray<[string, HostEnvironment]> = [
  */
 describe('a document rendered on a styled host page', () => {
   let browser: Browser;
-  // One page for both renders: pagedjs lays out on animation frames, which a
-  // browser throttles in a tab that is not in front.
+  // One page for both renders: a tab that is not in front is throttled, and
+  // pagination waits on font loading there.
   let harness: BrowserHarness<DomApi>;
 
   beforeAll(async () => {

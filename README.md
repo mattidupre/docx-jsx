@@ -60,7 +60,8 @@ matti-kit).
 
 ### Chrome is required for PDF
 
-PDF generation paginates the document in a real browser (pagedjs) and then calls
+PDF generation paginates the document in a real browser (the library's own
+Fragmenter) and then calls
 `page.pdf()`. `reactToPdf` does **not** launch or download a browser: it takes a
 `Browser` from `puppeteer-core` that the caller owns and is responsible for
 closing.
@@ -228,7 +229,7 @@ rules and variants, then `styleSheets`. Each render's sheets are scoped with
 variants or stylesheets can share a page without reaching each other — a
 consumer's `styleSheets` style the pages of the render they were passed to, not
 every page on the document. Pagination measures the content under the same
-sheets, scoped to the element pagedjs flows it into.
+sheets, scoped to the element the Fragmenter lays it out under.
 
 ## Targets and environments
 
@@ -237,7 +238,7 @@ sheets, scoped to the element pagedjs flows it into.
 | Entry point | `documentType` | Notes |
 | --- | --- | --- |
 | `reactToDocx` | `docx` | Structural annotations serialised into the markup, then mapped to `docx` objects. |
-| `reactToPdf` | `pdf` | Same markup, paginated by pagedjs in Chrome, then printed. |
+| `reactToPdf` | `pdf` | Same markup, paginated by the Fragmenter in Chrome, then printed. |
 | `reactToDom` / `reactToHtmlDocument` / `reactToScript` / `Preview` | `pdf` | The DOM target *is* the PDF target; the PDF is a print of it. |
 | A `DocumentProvider` rendered directly by React DOM | `web` | Unpaginated. Headers and footers are not rendered, and `PageNumber`/`PageCount` warn. |
 
@@ -249,18 +250,18 @@ sense in one target (an "on the web" call to action, a print-only note).
 
 | Component | Purpose | HTML / DOM / PDF | DOCX | Notes and limits |
 | --- | --- | --- | --- | --- |
-| `DocumentProvider` | Document root: page size, variants, prefixes, fonts | Wrapper element carrying the encoded document config; injects the variant stylesheet when `injectEnvironmentCss` | `Document` with generated `styles` and `numbering` | Defaults to 8.5in × 11in. Nesting a provider with different variants or prefixes throws. |
+| `DocumentProvider` | Document root: page size, variants, prefixes, fonts, fragmentation | Wrapper element carrying the encoded document config; injects the variant stylesheet when `injectEnvironmentCss` | `Document` with generated `styles` and `numbering` | Defaults to 8.5in × 11in. Nesting a provider with different variants or prefixes throws. `fragmentation` picks the pagination conventions of the DOM and PDF targets: `word` (the default: widow/orphan control, space-before dropped at the top of a continued page, repeated table headers) or `css` (css-break-3), or rules over either. |
 | `ContentProvider` | Variants and prefixes without a document | Adopted stylesheet when `injectEnvironmentCss` and `documentType === 'web'` | Context only; contributes no content | Use to style library components outside a document (Storybook, a web page). |
-| `Stack` | A page section: margins, columns, running header and footer | One `PageTemplate` per layout; pagedjs chunks content into pages | One `ISectionOptions` per stack (page size, margins, `column`, first/default headers and footers) | `continuous` starts the section on the current page. A page belongs to the stack whose content starts it, and gets that stack's `first` layout only when it also starts the stack. A multi-column stack emits a second, empty continuous section so the columns do not fill the page. |
+| `Stack` | A page section: margins, columns, running header and footer | One `PageTemplate` per layout; the Fragmenter measures each stack once at the width of the page it starts on and fills pages from the measurements | One `ISectionOptions` per stack (page size, margins, `column`, first/default headers and footers) | `continuous` starts the section on the current page. A page belongs to the stack whose content starts it, and gets that stack's `first` layout only when it also starts the stack. A multi-column stack emits a second, empty continuous section so the columns do not fill the page. |
 | `Typography` | A styled tag plus an optional variant | The tag from `as`, with typography written as CSS custom properties and the variant class | Run properties, or paragraph properties when the tag is a paragraph tag | `as` defaults to `span`. |
-| `Break` | Force a page or column break | `break-after: page`, rewritten to pagedjs's `data-break-after` / `data-previous-break-after` attribute pair; inside a multi-column stack, `break-after: column` | `PageBreak`, or `ColumnBreak` inside a multi-column stack; wrapped in a paragraph when not already inside one | pagedjs only breaks *onto* an element, so a trailing break gets an empty carrier element appended. |
-| `BreakAvoid` | Keep a subtree together | `break-inside: avoid` (and `break-after: avoid` with `after`) | `keepLines` on paragraph children, `keepNext` on all but the last; a `Table` keeps itself together with `cantSplit` on its rows | `breakInside` accumulates down the element context, so a nested table inherits it. pagedjs never splits a fixed-height block: a block taller than the page overflows silently. |
+| `Break` | Force a page or column break | `break-after: page`; inside a multi-column stack, `break-after: column` | `PageBreak`, or `ColumnBreak` inside a multi-column stack; wrapped in a paragraph when not already inside one | A break that ends the document is followed by a blank page, as in Word. |
+| `BreakAvoid` | Keep a subtree together | `break-inside: avoid` (and `break-after: avoid` with `after`) | `keepLines` on paragraph children, `keepNext` on all but the last; a `Table` keeps itself together with `cantSplit` on its rows | `breakInside` accumulates down the element context, so a nested table inherits it. A kept block taller than a page is split anyway where it can be, and overflows where it cannot (a fixed-height block). |
 | `PageNumber` | The current page number | An empty `<span>` filled in per page while the page template is built | `TextRun` with the `PAGE` field | Warns when rendered with `documentType: 'web'`, which has no pages. |
 | `PageCount` | The total page count | Same | `TextRun` with the `NUMPAGES` field | Same. docx-preview does not evaluate Word fields, so the visual pipeline sees these as blank. |
 | `Split` | A left/right row | `display: flex; justify-content: space-between` | A one-row, two-cell borderless `Table` at 100% width | Reads exactly two children — its `left` and `right` props — structurally. |
 | `TabSplit` | A left/right row inside one paragraph | Flex layout inside the tag from `as` (a paragraph tag) | A right-aligned tab stop at the content width plus a `w:tab` run | Uses an ordinary tab stop rather than `w:ptab`: Word draws both, but most other readers ignore `w:ptab` and run the two sides together. |
 | `Grid` / `GridItem` | A column grid | Floated items with `calc()` widths and half-gap margins | A borderless `Table`; each item is a cell with `columnSpan` equal to its size, and rows wrap when the next item overflows | `columnCount` defaults to 12. An item wider than the grid is clamped to a full row in both targets. A short final row is padded with a filler cell. |
-| `Table` / `TableRow` / `TableCell` | A data table | A `<table>` with `border-collapse: collapse`, a `<colgroup>` of `<col>` widths (with `table-layout: fixed`), a `<thead>` of the header rows and a `<tbody>` of the rest; borders, padding, spans, alignments, `background-color` and widths as inline styles and attributes on every `<th>`/`<td>` | A `Table` with `w:tblW`, a `w:tblGrid` in twips, all six `w:tblBorders`, `w:tblCellMar` for `cellPadding`, `w:tblHeader` on header rows, `w:cantSplit`, `w:gridSpan`, `w:vMerge`, `w:vAlign` and `w:shd` | Header rows repeat across pages in Word only: pagedjs 0.4 rebuilds a split table's ancestors without their children, so the continuation table has no `<thead>`. Rows keep together by default (`break-inside: avoid` on the row *and* its cells, `cantSplit` in Word). A header row is hoisted into `<thead>` only when it is a direct `TableRow` child. |
+| `Table` / `TableRow` / `TableCell` | A data table | A `<table>` with `border-collapse: collapse`, a `<colgroup>` of `<col>` widths (with `table-layout: fixed`), a `<thead>` of the header rows and a `<tbody>` of the rest; borders, padding, spans, alignments, `background-color` and widths as inline styles and attributes on every `<th>`/`<td>` | A `Table` with `w:tblW`, a `w:tblGrid` in twips, all six `w:tblBorders`, `w:tblCellMar` for `cellPadding`, `w:tblHeader` on header rows, `w:cantSplit`, `w:gridSpan`, `w:vMerge`, `w:vAlign` and `w:shd` | Header rows repeat across pages in Word and, under the `word` fragmentation profile, in the DOM and PDF; a header with no room for a row under it is left out. Rows keep together by default; a row taller than a page is split between its lines in the DOM and PDF (`break-inside: avoid` on the row *and* its cells, `cantSplit` in Word). A header row is hoisted into `<thead>` only when it is a direct `TableRow` child. |
 | `Image` | A raster image | `<img src alt>` sized with CSS; the omitted axis is `auto`; `align` makes it a block with auto margins | `ImageRun` sized in pixels at 96 DPI, inside a `Paragraph` whose alignment matches `align` | At least one of `width`/`height` is required. `src` is a `data:` URL, or a path resolved against `publicDirectory` (served to Chrome for PDF, read with `node:fs` for DOCX). The omitted axis comes from the intrinsic size in the file header. |
 | `Divider` | A horizontal rule | A zero-height `<div>` with `border-top` and margins | An empty `Paragraph` with a single bottom border, `spacing.before`/`after` in twips, and its line pinned to the rule thickness | Not `<hr>`: its user-agent thickness, colour and margins differ from Word's. `width` is a percentage of the content width — a CSS `width` in the browser, a right indent in Word. |
 | `Spacer` | Vertical space | An empty `<div>` with an explicit `height` and no margins | An empty `Paragraph` with exact line spacing equal to `height` and zero before/after | Exact line spacing is the only paragraph height Word does not adjust for the font. |
@@ -551,7 +552,7 @@ pin) by `scripts/buildStyles.ts`, following matti-kit's shadow stylesheet build
 
 | Config | Output | Used for |
 | --- | --- | --- |
-| `panda.neutral.config.ts` | `NEUTRAL_STYLES` | Undoing the host page's reset; pagedjs's split rules |
+| `panda.neutral.config.ts` | `NEUTRAL_STYLES` | Undoing the host page's reset; the rules for split elements |
 | `panda.config.ts` | `CONTENT_STYLES_TEMPLATE` | The structural rules, with the CSS variable prefix left as a token and instantiated per document |
 | `panda.shadow.config.ts` | `PAGE_SHADOW_STYLES` | The page chrome, in each page's shadow root, with preflight minus its `html, :host` rule |
 

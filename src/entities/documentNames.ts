@@ -94,8 +94,8 @@ export const variantNameToClassName = (
  * document on the page, so its selectors have to be the same for all of them.
  *
  * `contentRoot` marks the element document content is laid out under, in
- * every realm: the page root on screen and the pagination tree pagedjs
- * measures in. The library's content rules are rooted at it.
+ * every realm: the page root on screen and the root the Fragmenter measures
+ * content under. The library's content rules are rooted at it.
  */
 export const PAGE_CLASS_NAMES = defineClassNames<
   'pageRoot' | 'page' | 'contentRoot'
