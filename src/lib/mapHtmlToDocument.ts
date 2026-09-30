@@ -31,6 +31,7 @@ const CONTENT_ELEMENT_TYPES = [
   'pagecount',
   'pagenumber',
   'split',
+  'masonryGroup',
   'positionalTab',
   'image',
   'divider',
@@ -231,9 +232,16 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Stack must be a child of document.');
         }
 
+        const { columns } = elementData.elementOptions;
+        if (columns.fill === 'masonry' && columns.columnCount < 2) {
+          throw new TypeError(
+            'Masonry columns need a columnCount of at least 2.',
+          );
+        }
+
         assignElementsContext(elementsContext, {
           stack: elementData.elementOptions,
-          isInsideColumn: elementData.elementOptions.columns.columnCount > 1,
+          isInsideColumn: columns.columnCount > 1,
         });
 
         return childContext;
@@ -294,6 +302,21 @@ export const mapHtmlToDocument = <TContent>(
           parentTagNames,
           PARAGRAPH_TAG_NAMES,
         );
+
+        const isMasonry = elementsContext.stack.columns.fill === 'masonry';
+        if (isElementOfType(elementData, 'break') && isMasonry) {
+          throw new TypeError(
+            'A Break cannot be used inside masonry columns: the packing decides where columns and pages end.',
+          );
+        }
+        if (
+          isElementOfType(elementData, 'masonryGroup') &&
+          parentElementTypes.at(-1) !== 'content'
+        ) {
+          throw new TypeError(
+            'A MasonryGroup must be a direct child of a Stack, where it is one unit of masonry columns.',
+          );
+        }
 
         if (isElementOfType(elementData, 'gridContainer')) {
           if (isChildOfParagraph) {

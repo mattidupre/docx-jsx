@@ -300,6 +300,23 @@ export const assignDocumentOptions = (
 
 type ColumnCount = 1 | 2 | 3 | 4;
 
+/**
+ * How a multi-column stack fills its columns:
+ * - `flow` (the default): one after another, as Word does, breaking blocks
+ *   between columns and pages by the document's fragmentation rules;
+ * - `masonry`: every direct child of the stack (or `MasonryGroup`) is a unit
+ *   that moves whole, packed into the shortest column. The packed order is
+ *   the reading order in every target, so a DOCX needs a layout run.
+ */
+export type StackColumnFill = 'flow' | 'masonry';
+
+export type StackColumns = {
+  columnCount: ColumnCount;
+  columnGap: UnitsSize;
+  /** Left out, the columns `flow`. */
+  fill?: StackColumnFill;
+};
+
 export type StackOptions = {
   innerPageClassName?: string;
   outerPageClassName?: string;
@@ -307,10 +324,7 @@ export type StackOptions = {
   outerPageDataAttributes?: DataAttributes;
   innerPageDataAttributes?: DataAttributes;
   continuous?: boolean;
-  columns?: {
-    columnCount: ColumnCount;
-    columnGap: UnitsSize;
-  };
+  columns?: StackColumns;
 };
 
 export type StackConfig = {
@@ -320,10 +334,7 @@ export type StackConfig = {
   innerPageDataAttributes?: DataAttributes;
   margin: PageMargin;
   continuous: boolean;
-  columns: {
-    columnCount: ColumnCount;
-    columnGap: UnitsSize;
-  };
+  columns: StackColumns;
 };
 
 export const assignStackOptions = (

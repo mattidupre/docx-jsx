@@ -49,6 +49,12 @@ export type MeasuredRegion = {
   columnGap: number;
   /** The computed `column-fill` of the multi-column element. */
   fill: ColumnFill;
+  /**
+   * For masonry columns, how many units the region holds: its element
+   * children, which move whole to the shortest column. `undefined` for
+   * columns that flow.
+   */
+  masonry: undefined | { unitCount: number };
 };
 
 /** A leaf block, measured once at the content width of its stack. */
@@ -58,6 +64,12 @@ export type MeasuredBlock = {
   index: number;
   kind: BlockKind;
   region: undefined | MeasuredRegion;
+  /**
+   * In a masonry region, the unit the block belongs to: the index of the
+   * region's child element it is in, and whether it is the unit's first
+   * block. `undefined` anywhere else.
+   */
+  unit: undefined | { index: number; opens: boolean };
   height: number;
   /**
    * The collapsible margin above the block: its own, collapsed with the
@@ -150,6 +162,34 @@ export type PageItem =
       columns: ReadonlyArray<ReadonlyArray<Placement>>;
     };
 
+/**
+ * One unit of a masonry region in one column. The packed order is the list of
+ * these, page by page and column by column, top to bottom: the order units are
+ * read in and shown in, in every target. A unit split across columns has one
+ * entry per column, and the entry after it is its continuation.
+ */
+export type PackedUnit = {
+  stackIndex: number;
+  /** The unit's index in its region, which is its place in the source. */
+  unit: number;
+  pageIndex: number;
+  columnIndex: number;
+};
+
+/**
+ * What a layout run hands a target that cannot lay out itself (the DOCX): the
+ * packing of every masonry stack. It is plain data, so it crosses from the
+ * browser the layout ran in.
+ */
+export type FragmentationLayout = {
+  /** How many stacks were laid out. */
+  stackCount: number;
+  /** How many units each stack with masonry columns has. */
+  masonryStacks: ReadonlyArray<{ stackIndex: number; unitCount: number }>;
+  /** Every masonry unit, in packed order. */
+  packedOrder: ReadonlyArray<PackedUnit>;
+};
+
 export type PlacedPage = {
   /** The stack whose content starts the page. */
   stackIndex: number;
@@ -180,6 +220,12 @@ export type Checkpoint = {
   /** A forced break still waiting for a block to apply to. */
   pendingBreak: boolean;
   startKind: StartKind;
+  /**
+   * How many entries of the packed order the pages before this one made. A
+   * run resumed from here packs the rest the same way, and its packed order
+   * follows on from that many entries of the full run's.
+   */
+  packedCount: number;
 };
 
 /** What a hook knows about the box it is placing into. */

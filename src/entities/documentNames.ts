@@ -146,3 +146,12 @@ export const PAGE_VARS = defineAttributes('page', {
 export const PAGE_DATA_ATTRIBUTES = defineAttributes(DEFAULT_PREFIX, {
   documentStyles: { attributeTypes: ['data-attribute'] },
 });
+
+/**
+ * Marks the element a multi-column stack lays its columns out in with how
+ * they fill (`data-matti-docs-column-fill="masonry"`), which the Fragmenter
+ * reads when it measures the stack. A `flow` stack carries no mark.
+ */
+export const COLUMNS_DATA_ATTRIBUTES = defineAttributes(DEFAULT_PREFIX, {
+  columnFill: { attributeTypes: ['data-attribute'] },
+});

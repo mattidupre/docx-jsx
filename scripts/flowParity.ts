@@ -2,12 +2,13 @@
  * Flow parity check between the Chrome PDF and Word's rendering. Manual, not CI.
  *
  *   pnpm exec vite-node scripts/flowParity.ts [--font arial.ttf] [--out dir]
- *     [--only flow,breaks,columns,trim] [--word word.pdf]
+ *     [--only flow,breaks,columns,trim,masonry] [--word word.pdf]
  *   pnpm exec vite-node scripts/flowParity.ts --compare first.pdf second.pdf
  *
  * Without `--word` it writes the probe DOCX and the Chrome PDF to the output
  * directory. The DOCX holds every probe (S1-S5 flow, T1-T6 break rules, the
- * column cases and U1-U4 trimmed text), so it is opened in Word once:
+ * column cases, U1-U4 trimmed text and the M1-M14 masonry groups), so it is
+ * opened in Word once:
  *
  *   1. Copy the DOCX into ~/Library/Containers/com.microsoft.Word/Data/Documents/
  *      (the sandbox Word can read).
@@ -129,16 +130,21 @@ if (values.compare) {
   await mkdir(publicDirectory, { recursive: true });
   await copyFile(fontPath, path.join(publicDirectory, FLOW_PARITY_FONT_SRC));
 
-  // Both targets read Arial's metrics from the same file: the line model
-  // (`normal`, trimmed text) is resolved from them.
-  await writeFile(
-    docxPath,
-    await reactToDocx(Document, { fonts: FLOW_PARITY_FONTS, publicDirectory }),
-  );
-  console.info(`Word: ${docxPath}`);
-
   const browser = await launchTestBrowser();
   try {
+    // Both targets read Arial's metrics from the same file: the line model
+    // (`normal`, trimmed text) is resolved from them. The masonry probe is
+    // laid out in the browser first, so the DOCX packs it as the PDF does.
+    await writeFile(
+      docxPath,
+      await reactToDocx(Document, {
+        browser,
+        fonts: FLOW_PARITY_FONTS,
+        publicDirectory,
+      }),
+    );
+    console.info(`Word: ${docxPath}`);
+
     const pdf = await reactToPdf(Document, {
       browser,
       publicDirectory,
