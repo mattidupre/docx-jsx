@@ -508,6 +508,81 @@ describe('BreakAvoid', () => {
       keptParagraphs.map((paragraph) => isFlagSet(paragraph, 'w:keepNext')),
     ).toEqual([true, true, false]);
   });
+
+  it('keeps a paragraph that carries the break rule itself', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <Typography as="h2" breakAfter="avoid">
+            Heading
+          </Typography>
+          <Typography as="p" breakInside="avoid">
+            Body
+          </Typography>
+          <p>Plain</p>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    const [heading, body, plain] = paragraphs(docx.document);
+    expect(isFlagSet(heading, 'w:keepNext')).toBe(true);
+    expect(isFlagSet(heading, 'w:keepLines')).toBe(false);
+    expect(isFlagSet(body, 'w:keepLines')).toBe(true);
+    expect(isFlagSet(body, 'w:keepNext')).toBe(false);
+    expect(isFlagSet(plain, 'w:keepNext')).toBe(false);
+    expect(isFlagSet(plain, 'w:keepLines')).toBe(false);
+  });
+});
+
+describe('widow control', () => {
+  it('writes widowControl into the document paragraph defaults', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <p>Text</p>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    const [defaults] = findAll(docx.styles, 'w:pPrDefault');
+    expect(isFlagSet(defaults, 'w:widowControl')).toBe(true);
+  });
+});
+
+describe('column sections', () => {
+  it('ends a column section inside its last paragraph', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack columns={{ columnCount: 2, columnGap: '0.25in' }}>
+          <p>First</p>
+          <p>Last</p>
+        </Stack>
+        <Stack>
+          <p>Next page</p>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    const [columnParagraph] = paragraphs(docx.document).filter(
+      (paragraph) => findAll(paragraph, 'w:cols').length > 0,
+    );
+    expect(textOf(columnParagraph)).toBe('Last');
+    // The empty single column section that follows, so Word balances the
+    // columns, is the only paragraph left without text.
+    const emptyParagraphs = paragraphs(docx.document).filter(
+      (paragraph) => textOf(paragraph) === '',
+    );
+    expect(emptyParagraphs).toHaveLength(1);
+    const [spacing] = findAll(emptyParagraphs[0], 'w:spacing');
+    expect(attributesOf(spacing, ['w:line', 'w:lineRule'])).toEqual({
+      'w:line': '20',
+      'w:lineRule': 'exact',
+    });
+    expect(findAll(emptyParagraphs[0], 'w:cols')).toHaveLength(0);
+    expect(attribute(findAll(emptyParagraphs[0], 'w:type')[0], 'w:val')).toBe(
+      'continuous',
+    );
+  });
 });
 
 describe('Raw', () => {
@@ -664,9 +739,7 @@ type AbstractLevel = {
   readonly indentHanging: undefined | string;
 };
 
-const levelsOf = (
-  abstractNumbering: XmlNode,
-): ReadonlyArray<AbstractLevel> =>
+const levelsOf = (abstractNumbering: XmlNode): ReadonlyArray<AbstractLevel> =>
   findAll(abstractNumbering, 'w:lvl').map((level) => ({
     level: attribute(level, 'w:ilvl')!,
     format: attribute(findAll(level, 'w:numFmt')[0], 'w:val'),
@@ -790,11 +863,7 @@ describe('List', () => {
     );
 
     // The two decimal lists share a definition; only the markers differ.
-    expect(usedFormats(docx)).toEqual([
-      'decimal',
-      'lowerRoman',
-      'upperLetter',
-    ]);
+    expect(usedFormats(docx)).toEqual(['decimal', 'lowerRoman', 'upperLetter']);
     const [first, second] = paragraphs(docx.document).map(
       (paragraph) => numberingOf(paragraph)!.numId,
     );
@@ -863,8 +932,8 @@ describe('List', () => {
       </DocumentProvider>,
     );
 
-    const [one, seven, oneAgain] = paragraphs(docx.document).map(
-      (paragraph) => numberingOf(paragraph)!,
+    const [one, seven, oneAgain] = paragraphs(docx.document).map((paragraph) =>
+      numberingOf(paragraph)!,
     );
     // Three lists, three instances: sharing one would make the third list
     // carry on from the first.
@@ -921,9 +990,9 @@ describe('List', () => {
     expect(usedFormats(docx)).toEqual(['decimal']);
     const [item] = paragraphs(docx.document);
     expect(numberingOf(item)!.level).toBe('0');
-    expect(numberingDefinition(docx, numberingOf(item)!.numId).levels[0].start).toBe(
-      '4',
-    );
+    expect(
+      numberingDefinition(docx, numberingOf(item)!.numId).levels[0].start,
+    ).toBe('4');
   });
 });
 
@@ -996,7 +1065,10 @@ describe('Bookmark and Link', () => {
       </DocumentProvider>,
     );
 
-    const name = attribute(findAll(docx.document, 'w:bookmarkStart')[0], 'w:name');
+    const name = attribute(
+      findAll(docx.document, 'w:bookmarkStart')[0],
+      'w:name',
+    );
     // Bookmark names are single tokens, so a space cannot survive as itself.
     expect(name).toBe('chapterU0020one');
     expect(
