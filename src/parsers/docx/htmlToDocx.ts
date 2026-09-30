@@ -396,7 +396,9 @@ const compensateTrimmedSpacing = (
         compensated < -TRIM_SPACING_EPSILON_TWIP &&
         previous.index !== undefined
       ) {
-        console.warn(
+        // Only a position differs, not where lines or pages break, so this
+        // is a debug note rather than a warning.
+        console.debug(
           `A trimmed paragraph is ${gap / TWIP_PER_PT}pt from the paragraph before it, less than the ${needed / TWIP_PER_PT}pt Word keeps around their lines; the DOCX sets them ${-compensated / TWIP_PER_PT}pt further apart than the PDF.`,
         );
       }
@@ -1589,7 +1591,24 @@ const isSameMargin = (a: PageMargin, b: PageMargin) =>
  * a page and balances only the last page of columns. The PDF follows the
  * rules exactly, so the two targets differ where these are set.
  */
-const warnUnwritableRules = ({ margins, columns }: FragmentationRules) => {
+const warnUnwritableRules = ({
+  margins,
+  columns,
+  lines,
+}: FragmentationRules) => {
+  // Word's widow control is one switch: two lines at the bottom and at the top
+  // of a page, or no rule at all. `style` stands for CSS's initial value, two.
+  const counts = [lines.orphans, lines.widows].map((count) =>
+    count === 'style' ? 2 : count,
+  );
+  if (
+    !counts.every((count) => count === 2) &&
+    !counts.every((count) => count <= 1)
+  ) {
+    console.warn(
+      `Word's widow control is two lines at each end of a page or none; the DOCX cannot follow \`lines\` (orphans ${lines.orphans}, widows ${lines.widows}) and uses ${counts.some((count) => count >= 2) ? 'two' : 'none'}.`,
+    );
+  }
   const { stack, break: afterBreak, natural, column } = margins.keepAtTop;
   if (!stack || afterBreak || natural || column) {
     console.warn(

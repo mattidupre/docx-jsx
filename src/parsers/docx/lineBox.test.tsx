@@ -104,9 +104,11 @@ const spacingsOf = (archive: DocxArchive) =>
 const twips = (valuePt: number) => String(Math.round(valuePt * 20));
 
 let warn: MockInstance;
+let debug: MockInstance;
 
 beforeEach(() => {
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  debug = vi.spyOn(console, 'debug').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -287,7 +289,7 @@ describe('trimmed paragraphs', () => {
     });
   });
 
-  it('writes a spacing it cannot make negative as 0, warning only between paragraphs', async () => {
+  it('writes a spacing it cannot make negative as 0, noting it only between paragraphs', async () => {
     const archive = await toDocx(
       withDocument(TRIMMED, [
         <Typography key="a" as="p" marginBottom="2pt">
@@ -300,13 +302,15 @@ describe('trimmed paragraphs', () => {
     );
 
     // The first paragraph starts the section and is placed as the PDF places
-    // it; only the pair is further apart than in the PDF.
+    // it; only the pair is further apart than in the PDF. That moves a
+    // position, not a break, so it is a debug note rather than a warning.
     expect(spacingsOf(archive).map((spacing) => spacing?.before)).toEqual([
       '0',
       '0',
     ]);
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toContain('further apart');
+    expect(warn).not.toHaveBeenCalled();
+    expect(debug).toHaveBeenCalledTimes(1);
+    expect(debug.mock.calls[0][0]).toContain('further apart');
   });
 
   it('compensates an untrimmed paragraph after a trimmed one on its side only', async () => {

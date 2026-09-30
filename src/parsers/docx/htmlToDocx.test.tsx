@@ -726,6 +726,23 @@ describe('fragmentation rules', () => {
     expect(attribute(widowControl, 'w:val')).toBe('0');
   });
 
+  it('warns when widows and orphans are counts Word cannot follow', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await toDocxArchive(oneParagraph({ lines: { orphans: 3, widows: 2 } }));
+    await toDocxArchive(oneParagraph({ lines: { orphans: 1, widows: 2 } }));
+    const messages = warn.mock.calls.map(([message]) => String(message));
+    expect(messages.filter((m) => m.includes('widow control'))).toHaveLength(2);
+
+    warn.mockClear();
+    await toDocxArchive(oneParagraph());
+    await toDocxArchive(oneParagraph({ lines: { orphans: 1, widows: 1 } }));
+    expect(
+      warn.mock.calls.filter(([message]) =>
+        String(message).includes('widow control'),
+      ),
+    ).toHaveLength(0);
+  });
+
   it('makes Word add adjacent spacing together when margins `sum`', async () => {
     const summed = await toDocxArchive(
       oneParagraph({ margins: { adjacent: 'sum' } }),
