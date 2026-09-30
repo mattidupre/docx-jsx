@@ -1,5 +1,6 @@
 import {
   Document,
+  Packer,
   Header,
   Footer,
   TextRun,
@@ -37,6 +38,7 @@ import {
   INTRINSIC_TAG_TYPOGRAPHY_OPTIONS,
   MONOSPACE_DOCX_FONT_NAME,
   isChildOfTagName,
+  resolveFragmentationRules,
 } from '../../entities';
 import {
   type HtmlElementNode,
@@ -47,6 +49,7 @@ import type {
   ElementsContext,
   ElementType,
   FontsConfig,
+  FragmentationRules,
   PageMargin,
   PageSize,
   TagName,
@@ -67,6 +70,7 @@ import { toDocxColor } from './toDocxColor';
 import { MAX_LIST_LEVEL, createListNumbering } from './numberingToDocx';
 import { type DocumentImage, resolveDocumentImages } from './documentImages';
 import { tableToDocx } from './tableToDocx';
+import { type PackedDocxPatches, patchPackedDocx } from './patchPackedDocx';
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -463,10 +467,10 @@ export type HtmlToDocxOptions = {
   publicDirectory?: string;
 };
 
-export const htmlToDocx = async (
+const createDocx = async (
   html: string,
   { fonts: fontsOption, svgImages, publicDirectory }: HtmlToDocxOptions,
-) => {
+): Promise<{ document: Document; rules: FragmentationRules }> => {
   // Mapping is synchronous and reading an image is not, so every `Image` source
   // in the document is resolved to bytes before the mapping starts.
   const images = await resolveDocumentImages(html, { publicDirectory });
@@ -823,6 +827,9 @@ export const htmlToDocx = async (
       if (element.elementType === 'table') {
         return tableToDocx(node, element.elementOptions, {
           fonts,
+          tableRules: resolveFragmentationRules(
+            elementsContext.document?.fragmentation,
+          ).tables,
           contentWidthTwip: toContentWidthTwip(elementsContext),
           keepChildrenTogether,
           toCellChildren,
@@ -1066,6 +1073,24 @@ export const htmlToDocx = async (
 
   const { size, stacks, variants } = mappedDocument;
 
+  const rules = resolveFragmentationRules(mappedDocument.fragmentation);
+  warnUnwritableRules(rules);
+
+  // Whether a column stack's trailing section break is carried by the first
+  // paragraph of the stack after it (`page-break-before`), by stack index of
+  // that next stack.
+  const startsWithPageBreak = stacks.map(
+    (stack, index) =>
+      index > 0 &&
+      !stack.continuous &&
+      stacks[index - 1].columns.columnCount > 1 &&
+      rules.columns.fill !== 'sequential' &&
+      rules.columns.endBeforePage === 'page-break-before' &&
+      isSameMargin(stack.margin, stacks[index - 1].margin) &&
+      Array.isArray(stack.content) &&
+      stack.content[0] instanceof Paragraph,
+  );
+
   const sections = stacks.flatMap(
     (
       {
@@ -1078,10 +1103,22 @@ export const htmlToDocx = async (
       index,
     ) => {
       const currentSections: Array<ISectionOptions> = [];
+      const children =
+        startsWithPageBreak[index] &&
+        Array.isArray(content) &&
+        content[0] instanceof Paragraph
+          ? [
+              Paragraph.clone(content[0], { pageBreakBefore: true }),
+              ...content.slice(1),
+            ]
+          : content;
       currentSections.push({
         properties: {
           titlePage: true,
-          type: index > 0 && continuous ? SectionType.CONTINUOUS : undefined,
+          type:
+            index > 0 && (continuous || startsWithPageBreak[index])
+              ? SectionType.CONTINUOUS
+              : undefined,
           page: toPageProperties(size, margin),
           ...(columnCount > 1 && {
             column: {
@@ -1100,18 +1137,33 @@ export const htmlToDocx = async (
           first: layouts.first.footer as Footer,
           default: layouts.subsequent.footer as Footer,
         },
-        children: content as ISectionOptions['children'],
+        children: children as ISectionOptions['children'],
       } satisfies ISectionOptions);
 
-      // Prevent columns from filling entire page by adding second continuous section.
-      if (columnCount > 1 && !stacks[index + 1]?.continuous) {
+      // Word balances columns only when they end at a continuous section
+      // break. Before a stack that starts a page of its own, that break needs
+      // a paragraph to hold it, unless the next stack's first paragraph takes
+      // it (`page-break-before`). An empty `children` becomes a carrier that
+      // `patchPackedDocx` cuts to one point (`minimal`); an empty paragraph
+      // stays an ordinary line (`line`).
+      if (
+        columnCount > 1 &&
+        rules.columns.fill !== 'sequential' &&
+        !stacks[index + 1]?.continuous &&
+        !startsWithPageBreak[index + 1]
+      ) {
         currentSections.push({
           properties: {
             titlePage: true,
             type: SectionType.CONTINUOUS,
             page: toPageProperties(size, margin),
           },
-          children: [],
+          // An empty run keeps the paragraph an ordinary one once the break
+          // is merged into it, rather than a bare carrier.
+          children:
+            rules.columns.endBeforePage === 'minimal'
+              ? []
+              : [new Paragraph({ children: [new TextRun('')] })],
         } satisfies ISectionOptions);
       }
       return currentSections;
@@ -1150,11 +1202,71 @@ export const htmlToDocx = async (
   // ),
   // ];
 
-  return new Document({
-    // fonts: docxFonts,
-    evenAndOddHeaderAndFooters: false,
-    sections,
-    styles,
-    numbering: listNumbering.toNumberingOptions(),
-  });
+  return {
+    document: new Document({
+      // fonts: docxFonts,
+      evenAndOddHeaderAndFooters: false,
+      sections,
+      styles,
+      numbering: listNumbering.toNumberingOptions(),
+    }),
+    rules,
+  };
+};
+
+const isSameMargin = (a: PageMargin, b: PageMargin) =>
+  a.top === b.top &&
+  a.right === b.right &&
+  a.bottom === b.bottom &&
+  a.left === b.left;
+
+/**
+ * Rules a DOCX cannot state: Word applies its own space-before at the top of
+ * a page and balances only the last page of columns. The PDF follows the
+ * rules exactly, so the two targets differ where these are set.
+ */
+const warnUnwritableRules = ({ margins, columns }: FragmentationRules) => {
+  const { stack, break: afterBreak, natural, column } = margins.keepAtTop;
+  if (!stack || afterBreak || natural || column) {
+    console.warn(
+      'Word keeps space-before only at the start of a section; the DOCX cannot follow `margins.keepAtTop`.',
+    );
+  }
+  if (columns.fill === 'balance-all') {
+    console.warn(
+      'Word balances only the last page of columns; the DOCX cannot follow `columns.fill: balance-all`.',
+    );
+  }
+};
+
+/** The document's rules as the settings `patchPackedDocx` writes. */
+const toPackedDocxPatches = ({
+  lines,
+  margins,
+}: FragmentationRules): PackedDocxPatches => ({
+  // Word's widow control is two lines or nothing. `style` stands for CSS's
+  // initial value, which is two.
+  widowControl: [lines.orphans, lines.widows].some(
+    (count) => count === 'style' || count >= 2,
+  ),
+  sumAdjacentMargins: margins.adjacent === 'sum',
+});
+
+/** The `docx` document for `html`, before packing. */
+export const htmlToDocx = async (html: string, options: HtmlToDocxOptions) =>
+  (await createDocx(html, options)).document;
+
+/**
+ * The packed DOCX for `html`, with the settings `docx` cannot write patched
+ * in from the document's fragmentation rules.
+ */
+export const htmlToPackedDocx = async (
+  html: string,
+  options: HtmlToDocxOptions,
+): Promise<Buffer> => {
+  const { document, rules } = await createDocx(html, options);
+  return patchPackedDocx(
+    await Packer.toBuffer(document),
+    toPackedDocxPatches(rules),
+  );
 };

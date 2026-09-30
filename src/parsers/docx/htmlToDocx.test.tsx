@@ -14,8 +14,12 @@ import {
   Stack,
   Svg,
   TabSplit,
+  Table,
+  TableCell,
+  TableRow,
   Typography,
 } from '../../reactComponents';
+import type { FragmentationOption } from '../../entities';
 import { mockFonts } from '../../fixtures/mockFonts';
 import { createMockVariantsConfig } from '../../fixtures/mockVariantsConfig';
 import { reactToDocx } from '../../reactToDocx';
@@ -549,39 +553,158 @@ describe('widow control', () => {
   });
 });
 
+const columnStacks = (
+  fragmentation?: FragmentationOption,
+  next: ReactElement = <p>Next page</p>,
+) => (
+  <DocumentProvider fragmentation={fragmentation}>
+    <Stack columns={{ columnCount: 2, columnGap: '0.25in' }}>
+      <p>First</p>
+      <p>Last</p>
+    </Stack>
+    <Stack>{next}</Stack>
+  </DocumentProvider>
+);
+
+const emptyParagraphsOf = (docx: DocxArchive) =>
+  paragraphs(docx.document).filter((paragraph) => textOf(paragraph) === '');
+
+const sectionTypes = (docx: DocxArchive) =>
+  findAll(docx.document, 'w:sectPr').map((sectPr) => {
+    const [type] = findAll(sectPr, 'w:type');
+    return type && attribute(type, 'w:val');
+  });
+
 describe('column sections', () => {
   it('ends a column section inside its last paragraph', async () => {
-    const docx = await toDocxArchive(
-      <DocumentProvider>
-        <Stack columns={{ columnCount: 2, columnGap: '0.25in' }}>
-          <p>First</p>
-          <p>Last</p>
-        </Stack>
-        <Stack>
-          <p>Next page</p>
-        </Stack>
-      </DocumentProvider>,
-    );
+    const docx = await toDocxArchive(columnStacks());
 
     const [columnParagraph] = paragraphs(docx.document).filter(
       (paragraph) => findAll(paragraph, 'w:cols').length > 0,
     );
     expect(textOf(columnParagraph)).toBe('Last');
+  });
+
+  it('ends columns before a new page with an ordinary empty line by default', async () => {
+    const docx = await toDocxArchive(columnStacks());
+
     // The empty single column section that follows, so Word balances the
-    // columns, is the only paragraph left without text.
-    const emptyParagraphs = paragraphs(docx.document).filter(
-      (paragraph) => textOf(paragraph) === '',
+    // columns, is the only paragraph left without text, at its normal height.
+    const emptyParagraphs = emptyParagraphsOf(docx);
+    expect(emptyParagraphs).toHaveLength(1);
+    expect(findAll(emptyParagraphs[0], 'w:spacing')).toHaveLength(0);
+    expect(findAll(emptyParagraphs[0], 'w:cols')).toHaveLength(0);
+    expect(attribute(findAll(emptyParagraphs[0], 'w:type')[0], 'w:val')).toBe(
+      'continuous',
     );
+  });
+
+  it('cuts the line to one point when `endBeforePage` is `minimal`', async () => {
+    const docx = await toDocxArchive(
+      columnStacks({ columns: { endBeforePage: 'minimal' } }),
+    );
+
+    const emptyParagraphs = emptyParagraphsOf(docx);
     expect(emptyParagraphs).toHaveLength(1);
     const [spacing] = findAll(emptyParagraphs[0], 'w:spacing');
     expect(attributesOf(spacing, ['w:line', 'w:lineRule'])).toEqual({
       'w:line': '20',
       'w:lineRule': 'exact',
     });
-    expect(findAll(emptyParagraphs[0], 'w:cols')).toHaveLength(0);
-    expect(attribute(findAll(emptyParagraphs[0], 'w:type')[0], 'w:val')).toBe(
-      'continuous',
+  });
+
+  it('moves the break into the next stack when `endBeforePage` is `page-break-before`', async () => {
+    const docx = await toDocxArchive(
+      columnStacks({ columns: { endBeforePage: 'page-break-before' } }),
     );
+
+    expect(emptyParagraphsOf(docx)).toHaveLength(0);
+    const [nextParagraph] = paragraphs(docx.document).filter(
+      (paragraph) => textOf(paragraph) === 'Next page',
+    );
+    expect(isFlagSet(nextParagraph, 'w:pageBreakBefore')).toBe(true);
+    // The column section, then the next stack as a continuous section.
+    expect(sectionTypes(docx)).toEqual([undefined, 'continuous']);
+  });
+
+  it('falls back to an empty line when the next stack starts with a table', async () => {
+    const docx = await toDocxArchive(
+      columnStacks(
+        { columns: { endBeforePage: 'page-break-before' } },
+        <Table>
+          <TableRow>
+            <TableCell>Cell</TableCell>
+          </TableRow>
+        </Table>,
+      ),
+    );
+
+    expect(emptyParagraphsOf(docx)).toHaveLength(1);
+    expect(findAll(docx.document, 'w:pageBreakBefore')).toHaveLength(0);
+  });
+
+  it('leaves columns unbalanced when `fill` is `sequential`', async () => {
+    const docx = await toDocxArchive(
+      columnStacks({ columns: { fill: 'sequential' } }),
+    );
+
+    expect(emptyParagraphsOf(docx)).toHaveLength(0);
+    expect(sectionTypes(docx)).toEqual([undefined, undefined]);
+  });
+});
+
+describe('fragmentation rules', () => {
+  const oneParagraph = (fragmentation?: FragmentationOption) => (
+    <DocumentProvider fragmentation={fragmentation}>
+      <Stack>
+        <p>Text</p>
+      </Stack>
+    </DocumentProvider>
+  );
+
+  it('turns widow control off when fewer than two lines are asked for', async () => {
+    const docx = await toDocxArchive(
+      oneParagraph({ lines: { orphans: 1, widows: 1 } }),
+    );
+
+    const [widowControl] = findAll(docx.styles, 'w:widowControl');
+    expect(attribute(widowControl, 'w:val')).toBe('0');
+  });
+
+  it('makes Word add adjacent spacing together when margins `sum`', async () => {
+    const summed = await toDocxArchive(
+      oneParagraph({ margins: { adjacent: 'sum' } }),
+    );
+    const collapsed = await toDocxArchive(oneParagraph());
+
+    expect(
+      findAll(summed.settings, 'w:doNotUseHTMLParagraphAutoSpacing'),
+    ).toHaveLength(1);
+    expect(
+      findAll(collapsed.settings, 'w:doNotUseHTMLParagraphAutoSpacing'),
+    ).toHaveLength(0);
+  });
+
+  it('follows the table rules of the `css` profile', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider fragmentation="css">
+        <Stack>
+          <Table>
+            <TableRow header>
+              <TableCell>Head</TableCell>
+            </TableRow>
+            <TableRow keepTogether={false}>
+              <TableCell>Body</TableCell>
+            </TableRow>
+          </Table>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    const [table] = tables(docx.document);
+    // Tables break only between rows, and no header repeats.
+    expect(findAll(table, 'w:tblHeader')).toHaveLength(0);
+    expect(findAll(table, 'w:cantSplit')).toHaveLength(2);
   });
 });
 

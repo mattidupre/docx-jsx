@@ -15,6 +15,7 @@ import {
   WidthType,
 } from 'docx';
 import type {
+  FragmentationRules,
   ConfigByElementType,
   ElementData,
   ElementType,
@@ -136,7 +137,10 @@ const sumColumnSpans = (
  */
 const toColumnWidthsTwip = (
   columnWidths: ConfigByElementType['table']['columnWidths'],
-  { columnCount, tableWidthTwip }: { columnCount: number; tableWidthTwip: number },
+  {
+    columnCount,
+    tableWidthTwip,
+  }: { columnCount: number; tableWidthTwip: number },
 ): ReadonlyArray<number> => {
   if (!columnWidths) {
     return Array.from({ length: columnCount }, () =>
@@ -172,6 +176,8 @@ export type TableToDocxOptions = {
   contentWidthTwip: number;
   /** The table sits inside a `BreakAvoid`. */
   keepChildrenTogether: boolean;
+  /** The document's fragmentation rules for tables. */
+  tableRules: FragmentationRules['tables'];
   toCellChildren: TableCellChildren;
 };
 
@@ -196,6 +202,7 @@ export const tableToDocx = (
     fonts,
     contentWidthTwip,
     keepChildrenTogether,
+    tableRules,
     toCellChildren,
   }: TableToDocxOptions,
 ): Table | ReadonlyArray<never> => {
@@ -288,8 +295,15 @@ export const tableToDocx = (
     });
 
     return new TableRow({
-      ...(keepTogether && { cantSplit: true }),
-      ...(header && repeatHeader && { tableHeader: true }),
+      // `never`: tables break only between rows, so no row splits in Word.
+      ...((keepTogether || tableRules.splitRows === 'never') && {
+        cantSplit: true,
+      }),
+      ...(header &&
+        (tableRules.repeatHeader === 'always' ||
+          (tableRules.repeatHeader === 'option' && repeatHeader)) && {
+          tableHeader: true,
+        }),
       ...(height && {
         height: { value: toWholeTwip(height), rule: HeightRule.ATLEAST },
       }),

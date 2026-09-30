@@ -455,16 +455,6 @@ const fillRegion = (
   return run(high, false);
 };
 
-/** The line pitch of the last text a region placed, for Word's quirk. */
-const lastLinePitch = (columns: ReadonlyArray<ReadonlyArray<Placement>>) => {
-  const block = columns.flat().at(-1)?.block;
-  if (!block || block.kind === 'atomic' || block.kind === 'table') {
-    return 0;
-  }
-  const unitCount = unitCountOf(block);
-  return (block.bounds[unitCount] - block.bounds[0]) / unitCount;
-};
-
 const startKindBefore = (piece: Piece): StartKind =>
   piece.from === 0 && piece.block.breakBefore === 'page' ? 'break' : 'natural';
 
@@ -696,9 +686,6 @@ export const placePages = ({
         if (result.rest.length > 0 || result.forcedPage) {
           nextStartKind = result.forcedPage ? 'break' : 'natural';
           break;
-        }
-        if (profile.quirks.lineAfterColumns) {
-          used += lastLinePitch(result.columns);
         }
         continue;
       }

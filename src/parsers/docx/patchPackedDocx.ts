@@ -4,7 +4,21 @@ const DOCUMENT_PATH = 'word/document.xml';
 
 const STYLES_PATH = 'word/styles.xml';
 
-const WIDOW_CONTROL = '<w:widowControl/>';
+const SETTINGS_PATH = 'word/settings.xml';
+
+/**
+ * What the document's fragmentation rules ask of Word that `docx` cannot
+ * write.
+ */
+export type PackedDocxPatches = {
+  /** Word's two-line widow and orphan rule, on or off. */
+  widowControl: boolean;
+  /**
+   * Adjacent space after and space before add up, rather than the larger
+   * one winning.
+   */
+  sumAdjacentMargins: boolean;
+};
 
 /**
  * The paragraph `docx` appends after the blocks of every section but the last,
@@ -66,12 +80,24 @@ export const inlineSectionBreaks = (documentXml: string): string => {
  * Word applies a two-line widow and orphan rule to a document that never
  * mentions it, but only as an implicit default. `docx` types no
  * `widowControl` for the document defaults, so it is written into the empty
- * `w:pPrDefault` here to keep the rule from depending on one.
+ * `w:pPrDefault` here, on or off, to keep the rule from depending on one.
  */
-export const writeWidowControl = (stylesXml: string): string =>
+export const writeWidowControl = (stylesXml: string, on = true): string =>
   stylesXml.replace(
     /<w:pPrDefault\/>|<w:pPrDefault><w:pPr\/><\/w:pPrDefault>/,
-    `<w:pPrDefault><w:pPr>${WIDOW_CONTROL}</w:pPr></w:pPrDefault>`,
+    `<w:pPrDefault><w:pPr>${
+      on ? '<w:widowControl/>' : '<w:widowControl w:val="0"/>'
+    }</w:pPr></w:pPrDefault>`,
+  );
+
+/**
+ * Word adds space after and space before together when HTML paragraph auto
+ * spacing is off, which is how a native ODF document spaces paragraphs.
+ */
+export const writeSummedMargins = (settingsXml: string): string =>
+  settingsXml.replace(
+    /<w:compat>/,
+    '<w:compat><w:doNotUseHTMLParagraphAutoSpacing/>',
   );
 
 const patchPart = async (
@@ -91,9 +117,17 @@ const patchPart = async (
  * breaks inside the last paragraph of their section, and the widow control
  * default.
  */
-export const patchPackedDocx = async (content: Uint8Array): Promise<Buffer> => {
+export const patchPackedDocx = async (
+  content: Uint8Array,
+  { widowControl, sumAdjacentMargins }: PackedDocxPatches,
+): Promise<Buffer> => {
   const zip = await JSZip.loadAsync(content);
   await patchPart(zip, DOCUMENT_PATH, inlineSectionBreaks);
-  await patchPart(zip, STYLES_PATH, writeWidowControl);
+  await patchPart(zip, STYLES_PATH, (xml) =>
+    writeWidowControl(xml, widowControl),
+  );
+  if (sumAdjacentMargins) {
+    await patchPart(zip, SETTINGS_PATH, writeSummedMargins);
+  }
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 };
