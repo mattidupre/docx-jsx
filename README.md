@@ -35,11 +35,10 @@ on a server does not have to install the DOM half):
 
 | Package | Range |
 | --- | --- |
-| `react` | `18.x` |
-| `react-dom` | `18.x` |
-| `react-reconciler` | `^0.29.0` |
-| `@types/react` | `18.x` |
-| `@types/react-dom` | `18.x` |
+| `react` | `19.x` |
+| `react-dom` | `19.x` |
+| `@types/react` | `19.x` |
+| `@types/react-dom` | `19.x` |
 
 Entry points are subpath exports, one per module:
 

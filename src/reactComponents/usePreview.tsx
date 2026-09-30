@@ -11,7 +11,7 @@ import { getElementInnerSize, getElementOuterSize } from '../utils/elements';
 import { InternalEnvironmentProvider } from './InternalEnvironmentProvider';
 
 type PreviewHandle = {
-  previewElRef: RefObject<HTMLDivElement>;
+  previewElRef: RefObject<null | HTMLDivElement>;
   isLoading: boolean;
 };
 
@@ -25,10 +25,10 @@ export const usePreview = (
 ): PreviewHandle => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const previewElRef = useRef<HTMLDivElement>(null);
-  const documentElRef = useRef<HTMLElement>();
+  const documentElRef = useRef<HTMLElement>(undefined);
   const documentSizeRef = useRef<
     undefined | { width: number; height: number }
-  >();
+  >(undefined);
   const [documentElState, setDocumentElState] = useState<
     undefined | HTMLElement
   >(undefined);

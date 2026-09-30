@@ -32,8 +32,8 @@
     "@types/lodash": "^4.17.25",
     "@types/node": "^26.6.3",
     "@types/pngjs": "^6.0.5",
-    "@types/react": "~18.2.34",
-    "@types/react-dom": "~18.2.14",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.1.1",
     "@vitest/coverage-v8": "5.0.2",
     "clean-publish": "^7.1.0",
@@ -67,16 +67,12 @@
     "yalc": "1.0.0-pre.53"
   },
   "peerDependencies": {
-    "@types/react": "18.x",
-    "@types/react-dom": "18.x",
-    "react": "18.x",
-    "react-dom": "18.x",
-    "react-reconciler": "^0.29.0"
+    "@types/react": "19.x",
+    "@types/react-dom": "19.x",
+    "react": "19.x",
+    "react-dom": "19.x"
   },
   "peerDependenciesMeta": {
-    "react-reconciler": {
-      "optional": true
-    },
     "@types/react": {
       "optional": true
     },
@@ -116,14 +112,6 @@
     "lint": "eslint ./src",
     "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push publish && rm -rf ./publish",
     "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
-  },
-  "pnpm": {
-    "updateConfig": {
-      "ignoreDependencies": [
-        "@types/react",
-        "@types/react-dom"
-      ]
-    }
   },
   "nodemonConfig": {
     "ext": "ts,js,tsx,jsx,json,css",
