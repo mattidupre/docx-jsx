@@ -3,8 +3,8 @@ import {
   isStyledElement,
   type ContainerSpan,
   type DomBlock,
+  type DomPosition,
   type MeasuredStackDom,
-  type RowSliceGeometry,
   type StyledElement,
 } from './measure';
 
@@ -71,53 +71,138 @@ const continueNumbering = (
 };
 
 /**
- * One slice of a row that is cut: every cell shows `[top, bottom)` of its
- * content through a clipping box, so the row is drawn across two pages with
- * no line cut in half.
+ * Marks the elements a range cut through at one edge, in `clone`, its cloned
+ * contents: the clones of the ancestors of the edge's node inside
+ * `container`, which the range copied partially.
  */
-const sliceRow = (
+const markCutEdge = (
+  clone: Node,
+  container: Node,
+  { node }: DomPosition,
+  edge: 'start' | 'end',
+) => {
+  const chain: Array<Node> = [];
+  for (
+    let ancestor: null | Node =
+      node instanceof Element ? node : node.parentNode;
+    ancestor && ancestor !== container;
+    ancestor = ancestor.parentNode
+  ) {
+    chain.push(ancestor);
+  }
+  let current: null | Node = clone;
+  for (let index = chain.length - 1; index >= 0 && current; index -= 1) {
+    current = edge === 'start' ? current.firstChild : current.lastChild;
+    if (!isStyledElement(current)) {
+      return;
+    }
+    if (edge === 'start') {
+      markSplitFrom(current);
+    } else {
+      markSplitTo(current);
+    }
+  }
+};
+
+/**
+ * The same place in the content as `position`, as far up towards
+ * `container` as it goes: the start of an element is the place just before
+ * it. A cut there then copies no empty part of that element.
+ */
+const hoistPosition = (
+  { node, offset }: DomPosition,
+  container: Node,
+): DomPosition => {
+  let current = { node, offset };
+  while (current.offset === 0 && current.node !== container) {
+    const parent = current.node.parentNode;
+    if (!parent) {
+      break;
+    }
+    current = {
+      node: parent,
+      offset: Array.from<Node>(parent.childNodes).indexOf(current.node),
+    };
+  }
+  return current;
+};
+
+/**
+ * Lines `[first, end)` of a table cell, in a clone of the cell that keeps
+ * its borders and padding. The blocks a cut goes through lose their margin,
+ * border and padding on that side, as a split block does.
+ */
+const renderCellPiece = (
+  cell: StyledElement,
+  starts: ReadonlyArray<DomPosition>,
+  first: number,
+  end: number,
+): StyledElement => {
+  if (first === 0 && end === starts.length) {
+    return cloneDeep(cell);
+  }
+  const clone = cloneShallow(cell);
+  if (end <= first) {
+    return clone;
+  }
+  const start = first === 0 ? undefined : hoistPosition(starts[first], cell);
+  const stop =
+    end === starts.length ? undefined : hoistPosition(starts[end], cell);
+  const range = document.createRange();
+  if (start) {
+    range.setStart(start.node, start.offset);
+  } else {
+    range.setStart(cell, 0);
+  }
+  if (stop) {
+    range.setEnd(stop.node, stop.offset);
+  } else {
+    range.setEnd(cell, cell.childNodes.length);
+  }
+  clone.appendChild(range.cloneContents());
+  if (start) {
+    markCutEdge(clone, cell, start, 'start');
+  }
+  if (stop) {
+    markCutEdge(clone, cell, stop, 'end');
+  }
+  return clone;
+};
+
+/**
+ * A piece of a split row: every cell shows its lines from the cut `from`
+ * (the top of the row when `undefined`) to the cut `to` (the end of the
+ * row), top aligned, so each line is drawn once, on one page.
+ */
+const renderRowPiece = (
   row: HTMLTableRowElement,
-  top: number,
-  bottom: undefined | number,
-  geometry: RowSliceGeometry,
+  lineStarts: ReadonlyArray<ReadonlyArray<DomPosition>>,
+  from: undefined | ReadonlyArray<number>,
+  to: undefined | ReadonlyArray<number>,
 ): StyledElement => {
   const rowClone = cloneShallow(row);
   rowClone.style.removeProperty('height');
-  const sliceHeight = (bottom ?? geometry.height) - top;
-  Array.from(row.children).forEach((cell, cellIndex) => {
-    if (!isStyledElement(cell)) {
-      return;
-    }
-    const padding = geometry.cellPaddings[cellIndex] ?? { top: 0, bottom: 0 };
-    const cellClone = cloneShallow(cell);
-    cellClone.style.setProperty('padding-top', '0');
-    cellClone.style.setProperty('padding-bottom', '0');
-    cellClone.style.setProperty('vertical-align', 'top');
-    const viewport = document.createElement('div');
-    viewport.style.setProperty('overflow', 'hidden');
-    viewport.style.setProperty('height', `${sliceHeight}px`);
-    const inner = document.createElement('div');
-    inner.style.setProperty('display', 'flow-root');
-    inner.style.setProperty('margin-top', `${-top}px`);
-    inner.style.setProperty('padding-top', `${padding.top}px`);
-    inner.style.setProperty('padding-bottom', `${padding.bottom}px`);
-    inner.append(
-      ...Array.from(cell.childNodes, (node) => node.cloneNode(true)),
+  Array.from(row.cells).forEach((cell, cellIndex) => {
+    const starts = lineStarts[cellIndex] ?? [];
+    const cellClone = renderCellPiece(
+      cell,
+      starts,
+      from?.[cellIndex] ?? 0,
+      to?.[cellIndex] ?? starts.length,
     );
-    viewport.appendChild(inner);
-    cellClone.appendChild(viewport);
+    cellClone.style.setProperty('vertical-align', 'top');
     rowClone.appendChild(cellClone);
   });
-  if (top > 0) {
+  if (from) {
     rowClone.setAttribute(SPLIT_FROM_ATTRIBUTE, '');
   }
-  if (bottom !== undefined) {
+  if (to) {
     rowClone.setAttribute(SPLIT_TO_ATTRIBUTE, '');
   }
   return rowClone;
 };
 
-/** Rows (or row slices) `[from, to)` of a table, under its kept sections. */
+/** Rows (or pieces of rows) `[from, to)` of a table, under its kept sections. */
 const renderTablePiece = (
   dom: DomBlock,
   placement: Placement,
@@ -145,7 +230,7 @@ const renderTablePiece = (
   const end = to < unitCountOf(block) ? dom.tableUnits[to] : undefined;
   const startRow = rows.indexOf(start.row);
   const endRow = end ? rows.indexOf(end.row) : rows.length;
-  const lastRow = end && end.offset > 0 ? endRow : endRow - 1;
+  const lastRow = end?.cut ? endRow : endRow - 1;
   const bodies = new Map<Element, StyledElement>();
   for (let rowIndex = startRow; rowIndex <= lastRow; rowIndex += 1) {
     const row = rows[rowIndex];
@@ -159,12 +244,12 @@ const renderTablePiece = (
       bodies.set(body, bodyClone);
       element.appendChild(bodyClone);
     }
-    const top = rowIndex === startRow ? start.offset : 0;
-    const bottom = end && rowIndex === endRow ? end.offset : undefined;
-    const geometry = dom.rowSlices.get(row);
+    const rowFrom = rowIndex === startRow ? start.cut : undefined;
+    const rowTo = rowIndex === endRow ? end?.cut : undefined;
+    const lineStarts = dom.rowLines.get(row);
     bodyClone.appendChild(
-      geometry && (top > 0 || bottom !== undefined)
-        ? sliceRow(row, top, bottom, geometry)
+      lineStarts && (rowFrom || rowTo)
+        ? renderRowPiece(row, lineStarts, rowFrom, rowTo)
         : cloneDeep(row),
     );
   }

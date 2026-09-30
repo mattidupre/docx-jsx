@@ -9,11 +9,13 @@ import {
   type BlockKind,
   type BoundaryKind,
   type BoxSize,
+  type CellLines,
   type ColumnFill,
   type ElementKind,
   type MeasuredBlock,
   type MeasuredRegion,
   type MeasuredStack,
+  type SplitRow,
   FIT_EPSILON_PX,
 } from './model';
 import type { ClassifyInput, FragmentationProfile } from './profile';
@@ -40,10 +42,16 @@ export type DomBlock = {
    * `unitStarts[0]` is the start of the block and left out.
    */
   unitStarts: ReadonlyArray<undefined | DomPosition>;
-  /** For a table: the body row each unit starts in, and how far down it. */
-  tableUnits: ReadonlyArray<{ row: HTMLTableRowElement; offset: number }>;
-  /** For a table: the geometry of every row that can be cut. */
-  rowSlices: ReadonlyMap<HTMLTableRowElement, RowSliceGeometry>;
+  /**
+   * For a table: the body row each unit starts in, and for a unit that starts
+   * inside a row, how many lines of each of its cells come before it.
+   */
+  tableUnits: ReadonlyArray<TableUnit>;
+  /** For a table: where every line of every cell of a split row starts. */
+  rowLines: ReadonlyMap<
+    HTMLTableRowElement,
+    ReadonlyArray<ReadonlyArray<DomPosition>>
+  >;
   /** A justified block, whose first piece has to justify its last line. */
   justified: boolean;
   /** The containers between the stack element and the block, outermost first. */
@@ -54,11 +62,9 @@ export type DomBlock = {
   bottomMarginElements: ReadonlyArray<StyledElement>;
 };
 
-/** What a cut row needs to be drawn in slices. */
-export type RowSliceGeometry = {
-  height: number;
-  /** The vertical padding of every cell, in cell order. */
-  cellPaddings: ReadonlyArray<{ top: number; bottom: number }>;
+export type TableUnit = {
+  row: HTMLTableRowElement;
+  cut: undefined | ReadonlyArray<number>;
 };
 
 /** The blocks a container wraps: indexes of its first and last. */
@@ -376,41 +382,72 @@ const lineBoxesOf = (
 };
 
 /**
- * Offsets from the top of a row at which it can be cut without cutting a
- * line of any of its cells: between two lines of one cell, and clear of every
- * line of the others.
+ * The lines of every cell of a row, and the places the row can be cut at:
+ * after each line of any cell, where every cell keeps the lines that end
+ * above that line's bottom. The cells are aligned to the top first, as every
+ * piece of a split row draws them.
  */
-const rowCutOffsets = (row: HTMLTableRowElement): Array<number> => {
+const splitRowOf = (
+  row: HTMLTableRowElement,
+): {
+  cells: Array<CellLines>;
+  cuts: Array<{ offset: number; lines: Array<number> }>;
+  starts: Array<Array<DomPosition>>;
+} => {
+  const cellElements = Array.from(row.cells);
+  for (const cell of cellElements) {
+    cell.style.setProperty('vertical-align', 'top');
+  }
   const rowTop = row.getBoundingClientRect().top;
-  const cellLines = Array.from(row.cells).map(
-    (cell) => lineBoxesOf(cell).lines,
-  );
-  const candidates = cellLines
-    .flatMap((lines) =>
-      lines
-        .slice(1)
-        .map((line, index) => (lines[index].bottom + line.top) / 2 - rowTop),
-    )
-    .sort((a, b) => a - b);
-  const offsets: Array<number> = [];
-  for (const offset of candidates) {
-    const cutsALine = cellLines.some((lines) =>
-      lines.some(
-        (line) =>
-          line.top - rowTop < offset - FIT_EPSILON_PX &&
-          line.bottom - rowTop > offset + FIT_EPSILON_PX,
-      ),
+  const starts: Array<Array<DomPosition>> = [];
+  const cells = cellElements.map((cell): CellLines => {
+    const style = getComputedStyle(cell);
+    const insetTop = toPx(style.borderTopWidth) + toPx(style.paddingTop);
+    const insetBottom =
+      toPx(style.borderBottomWidth) + toPx(style.paddingBottom);
+    const { lines } = lineBoxesOf(cell);
+    starts.push(lines.map(({ start }) => start));
+    // The content ends at its last line, or below it at the margin box of a
+    // block that ends lower.
+    const contentBottom = Math.max(
+      rowTop + insetTop,
+      ...lines.map(({ bottom }) => bottom),
+      ...Array.from(cell.children, (child) => {
+        const rect = child.getBoundingClientRect();
+        return rect.bottom + toPx(getComputedStyle(child).marginBottom);
+      }),
     );
-    const previous = offsets.at(-1);
+    return {
+      lines: lines.map(({ top, bottom }) => ({
+        top: top - rowTop,
+        bottom: bottom - rowTop,
+      })),
+      insetTop,
+      insetBottom,
+      bottom: contentBottom - rowTop + insetBottom,
+    };
+  });
+  const offsets = [
+    ...new Set(cells.flatMap(({ lines }) => lines.map(({ bottom }) => bottom))),
+  ].sort((a, b) => a - b);
+  const cuts: Array<{ offset: number; lines: Array<number> }> = [];
+  for (const offset of offsets) {
+    const lineCounts = cells.map(
+      ({ lines }) =>
+        lines.filter(({ bottom }) => bottom <= offset + FIT_EPSILON_PX).length,
+    );
+    const previous = cuts.at(-1)?.lines ?? cells.map(() => 0);
+    const complete = lineCounts.every(
+      (count, index) => count === cells[index].lines.length,
+    );
     if (
-      offset > 0 &&
-      !cutsALine &&
-      (previous === undefined || offset - previous >= 1)
+      !complete &&
+      lineCounts.some((count, index) => count !== previous[index])
     ) {
-      offsets.push(offset);
+      cuts.push({ offset, lines: lineCounts });
     }
   }
-  return offsets;
+  return { cells, cuts, starts };
 };
 
 const defaultKindOf = (
@@ -520,9 +557,9 @@ export const measureStack = ({
           COLUMNS_DATA_ATTRIBUTES.dataAttribute('columnFill'),
         ) === 'masonry'
           ? {
-              unitCount:
-                Array.from(element.children).filter(isMasonryUnitElement)
-                  .length,
+              unitCount: Array.from(element.children).filter(
+                isMasonryUnitElement,
+              ).length,
             }
           : undefined;
       if (columnCount > 1 || masonry) {
@@ -602,9 +639,12 @@ export const measureStack = ({
       let bounds: Array<number> = [0, height];
       let boundaries: Array<BoundaryKind> = ['edge', 'edge'];
       let unitStarts: Array<undefined | DomPosition> = [undefined];
-      const tableUnits: Array<{ row: HTMLTableRowElement; offset: number }> =
-        [];
-      const rowSlices = new Map<HTMLTableRowElement, RowSliceGeometry>();
+      const tableUnits: Array<TableUnit> = [];
+      const splitRows: Array<SplitRow> = [];
+      const rowLines = new Map<
+        HTMLTableRowElement,
+        ReadonlyArray<ReadonlyArray<DomPosition>>
+      >();
       let repeatHeight = 0;
       let repeatHeader = false;
       let trim: MeasuredBlock['trim'] = undefined;
@@ -625,34 +665,49 @@ export const measureStack = ({
         const rows = Array.from(source.tBodies).flatMap((body) =>
           Array.from(body.rows),
         );
-        rows.forEach((row, rowIndex) => {
+        // Every row is read before any is cut up: aligning a row's cells to
+        // the top for its lines may change the heights of the rows after it.
+        const measuredRows = rows.flatMap((row) => {
           const measuredRow = measuredOf(row);
-          if (!(measuredRow instanceof HTMLTableRowElement)) {
-            return;
-          }
-          const rowRect = measuredRow.getBoundingClientRect();
-          const kept = avoidsBreak(getComputedStyle(measuredRow).breakInside);
-          tableUnits.push({ row, offset: 0 });
+          return measuredRow instanceof HTMLTableRowElement
+            ? [
+                {
+                  row,
+                  measuredRow,
+                  rect: measuredRow.getBoundingClientRect(),
+                  kept: avoidsBreak(getComputedStyle(measuredRow).breakInside),
+                },
+              ]
+            : [];
+        });
+        measuredRows.forEach(({ row, measuredRow, rect: rowRect, kept }) => {
+          const unit = bounds.length;
+          tableUnits.push({ row, cut: undefined });
           bounds.push(rowRect.top - rect.top);
-          boundaries.push(rowIndex === 0 ? 'edge' : 'row');
+          boundaries.push(unit === 0 ? 'edge' : 'row');
           // Only a row that may split, or one too tall for any page, needs
           // the places it can be cut at.
-          if (!kept || rowRect.height > size.height) {
-            rowSlices.set(row, {
-              height: rowRect.height,
-              cellPaddings: Array.from(measuredRow.cells, (cell) => {
-                const cellStyle = getComputedStyle(cell);
-                return {
-                  top: toPx(cellStyle.paddingTop),
-                  bottom: toPx(cellStyle.paddingBottom),
-                };
-              }),
-            });
-            for (const offset of rowCutOffsets(measuredRow)) {
-              tableUnits.push({ row, offset });
-              bounds.push(rowRect.top - rect.top + offset);
-              boundaries.push(kept ? 'within-kept-row' : 'within-row');
-            }
+          if (kept && rowRect.height <= size.height) {
+            return;
+          }
+          const { cells, cuts, starts } = splitRowOf(measuredRow);
+          if (cuts.length === 0) {
+            return;
+          }
+          splitRows.push({
+            unit,
+            height: rowRect.height,
+            cells,
+            cuts: cuts.map(({ lines }) => lines),
+          });
+          rowLines.set(
+            row,
+            starts.map((cellStarts) => cellStarts.map(toSourcePosition)),
+          );
+          for (const cut of cuts) {
+            tableUnits.push({ row, cut: cut.lines });
+            bounds.push(rowRect.top - rect.top + cut.offset);
+            boundaries.push(kept ? 'within-kept-row' : 'within-row');
           }
         });
         bounds.push(height);
@@ -725,6 +780,7 @@ export const measureStack = ({
         insetBottom: 0,
         bounds,
         boundaries,
+        splitRows,
         repeatHeight,
         repeatHeader,
         keepLines,
@@ -746,7 +802,7 @@ export const measureStack = ({
           source,
           unitStarts,
           tableUnits,
-          rowSlices,
+          rowLines,
           justified: style.textAlign === 'justify',
           ancestors: [...ancestors],
           topMarginElements: topEdges.elements,

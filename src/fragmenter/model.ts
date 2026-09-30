@@ -32,7 +32,7 @@ export type StartKind = FragmentationStartKind;
  * - `line`: between two line boxes;
  * - `blocked`: between two line boxes that a float spans;
  * - `row`: between two table rows;
- * - `within-row`: inside a row that may split;
+ * - `within-row`: inside a row that may split (a {@link SplitRow});
  * - `within-kept-row`: inside a row that is kept together, which only splits
  *   when it is taller than a whole box.
  */
@@ -55,6 +55,36 @@ export type MeasuredRegion = {
    * shortest column. `undefined` for columns that flow.
    */
   masonry: undefined | { unitCount: number };
+};
+
+/** The lines of one cell of a table row that splits. */
+export type CellLines = {
+  /** The cell's line boxes, from the top of the row. */
+  lines: ReadonlyArray<{ top: number; bottom: number }>;
+  /** The cell's top border and padding, which every piece of it keeps. */
+  insetTop: number;
+  /** The cell's bottom border and padding, which every piece of it keeps. */
+  insetBottom: number;
+  /** Where the cell's content and bottom inset end, from the top of the row. */
+  bottom: number;
+};
+
+/**
+ * A table row that splits between the lines of its cells. Every cell splits
+ * on its own, at a boundary between two of its lines, so a piece of the row
+ * holds the lines of each cell that fit, and is as tall as its tallest cell.
+ */
+export type SplitRow = {
+  /** The unit the row starts at. Its cuts are the units after it. */
+  unit: number;
+  /** The row's height, whole. */
+  height: number;
+  cells: ReadonlyArray<CellLines>;
+  /**
+   * The places the row can be cut at, in order: for each, how many lines of
+   * every cell come before it.
+   */
+  cuts: ReadonlyArray<ReadonlyArray<number>>;
 };
 
 /** A leaf block, measured once at the content width of its stack. */
@@ -94,6 +124,11 @@ export type MeasuredBlock = {
   bounds: ReadonlyArray<number>;
   /** The kind of every boundary in {@link bounds}. */
   boundaries: ReadonlyArray<BoundaryKind>;
+  /**
+   * A table's rows that split between lines, whose pieces are as tall as
+   * their tallest cell rather than the distance between two bounds.
+   */
+  splitRows: ReadonlyArray<SplitRow>;
   /** Height repeated at the top of every continuation (a table's header). */
   repeatHeight: number;
   /** The table asks for its header rows to repeat (`repeatHeader`). */

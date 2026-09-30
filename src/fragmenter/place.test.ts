@@ -102,6 +102,7 @@ const toBlock = (
   insetBottom: 0,
   bounds: [0, 0],
   boundaries: ['edge', 'edge'],
+  splitRows: [],
   repeatHeight: 0,
   repeatHeader: false,
   keepLines: false,
@@ -631,6 +632,48 @@ describe('tables', () => {
       ['0.0[0-2]'],
       ['0.0[2-3]'],
     ]);
+  });
+
+  test('splits the cells of a tall row each at its own lines', () => {
+    // One 100px row: cell A has ten 10px lines, cell B five 15px lines.
+    const cellOf = (count: number, lineHeight: number) => ({
+      lines: Array.from({ length: count }, (_value, index) => ({
+        top: index * lineHeight,
+        bottom: (index + 1) * lineHeight,
+      })),
+      insetTop: 0,
+      insetBottom: 0,
+      bottom: count * lineHeight,
+    });
+    const cells = [cellOf(10, 10), cellOf(5, 15)];
+    // A cut after every line bottom of either cell, but the row's end.
+    const offsets = [10, 15, 20, 30, 40, 45, 50, 60, 70, 75, 80, 90];
+    const cuts = offsets.map((offset) =>
+      cells.map(
+        ({ lines }) => lines.filter(({ bottom }) => bottom <= offset).length,
+      ),
+    );
+    const block: BlockSpec = {
+      kind: 'table',
+      height: 100,
+      bounds: [0, ...offsets, 100],
+      boundaries: [
+        'edge',
+        ...offsets.map((): BoundaryKind => 'within-kept-row'),
+        'edge',
+      ],
+      splitRows: [{ unit: 0, height: 100, cells, cuts }],
+    };
+    const { pages } = run([{ blocks: [block] }], { height: 42 });
+
+    // Page one holds A's first four lines and B's first two, 40px, the most
+    // that fits; each piece is as tall as its tallest cell.
+    const [first, ...rest] = pages.map((page) => flowPlacements(page)[0]);
+    expect(cuts[first.to - 1]).toEqual([4, 2]);
+    expect(first.bottom).toBe(40);
+    // What is left of each cell carries on from its own next line.
+    expect(rest[0].bottom).toBeLessThanOrEqual(42);
+    expect(rest.at(-1)?.to).toBe(offsets.length + 1);
   });
 });
 
