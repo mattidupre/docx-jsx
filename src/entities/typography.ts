@@ -198,6 +198,11 @@ export const INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS: Partial<
       fontWeight: 'bold',
       marginTop: toPx(marginPx),
       marginBottom: toPx(marginPx),
+      // A heading never ends a page or a column apart from what it heads, and
+      // never splits across one: Word's built-in heading styles keep with
+      // next and keep lines together, and css-break-3 recommends the same.
+      breakAfter: 'avoid',
+      breakInside: 'avoid',
     };
   },
 );
@@ -263,7 +268,9 @@ export const INTRINSIC_TAG_TYPOGRAPHY_OPTIONS = {
  */
 export const INTRINSIC_BLOCK_TAG_NAMES = [
   'blockquote',
-] as const satisfies ReadonlyArray<keyof typeof INTRINSIC_TAG_TYPOGRAPHY_OPTIONS>;
+] as const satisfies ReadonlyArray<
+  keyof typeof INTRINSIC_TAG_TYPOGRAPHY_OPTIONS
+>;
 
 /**
  * Map certain HTML tags to their respective typography styles.

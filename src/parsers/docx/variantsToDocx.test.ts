@@ -155,7 +155,11 @@ describe('parseVariants', () => {
     expect(defaultStyles?.heading1).toEqual({
       link: 'Heading1Char',
       // The intrinsic h1 margin, which the variant does not override.
-      paragraph: { spacing: { before: 322, after: 322 } },
+      paragraph: {
+        spacing: { before: 322, after: 322 },
+        keepNext: true,
+        keepLines: true,
+      },
       run: { bold: true, color: 'ff00ff', size: 48 },
     });
     expect(characterStyles?.find(({ id }) => id === 'Heading1Char')).toEqual({
@@ -280,7 +284,11 @@ describe('parseVariants heading scale', () => {
 
       expect(defaultStyles?.[variantName]).toEqual({
         link: `${variantNameToParagraphStyleId(variantName)}Char`,
-        paragraph: { spacing: { before: margin, after: margin } },
+        paragraph: {
+          spacing: { before: margin, after: margin },
+          keepNext: true,
+          keepLines: true,
+        },
         run: { bold: true, size },
       });
 
@@ -301,8 +309,12 @@ describe('parseVariants heading scale', () => {
 
     expect(defaultStyles?.heading2).toEqual({
       link: 'Heading2Char',
-      // Untouched by the variant, so still the intrinsic h2 margin.
-      paragraph: { spacing: { before: 299, after: 299 } },
+      // Untouched by the variant, so still the intrinsic h2 margin and keeps.
+      paragraph: {
+        spacing: { before: 299, after: 299 },
+        keepNext: true,
+        keepLines: true,
+      },
       run: { bold: false, size: 72 },
     });
   });

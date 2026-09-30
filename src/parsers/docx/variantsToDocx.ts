@@ -11,6 +11,7 @@ import {
   assignTypographyOptions,
   resolveLineBox,
   resolveLineBoxFont,
+  typographyOptionsToFlat,
   INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS,
   INTRINSIC_VARIANT_TAG_NAMES,
 } from '../../entities';
@@ -152,7 +153,14 @@ const parseStyleParagraphOptions = (
   typography: undefined | TypographyOptions,
   defaultTypography: undefined | DefaultTypography,
 ) => {
-  const paragraphOptions = parseParagraphOptions(fonts, typography);
+  const { breakAfter, breakInside } = typographyOptionsToFlat(typography ?? {});
+  const paragraphOptions = {
+    ...parseParagraphOptions(fonts, typography),
+    // A style keeps its paragraphs with the next and whole the way CSS
+    // `break-after: avoid` / `break-inside: avoid` keep the element.
+    ...(breakAfter === 'avoid' && { keepNext: true }),
+    ...(breakInside === 'avoid' && { keepLines: true }),
+  };
   const resolved = assignTypographyOptions({}, defaultTypography, typography, {
     textBoxTrim: 'none',
   });

@@ -219,6 +219,8 @@ describe('resolveBlockTypography', () => {
       fontWeight: 'bold',
       marginTop: '4pt',
       marginBottom: '19.92px',
+      breakAfter: 'avoid',
+      breakInside: 'avoid',
       lineHeight: '1.1',
       textBoxTrim: 'both',
     });

@@ -325,6 +325,9 @@ describe('the intrinsic heading scale', () => {
         fontWeight: 'bold',
         marginTop: margin,
         marginBottom: margin,
+        // Kept with what it heads and whole, as Word's heading styles are.
+        breakAfter: 'avoid',
+        breakInside: 'avoid',
       });
 
       expect(parseTextRunOptions(NO_FONTS, typographyOptions)).toEqual({
