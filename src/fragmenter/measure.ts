@@ -127,7 +127,7 @@ const cloneDeep = (element: StyledElement): StyledElement => {
 };
 
 /** Pairs every node of `source` with the node at the same place in `clone`. */
-const pairNodes = (
+export const pairNodes = (
   source: Node,
   clone: Node,
   pairs: Map<Node, Node>,
@@ -505,12 +505,22 @@ export const measureStack = ({
   stackSource,
   stackIndex,
   size,
+  measurement,
+  continuations,
 }: {
   root: HTMLElement;
   profile: FragmentationProfile;
   stackSource: HTMLElement;
   stackIndex: number;
   size: BoxSize;
+  /** Which measurement of the stack this is. */
+  measurement: number;
+  /**
+   * The elements of `stackSource` that are what is left of a block split
+   * before, with the kind of that block. Each is measured as a block of that
+   * kind that continues.
+   */
+  continuations: ReadonlyMap<StyledElement, BlockKind>;
 }): MeasuredStackDom => {
   const box = document.createElement('div');
   box.style.setProperty('width', `${size.width}px`);
@@ -767,12 +777,20 @@ export const measureStack = ({
       pendingTop = [];
       const keepLines =
         avoidsBreak(style.breakInside) || keepGroup !== undefined;
+      // What is left of a split block was placed from on an earlier page: a
+      // break or keep before it has been honoured there.
+      const continuation = continuations.has(source);
       const block: MeasuredBlock = {
         stackIndex,
+        measurement,
         index: drafts.length,
+        continuation,
         kind: tableUnits.length > 0 || kind !== 'table' ? kind : 'atomic',
         region: currentRegion,
-        unit: currentUnit,
+        unit:
+          continuation && currentUnit
+            ? { index: currentUnit.index, opens: false }
+            : currentUnit,
         height,
         marginTop: topEdges.margin,
         insetTop: topEdges.inset,
@@ -785,8 +803,8 @@ export const measureStack = ({
         repeatHeader,
         keepLines,
         keepNext: avoidsBreak(style.breakAfter),
-        keepPrevious: avoidsBreak(style.breakBefore),
-        breakBefore: pendingBreak,
+        keepPrevious: !continuation && avoidsBreak(style.breakBefore),
+        breakBefore: continuation ? undefined : pendingBreak,
         orphans: toCount(style.orphans, 2),
         widows: toCount(style.widows, 2),
         trim,
@@ -818,6 +836,12 @@ export const measureStack = ({
     ): void => {
       const style = styleOf(source);
       if (style.display === 'none') {
+        return;
+      }
+      const continuedKind = continuations.get(source);
+      if (continuedKind) {
+        measureLeaf(source, style, continuedKind, keepGroup);
+        addBreak(forcedBreakOf(style.breakAfter));
         return;
       }
       addBreak(forcedBreakOf(style.breakBefore));

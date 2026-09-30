@@ -18,6 +18,7 @@ import {
   type Piece,
   type PieceRef,
   type PlacedPage,
+  type StackMeasurement,
   type Placement,
   type StartKind,
 } from './model';
@@ -36,8 +37,18 @@ export type PlacementInput = {
    * down the page of the stack before it; any other one starts a page.
    */
   stacks: ReadonlyArray<{ continuous: boolean }>;
-  /** Measures a stack at the content size of the page it starts on. */
-  measureStack: (stackIndex: number, size: BoxSize) => MeasuredStack;
+  /**
+   * Measures a stack at the content size of the page it starts on, and again
+   * at the size of a later page of another width. `continuations` are the
+   * pieces of its measurement before that carry on: the rest of each is
+   * measured as a block of its own, at the same index, which is a
+   * {@link MeasuredBlock.continuation}.
+   */
+  measureStack: (
+    stackIndex: number,
+    size: BoxSize,
+    continuations: ReadonlyArray<Piece>,
+  ) => MeasuredStack;
   /** Starts a page and returns the size of its content box. */
   startPage: (context: {
     pageIndex: number;
@@ -155,13 +166,27 @@ const keepsTogether = (
   (profile.canBreakBetween !== undefined &&
     !profile.canBreakBetween(before, after, context));
 
-const wantsRepeatedHeader = (
+/** Whether a table's continuations carry its header rows. */
+export const wantsRepeatedHeader = (
   profile: FragmentationProfile,
   block: MeasuredBlock,
 ): boolean =>
   block.repeatHeight > 0 &&
   (profile.tables.repeatHeader === 'always' ||
     (profile.tables.repeatHeader === 'option' && block.repeatHeader));
+
+/**
+ * Whether units from `from` on open the block, rather than carry on from a
+ * piece of it placed before.
+ */
+const opensBlock = ({ block, from }: Piece): boolean =>
+  from === 0 && !block.continuation;
+
+/** Whether a piece starts inside a table row that splits between lines. */
+const startsInsideSplitRow = ({ block, from }: Piece): boolean =>
+  block.splitRows.some(
+    ({ unit, cuts }) => from > unit && from <= unit + cuts.length,
+  );
 
 /**
  * Where to break `block` so that units `[from, to)` stay in `space`. Returns
@@ -221,7 +246,7 @@ const chooseBreak = (
     }
     best = Math.min(best, earlier);
   }
-  if (best - from < (from === 0 ? orphans : 1)) {
+  if (best - from < (opensBlock({ block, from }) ? orphans : 1)) {
     return from;
   }
   const adjusted = profile.adjustBreak
@@ -282,7 +307,7 @@ const fill = (
 
     const splitter = profile.splitters[block.kind];
     const unitCount = unitCountOf(block);
-    const opening = from === 0;
+    const opening = opensBlock({ block, from });
     const collapsedMarginTop = !opening
       ? 0
       : last || box.marginAbove !== undefined
@@ -306,7 +331,9 @@ const fill = (
     const fits = (to: number, repeatHeader: boolean) =>
       top + heightOf(to, repeatHeader) + reserve <= box.height + FIT_EPSILON_PX;
 
-    let repeatHeader = !opening && wantsRepeatedHeader(profile, block);
+    // A table measured again from a continuation holds the header its first
+    // piece repeats, so only a later piece repeats it.
+    let repeatHeader = from > 0 && wantsRepeatedHeader(profile, block);
     // A repeated header with no row under it is dropped rather than moved on.
     if (
       repeatHeader &&
@@ -371,7 +398,7 @@ const fill = (
     while (chainStart > 0) {
       const candidate = placed[chainStart - 1];
       const whole =
-        candidate.from === 0 && candidate.to === unitCountOf(candidate.block);
+        opensBlock(candidate) && candidate.to === unitCountOf(candidate.block);
       if (
         !whole ||
         !keepsTogether(profile, candidate.block, next, contextNow())
@@ -937,7 +964,7 @@ export const placePages = ({
   resumeFrom,
 }: PlacementInput): PlacementResult => {
   const measured: Array<undefined | MeasuredStack> = [];
-  const stackSizes: Array<BoxSize> = [];
+  const measurements: Array<Array<StackMeasurement>> = [];
   /** Stacks whose first block opens with a forced page break. */
   const forcedStarts = new Set<number>();
   const pages: Array<PlacedPage> = [];
@@ -953,21 +980,40 @@ export const placePages = ({
   const piecesOf = (stackIndex: number): Array<Piece> =>
     (measured[stackIndex]?.blocks ?? []).map((block) => ({
       block:
-        block.index === 0 && forcedStarts.has(stackIndex)
+        block.index === 0 && !block.continuation && forcedStarts.has(stackIndex)
           ? { ...block, breakBefore: 'page' }
           : block,
       from: 0,
     }));
 
-  const measureInto = (stackIndex: number, size: BoxSize) => {
-    measured[stackIndex] = measureStack(stackIndex, size);
-    stackSizes[stackIndex] = size;
+  /** Block `index` of the stack's latest measurement, from unit `from` on. */
+  const pieceAt = (stackIndex: number, index: number, from: number): Piece => {
+    const piece = piecesOf(stackIndex)[index];
+    if (!piece) {
+      throw new Error('The checkpoint does not match the measured stacks.');
+    }
+    return { block: piece.block, from };
+  };
+
+  const measureInto = (
+    stackIndex: number,
+    size: BoxSize,
+    continuations: ReadonlyArray<Piece>,
+  ) => {
+    measured[stackIndex] = measureStack(stackIndex, size, continuations);
+    (measurements[stackIndex] ??= []).push({
+      size,
+      continuations: continuations.map(({ block, from }) => ({
+        index: block.index,
+        from,
+      })),
+    });
   };
 
   /** Measures the next stack into the queue at the size of the current page. */
   const loadStack = (size: BoxSize): Array<Piece> => {
     const stackIndex = loadedStackCount;
-    measureInto(stackIndex, size);
+    measureInto(stackIndex, size, []);
     loadedStackCount += 1;
     const stack = measured[stackIndex];
     if (pendingBreak && stack && stack.blocks.length > 0) {
@@ -981,36 +1027,39 @@ export const placePages = ({
   };
 
   /**
-   * Re-measures every stack that starts on this page at its size, when it was
-   * measured at another page's size and nothing of it is placed yet.
+   * Measures again, at the size of this page, every stack with content left
+   * that was measured at another width, and every stack whose next piece
+   * starts inside a split table row, whose cells each go on from a line of
+   * their own. A block split before carries on from the same place in its
+   * content, measured on its own as a continuation.
    */
   const remeasureFor = (size: BoxSize) => {
     const stale = new Set(
       queue
         .filter(
-          ({ block, from }) =>
-            block.index === 0 &&
-            from === 0 &&
+          (piece) =>
             Math.abs(
-              (measured[block.stackIndex]?.width ?? size.width) - size.width,
-            ) > FIT_EPSILON_PX,
+              (measured[piece.block.stackIndex]?.width ?? size.width) -
+                size.width,
+            ) > FIT_EPSILON_PX || startsInsideSplitRow(piece),
         )
         .map(({ block }) => block.stackIndex),
     );
-    if (stale.size === 0) {
-      return;
+    for (const stackIndex of stale) {
+      measureInto(
+        stackIndex,
+        size,
+        queue.filter(
+          (piece) =>
+            piece.block.stackIndex === stackIndex && !opensBlock(piece),
+        ),
+      );
     }
-    queue = queue.flatMap((piece) => {
-      const { stackIndex, index } = piece.block;
-      if (!stale.has(stackIndex)) {
-        return [piece];
-      }
-      if (index !== 0) {
-        return [];
-      }
-      measureInto(stackIndex, size);
-      return piecesOf(stackIndex);
-    });
+    queue = queue.map((piece) =>
+      stale.has(piece.block.stackIndex)
+        ? pieceAt(piece.block.stackIndex, piece.block.index, 0)
+        : piece,
+    );
   };
 
   const snapshot = (): Checkpoint => ({
@@ -1021,7 +1070,9 @@ export const placePages = ({
       from,
     })),
     loadedStackCount,
-    stackSizes: [...stackSizes],
+    measurements: measurements.map((stackMeasurements) => [
+      ...stackMeasurements,
+    ]),
     forcedStarts: [...forcedStarts],
     pendingBreak,
     startKind,
@@ -1036,19 +1087,29 @@ export const placePages = ({
     resumeFrom.forcedStarts.forEach((stackIndex) =>
       forcedStarts.add(stackIndex),
     );
-    resumeFrom.stackSizes.forEach((size, stackIndex) => {
-      stackSizes[stackIndex] = size;
-    });
-    queue = resumeFrom.queue.map(({ stackIndex, index, from }) => {
-      if (!measured[stackIndex]) {
-        measureInto(stackIndex, resumeFrom.stackSizes[stackIndex]);
+    // The stacks with content left are measured again as they were; the
+    // measurements of the others are only carried on.
+    const pending = new Set(
+      resumeFrom.queue.map(({ stackIndex }) => stackIndex),
+    );
+    resumeFrom.measurements.forEach((stackMeasurements, stackIndex) => {
+      if (!pending.has(stackIndex)) {
+        measurements[stackIndex] = [...stackMeasurements];
+        return;
       }
-      const piece = piecesOf(stackIndex)[index];
-      if (!piece) {
-        throw new Error('The checkpoint does not match the measured stacks.');
+      for (const { size, continuations } of stackMeasurements) {
+        measureInto(
+          stackIndex,
+          size,
+          continuations.map(({ index, from }) =>
+            pieceAt(stackIndex, index, from),
+          ),
+        );
       }
-      return { block: piece.block, from };
     });
+    queue = resumeFrom.queue.map(({ stackIndex, index, from }) =>
+      pieceAt(stackIndex, index, from),
+    );
   }
 
   for (;;) {
@@ -1058,7 +1119,7 @@ export const placePages = ({
     const head = queue.at(0);
     if (head) {
       stackIndex = head.block.stackIndex;
-      first = head.from === 0 && head.block.index === 0;
+      first = opensBlock(head) && head.block.index === 0;
     } else if (loadedStackCount < stacks.length) {
       stackIndex = loadedStackCount;
       first = true;

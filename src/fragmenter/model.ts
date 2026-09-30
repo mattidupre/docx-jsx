@@ -87,11 +87,28 @@ export type SplitRow = {
   cuts: ReadonlyArray<ReadonlyArray<number>>;
 };
 
-/** A leaf block, measured once at the content width of its stack. */
+/**
+ * A leaf block, measured at the content width of the page its stack starts
+ * on, and again at the width of any later page of another width.
+ */
 export type MeasuredBlock = {
   stackIndex: number;
-  /** Position in its stack's measurement, which identifies the block. */
+  /**
+   * Which measurement of its stack the block comes from: 0, and one more
+   * each time the stack is measured again.
+   */
+  measurement: number;
+  /**
+   * Position in its stack's measurement, which identifies the block. It is
+   * the same in every measurement of the stack.
+   */
   index: number;
+  /**
+   * The block is what is left of a block split on an earlier page, measured
+   * again on its own: it opens as a continuation does, with no margin,
+   * border, forced break or orphan rule of its own.
+   */
+  continuation: boolean;
   kind: BlockKind;
   region: undefined | MeasuredRegion;
   /**
@@ -151,6 +168,16 @@ export type MeasuredBlock = {
    * trimmed piece that ends there.
    */
   trim: undefined | { lineHeight: number; capHeight: number };
+};
+
+/**
+ * How a stack was measured once: at `size`, with the rest of each of the
+ * `continuations` (blocks of the stack's measurement before, by index, from
+ * a unit on) measured as a block of its own.
+ */
+export type StackMeasurement = {
+  size: BoxSize;
+  continuations: ReadonlyArray<{ index: number; from: number }>;
 };
 
 /** One stack, measured at one content size. */
@@ -248,8 +275,8 @@ export type Checkpoint = {
   queue: ReadonlyArray<PieceRef>;
   /** How many stacks had been measured into the queue. */
   loadedStackCount: number;
-  /** The size each loaded stack was measured at. */
-  stackSizes: ReadonlyArray<BoxSize>;
+  /** Every measurement of each loaded stack so far, in order. */
+  measurements: ReadonlyArray<ReadonlyArray<StackMeasurement>>;
   /** Stacks whose first block opens with a forced page break. */
   forcedStarts: ReadonlyArray<number>;
   /** A forced break still waiting for a block to apply to. */

@@ -9,6 +9,7 @@ import {
   type MeasuredRegion,
   type MeasuredStack,
   type PlacedPage,
+  type SplitRow,
 } from './model';
 import { MASONRY_LOOKAHEAD, placePages, type PlacementInput } from './place';
 import type { FragmentationProfile } from './profile';
@@ -93,6 +94,8 @@ const toBlock = (
   index: number,
 ): MeasuredBlock => ({
   kind: 'text',
+  measurement: 0,
+  continuation: false,
   region: undefined,
   unit: undefined,
   height: 0,
@@ -117,12 +120,41 @@ const toBlock = (
   index,
 });
 
+/**
+ * What is left of a block from unit `from` on, measured again on its own: the
+ * units after `from`, opening as a continuation does.
+ */
+const restOf = (block: MeasuredBlock, from: number): BlockSpec => ({
+  ...block,
+  marginTop: 0,
+  insetTop: 0,
+  keepPrevious: false,
+  breakBefore: undefined,
+  unit: block.unit && { index: block.unit.index, opens: false },
+  height: block.height - block.bounds[from],
+  bounds: block.bounds.slice(from).map((bound) => bound - block.bounds[from]),
+  boundaries: ['edge', ...block.boundaries.slice(from + 1)],
+});
+
 type StackSpec = {
   blocks: ReadonlyArray<BlockSpec>;
+  /** The blocks at a width, when they depend on it; `blocks` otherwise. */
+  blocksAt?: (width: number) => ReadonlyArray<BlockSpec>;
+  /**
+   * What is left of a block from a unit on, at a width, when the block was
+   * measured at `previousWidth`; {@link restOf} otherwise.
+   */
+  restAt?: (
+    block: MeasuredBlock,
+    from: number,
+    widths: { width: number; previousWidth: number },
+  ) => BlockSpec;
   continuous?: boolean;
   breakAfter?: 'page';
   /** The content size of the pages the stack owns. */
   size?: BoxSize;
+  /** The content size of those it owns but does not start, if another. */
+  subsequentSize?: BoxSize;
 };
 
 type RunOptions = {
@@ -139,22 +171,51 @@ const run = (stacks: ReadonlyArray<StackSpec>, options: RunOptions = {}) => {
     first: boolean;
   }> = [];
   const defaultSize = { width: 500, height: options.height ?? 100 };
+  /** The width of every measurement of each stack. */
+  const widths: Array<Array<number>> = [];
   const result = placePages({
     profile: resolveFragmentationProfile(options.profile),
     stacks: stacks.map(({ continuous = false }) => ({ continuous })),
-    measureStack: (stackIndex, size): MeasuredStack => {
+    measureStack: (stackIndex, size, continuations): MeasuredStack => {
       measured.push({ stackIndex, size });
+      const stackWidths = (widths[stackIndex] ??= []);
+      const measurement = stackWidths.length;
+      const previousWidth = stackWidths.at(-1) ?? size.width;
+      stackWidths.push(size.width);
+      const stack = stacks[stackIndex];
+      const specs = stack.blocksAt?.(size.width) ?? stack.blocks;
       return {
         width: size.width,
-        blocks: stacks[stackIndex].blocks.map((spec, index) =>
-          toBlock(spec, stackIndex, index),
-        ),
-        breakAfter: stacks[stackIndex].breakAfter,
+        blocks: specs.map((spec, index) => {
+          const piece = continuations.find(
+            ({ block }) => block.index === index,
+          );
+          const rest =
+            piece &&
+            (stack.restAt?.(piece.block, piece.from, {
+              width: size.width,
+              previousWidth,
+            }) ??
+              restOf(piece.block, piece.from));
+          return toBlock(
+            {
+              ...(rest ?? spec),
+              measurement,
+              continuation: rest !== undefined,
+            },
+            stackIndex,
+            index,
+          );
+        }),
+        breakAfter: stack.breakAfter,
       };
     },
     startPage: (context) => {
       starts.push(context);
-      return stacks[context.stackIndex].size ?? defaultSize;
+      const stack = stacks[context.stackIndex];
+      return (
+        (!context.first && stack.subsequentSize) || stack.size || defaultSize
+      );
     },
     resumeFrom: options.resumeFrom,
   });
@@ -389,6 +450,89 @@ describe('forced breaks and stacks', () => {
       { stackIndex: 1, size: narrow },
       { stackIndex: 2, size: narrow },
     ]);
+  });
+});
+
+describe('pages of another width', () => {
+  /**
+   * A paragraph of `chars` characters of 10px, in lines of `LINE` px, wrapped
+   * at the width it is measured at. What is left of it after a split is the
+   * characters after its first `from` lines there, wrapped again.
+   */
+  const prose = (chars: number): Pick<StackSpec, 'blocksAt' | 'restAt'> => {
+    let left = chars;
+    const linesOf = (count: number, width: number) =>
+      text(Math.ceil((count * 10) / width));
+    return {
+      blocksAt: (width) => {
+        left = chars;
+        return [linesOf(chars, width)];
+      },
+      restAt: (_block, from, { width, previousWidth }) => {
+        left -= (from * previousWidth) / 10;
+        return linesOf(left, width);
+      },
+    };
+  };
+
+  test('measures what is left of a stack again at the width of a later page', () => {
+    const wide = { width: 500, height: 40 };
+    const narrow = { width: 250, height: 40 };
+    const { pages, measured } = run([
+      { blocks: [], ...prose(300), size: wide, subsequentSize: narrow },
+    ]);
+    // Six lines of 50 characters: four fit. The last 100 characters wrap to
+    // four lines of 25 on the narrower page, not two.
+    expect(describePages(pages)).toEqual([['0.0[0-4]'], ['0.0[0-4]']]);
+    expect(measured.map(({ size }) => size)).toEqual([wide, narrow]);
+    const [continuation] = flowPlacements(pages[1]);
+    expect(continuation.block).toMatchObject({
+      measurement: 1,
+      continuation: true,
+    });
+    // A continuation opens with no space of its own.
+    expect(continuation.marginTop).toBe(0);
+  });
+
+  test('measures a continuous stack again on the page of its own it goes on to', () => {
+    const wide = { width: 500, height: 40 };
+    const narrow = { width: 250, height: 40 };
+    const { pages, starts } = run([
+      { blocks: [atomic(20)], size: wide },
+      { blocks: [], ...prose(300), continuous: true, size: narrow },
+    ]);
+    // Two of its six 50 character lines fit below stack 0; the other 200
+    // characters are eight lines of 25 on its own pages.
+    expect(describePages(pages)).toEqual([
+      ['0.0[0-1]', '1.0[0-2]'],
+      ['1.0[0-4]'],
+      ['1.0[4-8]'],
+    ]);
+    expect(starts.slice(1)).toEqual([
+      { pageIndex: 1, stackIndex: 1, first: false },
+      { pageIndex: 2, stackIndex: 1, first: false },
+    ]);
+  });
+
+  test('resumes from a checkpoint after a measurement at another width', () => {
+    const stacks: Array<StackSpec> = [
+      {
+        blocks: [],
+        ...prose(1000),
+        size: { width: 500, height: 40 },
+        subsequentSize: { width: 250, height: 40 },
+      },
+    ];
+    const full = run(stacks);
+    const serialized: ReadonlyArray<Checkpoint> = JSON.parse(
+      JSON.stringify(full.checkpoints),
+    );
+    for (let pageIndex = 1; pageIndex < full.pages.length; pageIndex += 1) {
+      const resumed = run(stacks, { resumeFrom: serialized[pageIndex] });
+      expect(describePages(resumed.pages)).toEqual(
+        describePages(full.pages.slice(pageIndex)),
+      );
+    }
   });
 });
 
@@ -635,45 +779,89 @@ describe('tables', () => {
   });
 
   test('splits the cells of a tall row each at its own lines', () => {
-    // One 100px row: cell A has ten 10px lines, cell B five 15px lines.
-    const cellOf = (count: number, lineHeight: number) => ({
-      lines: Array.from({ length: count }, (_value, index) => ({
-        top: index * lineHeight,
-        bottom: (index + 1) * lineHeight,
-      })),
-      insetTop: 0,
-      insetBottom: 0,
-      bottom: count * lineHeight,
-    });
-    const cells = [cellOf(10, 10), cellOf(5, 15)];
-    // A cut after every line bottom of either cell, but the row's end.
-    const offsets = [10, 15, 20, 30, 40, 45, 50, 60, 70, 75, 80, 90];
-    const cuts = offsets.map((offset) =>
-      cells.map(
-        ({ lines }) => lines.filter(({ bottom }) => bottom <= offset).length,
-      ),
-    );
-    const block: BlockSpec = {
-      kind: 'table',
-      height: 100,
-      bounds: [0, ...offsets, 100],
-      boundaries: [
-        'edge',
-        ...offsets.map((): BoundaryKind => 'within-kept-row'),
-        'edge',
-      ],
-      splitRows: [{ unit: 0, height: 100, cells, cuts }],
+    type Cell = SplitRow['cells'][number];
+    /** A cell of lines of these heights, from the top of the row. */
+    const cellOf = (heights: ReadonlyArray<number>): Cell => {
+      let top = 0;
+      const lines = heights.map((height) => {
+        const line = { top, bottom: top + height };
+        top += height;
+        return line;
+      });
+      return { lines, insetTop: 0, insetBottom: 0, bottom: top };
     };
-    const { pages } = run([{ blocks: [block] }], { height: 42 });
+    /**
+     * A table of one row of these cells, cut after every line bottom of any
+     * cell but the row's end, as the measurement cuts it.
+     */
+    const rowTable = (cells: ReadonlyArray<Cell>): BlockSpec => {
+      const height = Math.max(...cells.map(({ bottom }) => bottom));
+      const offsets = [
+        ...new Set(
+          cells.flatMap(({ lines }) => lines.map(({ bottom }) => bottom)),
+        ),
+      ]
+        .sort((a, b) => a - b)
+        .filter((offset) => offset < height);
+      return {
+        kind: 'table',
+        height,
+        bounds: [0, ...offsets, height],
+        boundaries: [
+          'edge',
+          ...offsets.map((): BoundaryKind => 'within-kept-row'),
+          'edge',
+        ],
+        splitRows: [
+          {
+            unit: 0,
+            height,
+            cells,
+            cuts: offsets.map((offset) =>
+              cells.map(
+                ({ lines }) =>
+                  lines.filter(({ bottom }) => bottom <= offset).length,
+              ),
+            ),
+          },
+        ],
+      };
+    };
+    // Cell A has ten 10px lines, cell B five 15px lines.
+    const heights = [Array(10).fill(10), Array(5).fill(15)];
+    const table = rowTable(heights.map(cellOf));
+    const { pages, measured } = run(
+      [
+        {
+          blocks: [table],
+          // What is left of the row starts each cell at its next line.
+          restAt: (block, from) => {
+            const cut = block.splitRows[0].cuts[from - 1];
+            return rowTable(
+              block.splitRows[0].cells.map(({ lines }, cellIndex) =>
+                cellOf(
+                  lines
+                    .slice(cut[cellIndex])
+                    .map(({ top, bottom }) => bottom - top),
+                ),
+              ),
+            );
+          },
+        },
+      ],
+      { height: 42 },
+    );
 
-    // Page one holds A's first four lines and B's first two, 40px, the most
-    // that fits; each piece is as tall as its tallest cell.
-    const [first, ...rest] = pages.map((page) => flowPlacements(page)[0]);
-    expect(cuts[first.to - 1]).toEqual([4, 2]);
-    expect(first.bottom).toBe(40);
-    // What is left of each cell carries on from its own next line.
-    expect(rest[0].bottom).toBeLessThanOrEqual(42);
-    expect(rest.at(-1)?.to).toBe(offsets.length + 1);
+    // Each page holds as many lines of each cell as fit, and is as tall as
+    // its tallest cell: four of A and two of B, twice, then the last two of
+    // A and the last of B.
+    const pieces = pages.map((page) => flowPlacements(page)[0]);
+    expect(pieces.map(({ bottom }) => bottom)).toEqual([40, 40, 20]);
+    expect(
+      pieces.map(({ block, to }) => block.splitRows[0].cuts[to - 1]),
+    ).toEqual([[4, 2], [4, 2], undefined]);
+    // The row is measured again on every page it carries on to.
+    expect(measured).toHaveLength(3);
   });
 });
 

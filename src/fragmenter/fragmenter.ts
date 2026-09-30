@@ -1,20 +1,27 @@
 import type { PageSize } from '../entities';
-import { measureStack, type MeasuredStackDom } from './measure';
-import type { BoxSize, FragmentationLayout } from './model';
-import { placePages } from './place';
+import {
+  measureStack,
+  type MeasuredStackDom,
+  type StyledElement,
+} from './measure';
+import type { BlockKind, BoxSize, FragmentationLayout } from './model';
+import { placePages, wantsRepeatedHeader } from './place';
 import type { FragmentationProfile } from './profile';
 import { createFragmentationProfile } from './profiles';
-import { renderPage } from './render';
+import { continueStack, renderPage } from './render';
 
 /**
  * The Fragmenter paginates the library's block flow by the conventions of a
  * {@link FragmentationProfile} (Word's by default).
  *
- * Every stack is laid out once, unpaginated, at the content width of the page
- * it starts on, and measured into a block model: border boxes, margins, line
+ * Every stack is laid out, unpaginated, at the content width of the page it
+ * starts on, and measured into a block model: border boxes, margins, line
  * and row boundaries. Pages are then filled by arithmetic on that model, and
- * only the chosen fragments are built into page DOM. The content is measured
- * under the same scoped stylesheets and content root it is shown with.
+ * only the chosen fragments are built into page DOM. What is left of a stack
+ * is laid out and measured again on a page of another width, a block split
+ * before carrying on from the same place in its content. The content is
+ * measured under the same scoped stylesheets and content root it is shown
+ * with.
  */
 
 export type OnPageStart = (context: {
@@ -180,29 +187,48 @@ export class Fragmenter {
         return size;
       };
 
-      const stackDoms: Array<MeasuredStackDom> = [];
+      /** Every measurement of every stack, by stack, in order. */
+      const stackDoms: Array<Array<MeasuredStackDom>> = [];
       const { pages, packedOrder } = placePages({
         profile: this.profile,
         stacks,
-        measureStack: (stackIndex, size) => {
+        measureStack: (stackIndex, size, continuations) => {
+          const measurements = (stackDoms[stackIndex] ??= []);
+          const previous = measurements.at(-1);
+          if (continuations.length > 0 && !previous) {
+            throw new Error(`Stack ${stackIndex + 1} was never measured.`);
+          }
+          const { source, continuations: continued } =
+            previous && continuations.length > 0
+              ? continueStack(previous, continuations, (block) =>
+                  wantsRepeatedHeader(this.profile, block),
+                )
+              : {
+                  source: stacks[stackIndex].element,
+                  continuations: new Map<StyledElement, BlockKind>(),
+                };
           const stackDom = measureStack({
             root,
             profile: this.profile,
-            stackSource: stacks[stackIndex].element,
+            stackSource: source,
             stackIndex,
             size,
+            measurement: measurements.length,
+            continuations: continued,
           });
-          stackDoms[stackIndex] = stackDom;
+          measurements.push(stackDom);
           return stackDom.stack;
         },
         startPage: (context) => resolveSize(onPageStart(context)),
       });
 
       pages.forEach((page, pageIndex) => {
-        const contentElement = renderPage(page, (stackIndex) => {
-          const stackDom = stackDoms[stackIndex];
+        const contentElement = renderPage(page, (block) => {
+          const stackDom = stackDoms[block.stackIndex]?.[block.measurement];
           if (!stackDom) {
-            throw new Error(`Stack ${stackIndex + 1} was never measured.`);
+            throw new Error(
+              `Stack ${block.stackIndex + 1} was never measured that way.`,
+            );
           }
           return stackDom;
         });
@@ -211,8 +237,8 @@ export class Fragmenter {
 
       return {
         stackCount: stacks.length,
-        masonryStacks: stackDoms.flatMap((stackDom, stackIndex) => {
-          const masonry = stackDom.stack.blocks.find(
+        masonryStacks: stackDoms.flatMap((measurements, stackIndex) => {
+          const masonry = measurements[0]?.stack.blocks.find(
             ({ region }) => region?.masonry,
           )?.region?.masonry;
           return masonry ? [{ stackIndex, unitCount: masonry.unitCount }] : [];
