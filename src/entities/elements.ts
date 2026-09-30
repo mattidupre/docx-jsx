@@ -30,6 +30,7 @@ export type ConfigByElementType = {
   pagenumber: Record<string, never>;
   pagecount: Record<string, never>;
   split: Record<string, never>;
+  masonryGroup: Record<string, never>;
   positionalTab: { alignment: 'left' | 'right' | 'center' };
   gridContainer: { columnGap: UnitsSize; columnCount: number };
   gridItem: {
@@ -119,6 +120,20 @@ export const TABLE_BORDER_CSS_STYLES = {
 export type ElementType = keyof ConfigByElementType;
 
 /**
+ * Whether a direct child of a masonry stack is one of the units its packing
+ * moves. A `Break` is not: it ends a column or a page between the units
+ * around it. Nor is a bare `<br>`, which holds nothing to pack. Every target
+ * lists the units by this one rule, so their indexes agree.
+ */
+export const isMasonryUnit = ({
+  tagName,
+  elementType,
+}: {
+  tagName: string;
+  elementType: undefined | ElementType;
+}): boolean => tagName.toLowerCase() !== 'br' && elementType !== 'break';
+
+/**
  * The marker a list draws beside each of its items, named after the OOXML
  * `w:numFmt` values it maps onto. CSS names the same markers differently, so
  * the DOM target translates through {@link LIST_FORMAT_STYLE_TYPES}.
@@ -136,8 +151,8 @@ export type ListFormat = (typeof LIST_FORMATS)[number];
 
 /**
  * The CSS `list-style-type` that draws the same marker as a {@link ListFormat}.
- * Browsers -- and therefore pagedjs and the PDF -- read this, Word reads the
- * numbering format, and the two have to name the same marker.
+ * Browsers -- and therefore the DOM and PDF targets -- read this, Word reads
+ * the numbering format, and the two have to name the same marker.
  */
 export const LIST_FORMAT_STYLE_TYPES = {
   decimal: 'decimal',

@@ -29,7 +29,7 @@ const CHAPTERS: ReadonlyArray<string> = [
 
 /**
  * Long enough that the table cannot fit on the page it starts, so both the
- * DOCX header repetition and the pagedjs row-splitting rules are exercised.
+ * header repetition and the row-splitting rules are exercised.
  */
 const LONG_TABLE_ROW_COUNT = 30;
 
@@ -44,9 +44,8 @@ const LONG_TABLE_ROWS = Array.from(
 
 /**
  * Data tables: borders, column widths, spans, per-cell alignment and a zebra
- * fill, followed by a table long enough to cross a page. Word repeats the
- * header row of the long table and pagedjs cannot, which is the one place the
- * targets are meant to differ.
+ * fill, followed by a table long enough to cross a page, whose header row
+ * repeats on the second page in every target.
  */
 export function TableDocument() {
   return (

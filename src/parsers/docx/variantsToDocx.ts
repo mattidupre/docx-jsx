@@ -2,16 +2,22 @@ import { HeadingLevel, type IStylesOptions } from 'docx';
 import { startCase } from 'lodash';
 import type { ArrayValues, Writable } from 'type-fest';
 import {
+  type DefaultTypography,
   type Variants,
   type FontsConfig,
   type VariantName,
   type Variant,
+  type TypographyOptions,
   assignTypographyOptions,
+  resolveLineBox,
+  resolveLineBoxFont,
+  typographyOptionsToFlat,
   INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS,
   INTRINSIC_VARIANT_TAG_NAMES,
 } from '../../entities';
 import { getValueOf, isKeyOf } from '../../utils/object';
 import {
+  parseLineSpacing,
   parseParagraphOptions,
   parseTextRunOptions,
 } from './typographyOptionsToDocx';
@@ -136,9 +142,45 @@ const variantWithIntrinsicTypography = (
   return assignTypographyOptions({}, intrinsicTypography, variant);
 };
 
+/**
+ * The paragraph properties of a style or of the document defaults: those of
+ * `typography`, with the exact line the typography resolves to over the
+ * document's defaults. A style only carries a line height; trimming is
+ * compensated paragraph by paragraph, so it is left out here.
+ */
+const parseStyleParagraphOptions = (
+  fonts: FontsConfig,
+  typography: undefined | TypographyOptions,
+  defaultTypography: undefined | DefaultTypography,
+) => {
+  const { breakAfter, breakInside } = typographyOptionsToFlat(typography ?? {});
+  const paragraphOptions = {
+    ...parseParagraphOptions(fonts, typography),
+    // A style keeps its paragraphs with the next and whole the way CSS
+    // `break-after: avoid` / `break-inside: avoid` keep the element.
+    ...(breakAfter === 'avoid' && { keepNext: true }),
+    ...(breakInside === 'avoid' && { keepLines: true }),
+  };
+  const resolved = assignTypographyOptions({}, defaultTypography, typography, {
+    textBoxTrim: 'none',
+  });
+  const lineBox = resolveLineBox(resolved, resolveLineBoxFont(fonts, resolved));
+  if (!lineBox) {
+    return paragraphOptions;
+  }
+  return {
+    ...paragraphOptions,
+    spacing: {
+      ...paragraphOptions?.spacing,
+      ...parseLineSpacing(lineBox, { atLeast: false }),
+    },
+  };
+};
+
 export const parseVariants = (
   fonts: FontsConfig,
   variants: Variants,
+  defaultTypography?: DefaultTypography,
 ): IStylesOptions => {
   const defaultStyles: DefaultStyles = {};
   const paragraphStyles: Array<
@@ -185,20 +227,21 @@ export const parseVariants = (
       // its linked character style has to be declared here.
       defaultStyles[variantName] = {
         link: characterStyleId,
-        paragraph: parseParagraphOptions(fonts, variant) ?? {},
-        run: parseTextRunOptions(fonts, variant) ?? {},
+        paragraph:
+          parseStyleParagraphOptions(fonts, variant, defaultTypography) ?? {},
+        run: parseTextRunOptions(fonts, variant, defaultTypography) ?? {},
       };
       characterStyles.push({
         id: claimStyleId(characterStyleId, variantName),
         name: `${styleName} Char`,
         link: paragraphStyleId,
         quickFormat: true,
-        run: parseTextRunOptions(fonts, variant),
+        run: parseTextRunOptions(fonts, variant, defaultTypography),
       });
     } else if (isKeyOf(variantName, INTRINSIC_CHARACTER_STYLE_IDS)) {
       claimStyleId(characterStyleId, variantName);
       defaultStyles[variantName] = {
-        run: parseTextRunOptions(fonts, variant) ?? {},
+        run: parseTextRunOptions(fonts, variant, defaultTypography) ?? {},
       };
     } else {
       paragraphStyles.push({
@@ -206,17 +249,31 @@ export const parseVariants = (
         name: styleName,
         link: characterStyleId,
         quickFormat: true,
-        paragraph: parseParagraphOptions(fonts, variant),
-        run: parseTextRunOptions(fonts, variant),
+        paragraph: parseStyleParagraphOptions(
+          fonts,
+          variant,
+          defaultTypography,
+        ),
+        run: parseTextRunOptions(fonts, variant, defaultTypography),
       });
       characterStyles.push({
         id: claimStyleId(characterStyleId, variantName),
         name: `${styleName} Char`,
         link: paragraphStyleId,
         quickFormat: true,
-        run: parseTextRunOptions(fonts, variant),
+        run: parseTextRunOptions(fonts, variant, defaultTypography),
       });
     }
+  }
+
+  if (defaultTypography) {
+    // `w:docDefaults`: what Word gives text no style or run formats, which is
+    // what the CSS targets give it from the content root.
+    defaultStyles.document = {
+      run: parseTextRunOptions(fonts, defaultTypography) ?? {},
+      paragraph:
+        parseStyleParagraphOptions(fonts, undefined, defaultTypography) ?? {},
+    };
   }
 
   return {

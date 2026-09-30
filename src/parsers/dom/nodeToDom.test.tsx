@@ -19,6 +19,7 @@ import {
   type BrowserHarness,
 } from '../../fixtures/browserHarness';
 import type * as mapHtmlToDocumentModule from '../../lib/mapHtmlToDocument';
+import type { FontsConfig } from '../../entities';
 import type * as nodeToDomModule from './nodeToDom';
 
 const RESOLVE_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -39,7 +40,7 @@ const stackMarkup = (
     (api, documentHtml: string, index: number) => {
       const documentObj = api.mapHtmlToDocument<HTMLElement>(
         documentHtml,
-        api.nodeToDom,
+        (node) => api.nodeToDom(node, { fonts: undefined }),
       );
       const wrapperEl = document.createElement('div');
       wrapperEl.appendChild(documentObj.stacks[index].content);
@@ -108,6 +109,46 @@ function NavigationDocument() {
   );
 }
 
+/** Merriweather's metrics: at 12pt a 15.084pt single line, 8.916pt caps. */
+const MERRIWEATHER: FontsConfig = {
+  Merriweather: {
+    fontFaces: [
+      {
+        sources: [{ src: '/Merriweather-Regular.ttf', format: 'truetype' }],
+        metrics: {
+          unitsPerEm: 1000,
+          ascent: 984,
+          descent: -273,
+          lineGap: 0,
+          capHeight: 743,
+        },
+      },
+    ],
+  },
+};
+
+function LineBoxDocument() {
+  return (
+    <DocumentProvider
+      fonts={MERRIWEATHER}
+      defaultTypography={{ fontFamily: 'Merriweather', fontSize: '12pt' }}
+    >
+      <Stack>
+        <Typography as="p" lineHeight="1.5">
+          Multiplier
+        </Typography>
+        <Typography as="p">Normal</Typography>
+        <Typography as="p" lineHeight="18pt" textBoxTrim="both">
+          Trimmed
+        </Typography>
+        <Typography as="p" capHeight="7.43pt" lineHeight="1.2">
+          Caps
+        </Typography>
+      </Stack>
+    </DocumentProvider>
+  );
+}
+
 describe('nodeToDom', () => {
   let browser: Browser;
   let harness: BrowserHarness<NodeToDomApi>;
@@ -123,6 +164,32 @@ describe('nodeToDom', () => {
   afterAll(async () => {
     await harness?.close();
     await closeTestBrowser(browser);
+  });
+
+  it('writes the line box a paragraph resolves to', async () => {
+    const { elements } = await stackMarkup(
+      harness,
+      reactToHtml(LineBoxDocument, 'pdf'),
+    );
+    const [multiplier, normal, trimmed, caps] = elements
+      .filter(({ tagName }) => tagName === 'P')
+      .map(({ style }) => style ?? '');
+
+    // An absolute line height, which the inlines inside inherit as it is.
+    expect(multiplier).toContain('--matti-docs-line-height: 24px;');
+    // `normal` is the font's own single line, as in Word.
+    expect(normal).toContain('--matti-docs-line-height: 20.112px;');
+    expect(trimmed).toContain(
+      '--matti-docs-text-box: trim-both cap alphabetic;',
+    );
+    // capsize's trim for a browser without `text-box`.
+    expect(trimmed).toContain("--matti-docs-trim: '';");
+    expect(trimmed).toContain('--matti-docs-trim-cap-height: -0.3625em;');
+    expect(trimmed).toContain('--matti-docs-trim-baseline: -0.3945em;');
+    expect(normal).not.toContain('--matti-docs-trim');
+    // 7.43pt capitals are 10pt Merriweather, on a 12pt line.
+    expect(caps).toContain('--matti-docs-font-size: 13.3333px;');
+    expect(caps).toContain('--matti-docs-line-height: 16px;');
   });
 
   it('writes typography options as prefixed css variables', async () => {

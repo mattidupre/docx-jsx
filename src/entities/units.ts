@@ -19,6 +19,12 @@ export type UnitsSize = UnitsPx | UnitsPt | UnitsRem | UnitsIn | UnitsCm;
  */
 export type UnitsUnitless = `${number}`;
 
+const UNITLESS_EXP = /^-?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i;
+
+/** Whether `value` is a number without units, such as `1.5`. */
+export const isUnitsUnitless = (value: string): value is UnitsUnitless =>
+  UNITLESS_EXP.test(value);
+
 /**
  * The root font size `rem` values resolve against.
  *

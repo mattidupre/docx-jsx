@@ -85,8 +85,8 @@ function StraddlingStacksDocument() {
 }
 
 /**
- * `data-break-before` is the attribute pagedjs's chunker reads, so page two
- * starts exactly at the first element of the continuous stack B.
+ * A forced break before the first element of the continuous stack B, so page
+ * two starts exactly at the start of B.
  */
 function ContinuousStackOnItsOwnPageDocument() {
   return (
@@ -95,8 +95,29 @@ function ContinuousStackOnItsOwnPageDocument() {
         <p>A0</p>
       </Stack>
       <Stack continuous layouts={createLayouts('B')}>
-        <p data-break-before="page">B0</p>
+        <p style={{ breakBefore: 'page' }}>B0</p>
         <p>B1</p>
+      </Stack>
+    </DocumentProvider>
+  );
+}
+
+/** Numbered words, so a lost or repeated one shows. */
+const WORDS = Array.from({ length: 3000 }, (_value, index) => `w${index}`);
+
+/**
+ * A continuous stack with much wider margins than the stack before it: it
+ * starts on that stack's page, at that page's width, and goes on to pages of
+ * its own, which are 3.5in wide rather than 7.5in.
+ */
+function NarrowerContinuousStackDocument() {
+  return (
+    <DocumentProvider>
+      <Stack>
+        <p>A0</p>
+      </Stack>
+      <Stack continuous margin={{ left: '2.5in', right: '2.5in' }}>
+        <p>{WORDS.join(' ')}</p>
       </Stack>
     </DocumentProvider>
   );
@@ -394,7 +415,7 @@ describe('htmlToDom', () => {
   it('keeps content inside the page area when styles depend on the stack element', async () => {
     const overflows = await harness.evaluate(
       async (api, pageHtml: string) => {
-        // B0 is the first child of stack B while pagedjs measures it. Unwrapped
+        // B0 is the first child of stack B while it is measured. Unwrapped
         // onto a page after A's paragraphs, it would gain this margin and push
         // the page past its content area.
         const pagesEl = await api.htmlToDom(pageHtml, {
@@ -437,6 +458,60 @@ describe('htmlToDom', () => {
     for (const overflow of overflows) {
       expect(overflow).toBeLessThanOrEqual(0);
     }
+  });
+
+  it('measures what is left of a stack again at the margins of its own pages', async () => {
+    const pages = await harness.evaluate(
+      async (api, pageHtml: string) => {
+        const pagesEl = await api.htmlToDom(pageHtml);
+        document.body.appendChild(pagesEl);
+        try {
+          return Array.from(pagesEl.children).map((pageRootEl) => {
+            const contentEl =
+              pageRootEl.shadowRoot?.querySelector('[part="content"]');
+            if (!contentEl) {
+              throw new Error('The page has no content part.');
+            }
+            const areaBottom =
+              contentEl.getBoundingClientRect().bottom -
+              Number.parseFloat(
+                window.getComputedStyle(contentEl).paddingBottom,
+              );
+            const contentParagraphs = Array.from(
+              pageRootEl.querySelectorAll('p'),
+            ).filter((paragraphEl) => !paragraphEl.closest('[slot]'));
+            return {
+              overflow:
+                Math.max(
+                  ...contentParagraphs.map((paragraphEl) =>
+                    Math.round(paragraphEl.getBoundingClientRect().bottom),
+                  ),
+                ) - Math.round(areaBottom),
+              text: contentParagraphs
+                .map((paragraphEl) => paragraphEl.textContent ?? '')
+                .join(' '),
+            };
+          });
+        } finally {
+          pagesEl.remove();
+        }
+      },
+      reactToHtml(NarrowerContinuousStackDocument, 'pdf'),
+    );
+
+    expect(pages.length).toBeGreaterThan(2);
+    // Measured at the first page's width, the rest would take fewer lines
+    // than it wraps to on the narrower pages, and run past their bottom.
+    for (const { overflow } of pages) {
+      expect(overflow).toBeLessThanOrEqual(0);
+    }
+    // It carries on from the word it stopped at, and loses none.
+    expect(
+      pages
+        .map(({ text }) => text)
+        .join(' ')
+        .split(/\s+/),
+    ).toEqual(['A0', ...WORDS]);
   });
 
   it('gives a continuous stack its first layout when it starts a page', async () => {

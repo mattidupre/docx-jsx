@@ -14,8 +14,12 @@ import {
   Stack,
   Svg,
   TabSplit,
+  Table,
+  TableCell,
+  TableRow,
   Typography,
 } from '../../reactComponents';
+import type { FragmentationOption } from '../../entities';
 import { mockFonts } from '../../fixtures/mockFonts';
 import { createMockVariantsConfig } from '../../fixtures/mockVariantsConfig';
 import { reactToDocx } from '../../reactToDocx';
@@ -508,6 +512,272 @@ describe('BreakAvoid', () => {
       keptParagraphs.map((paragraph) => isFlagSet(paragraph, 'w:keepNext')),
     ).toEqual([true, true, false]);
   });
+
+  it('keeps a paragraph that carries the break rule itself', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <Typography as="h2" breakAfter="avoid">
+            Heading
+          </Typography>
+          <Typography as="p" breakInside="avoid">
+            Body
+          </Typography>
+          <p>Plain</p>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    const [heading, body, plain] = paragraphs(docx.document);
+    expect(isFlagSet(heading, 'w:keepNext')).toBe(true);
+    expect(isFlagSet(heading, 'w:keepLines')).toBe(false);
+    expect(isFlagSet(body, 'w:keepLines')).toBe(true);
+    expect(isFlagSet(body, 'w:keepNext')).toBe(false);
+    expect(isFlagSet(plain, 'w:keepNext')).toBe(false);
+    expect(isFlagSet(plain, 'w:keepLines')).toBe(false);
+  });
+});
+
+describe('widow control', () => {
+  it('writes widowControl into the document paragraph defaults', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <p>Text</p>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    const [defaults] = findAll(docx.styles, 'w:pPrDefault');
+    expect(isFlagSet(defaults, 'w:widowControl')).toBe(true);
+  });
+});
+
+const columnStacks = (
+  fragmentation?: FragmentationOption,
+  next: ReactElement = <p>Next page</p>,
+) => (
+  <DocumentProvider fragmentation={fragmentation}>
+    <Stack columns={{ columnCount: 2, columnGap: '0.25in' }}>
+      <p>First</p>
+      <p>Last</p>
+    </Stack>
+    <Stack>{next}</Stack>
+  </DocumentProvider>
+);
+
+const emptyParagraphsOf = (docx: DocxArchive) =>
+  paragraphs(docx.document).filter((paragraph) => textOf(paragraph) === '');
+
+const sectionTypes = (docx: DocxArchive) =>
+  findAll(docx.document, 'w:sectPr').map((sectPr) => {
+    const [type] = findAll(sectPr, 'w:type');
+    return type && attribute(type, 'w:val');
+  });
+
+describe('stack boundaries', () => {
+  const spacingOf = (docx: DocxArchive, text: string) => {
+    const [paragraph] = paragraphs(docx.document).filter(
+      (candidate) => textOf(candidate) === text,
+    );
+    const [spacing] = findAll(paragraph, 'w:spacing');
+    return spacing && attributesOf(spacing, ['w:before', 'w:after']);
+  };
+
+  it('writes no space after the last paragraph before a new page', async () => {
+    // Word takes a paragraph's space after off the next one's space before,
+    // even across a next-page section break.
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <Typography as="p" marginBottom="12pt">
+            Last on its page
+          </Typography>
+        </Stack>
+        <Stack>
+          <Typography as="p" marginTop="24pt">
+            First on the next
+          </Typography>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    expect(spacingOf(docx, 'Last on its page')).toEqual({
+      'w:before': undefined,
+      'w:after': '0',
+    });
+    expect(spacingOf(docx, 'First on the next')).toEqual({
+      'w:before': '480',
+      'w:after': undefined,
+    });
+  });
+
+  it('keeps the space after before a continuous stack', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider>
+        <Stack>
+          <Typography as="p" marginBottom="12pt">
+            Above
+          </Typography>
+        </Stack>
+        <Stack continuous>
+          <p>Below</p>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    expect(spacingOf(docx, 'Above')?.['w:after']).toBe('240');
+  });
+});
+
+describe('column sections', () => {
+  it('ends a column section inside its last paragraph', async () => {
+    const docx = await toDocxArchive(columnStacks());
+
+    const [columnParagraph] = paragraphs(docx.document).filter(
+      (paragraph) => findAll(paragraph, 'w:cols').length > 0,
+    );
+    expect(textOf(columnParagraph)).toBe('Last');
+  });
+
+  it('ends columns before a new page with an ordinary empty line by default', async () => {
+    const docx = await toDocxArchive(columnStacks());
+
+    // The empty single column section that follows, so Word balances the
+    // columns, is the only paragraph left without text, at its normal height.
+    const emptyParagraphs = emptyParagraphsOf(docx);
+    expect(emptyParagraphs).toHaveLength(1);
+    expect(findAll(emptyParagraphs[0], 'w:spacing')).toHaveLength(0);
+    expect(findAll(emptyParagraphs[0], 'w:cols')).toHaveLength(0);
+    expect(attribute(findAll(emptyParagraphs[0], 'w:type')[0], 'w:val')).toBe(
+      'continuous',
+    );
+  });
+
+  it('cuts the line to one point when `endBeforePage` is `minimal`', async () => {
+    const docx = await toDocxArchive(
+      columnStacks({ columns: { endBeforePage: 'minimal' } }),
+    );
+
+    const emptyParagraphs = emptyParagraphsOf(docx);
+    expect(emptyParagraphs).toHaveLength(1);
+    const [spacing] = findAll(emptyParagraphs[0], 'w:spacing');
+    expect(attributesOf(spacing, ['w:line', 'w:lineRule'])).toEqual({
+      'w:line': '20',
+      'w:lineRule': 'exact',
+    });
+  });
+
+  it('moves the break into the next stack when `endBeforePage` is `page-break-before`', async () => {
+    const docx = await toDocxArchive(
+      columnStacks({ columns: { endBeforePage: 'page-break-before' } }),
+    );
+
+    expect(emptyParagraphsOf(docx)).toHaveLength(0);
+    const [nextParagraph] = paragraphs(docx.document).filter(
+      (paragraph) => textOf(paragraph) === 'Next page',
+    );
+    expect(isFlagSet(nextParagraph, 'w:pageBreakBefore')).toBe(true);
+    // The column section, then the next stack as a continuous section.
+    expect(sectionTypes(docx)).toEqual([undefined, 'continuous']);
+  });
+
+  it('falls back to an empty line when the next stack starts with a table', async () => {
+    const docx = await toDocxArchive(
+      columnStacks(
+        { columns: { endBeforePage: 'page-break-before' } },
+        <Table>
+          <TableRow>
+            <TableCell>Cell</TableCell>
+          </TableRow>
+        </Table>,
+      ),
+    );
+
+    expect(emptyParagraphsOf(docx)).toHaveLength(1);
+    expect(findAll(docx.document, 'w:pageBreakBefore')).toHaveLength(0);
+  });
+
+  it('leaves columns unbalanced when `fill` is `sequential`', async () => {
+    const docx = await toDocxArchive(
+      columnStacks({ columns: { fill: 'sequential' } }),
+    );
+
+    expect(emptyParagraphsOf(docx)).toHaveLength(0);
+    expect(sectionTypes(docx)).toEqual([undefined, undefined]);
+  });
+});
+
+describe('fragmentation rules', () => {
+  const oneParagraph = (fragmentation?: FragmentationOption) => (
+    <DocumentProvider fragmentation={fragmentation}>
+      <Stack>
+        <p>Text</p>
+      </Stack>
+    </DocumentProvider>
+  );
+
+  it('turns widow control off when fewer than two lines are asked for', async () => {
+    const docx = await toDocxArchive(
+      oneParagraph({ lines: { orphans: 1, widows: 1 } }),
+    );
+
+    const [widowControl] = findAll(docx.styles, 'w:widowControl');
+    expect(attribute(widowControl, 'w:val')).toBe('0');
+  });
+
+  it('warns when widows and orphans are counts Word cannot follow', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await toDocxArchive(oneParagraph({ lines: { orphans: 3, widows: 2 } }));
+    await toDocxArchive(oneParagraph({ lines: { orphans: 1, widows: 2 } }));
+    const messages = warn.mock.calls.map(([message]) => String(message));
+    expect(messages.filter((m) => m.includes('widow control'))).toHaveLength(2);
+
+    warn.mockClear();
+    await toDocxArchive(oneParagraph());
+    await toDocxArchive(oneParagraph({ lines: { orphans: 1, widows: 1 } }));
+    expect(
+      warn.mock.calls.filter(([message]) =>
+        String(message).includes('widow control'),
+      ),
+    ).toHaveLength(0);
+  });
+
+  it('makes Word add adjacent spacing together when margins `sum`', async () => {
+    const summed = await toDocxArchive(
+      oneParagraph({ margins: { adjacent: 'sum' } }),
+    );
+    const collapsed = await toDocxArchive(oneParagraph());
+
+    expect(
+      findAll(summed.settings, 'w:doNotUseHTMLParagraphAutoSpacing'),
+    ).toHaveLength(1);
+    expect(
+      findAll(collapsed.settings, 'w:doNotUseHTMLParagraphAutoSpacing'),
+    ).toHaveLength(0);
+  });
+
+  it('follows the table rules of the `css` profile', async () => {
+    const docx = await toDocxArchive(
+      <DocumentProvider fragmentation="css">
+        <Stack>
+          <Table>
+            <TableRow header>
+              <TableCell>Head</TableCell>
+            </TableRow>
+            <TableRow keepTogether={false}>
+              <TableCell>Body</TableCell>
+            </TableRow>
+          </Table>
+        </Stack>
+      </DocumentProvider>,
+    );
+
+    const [table] = tables(docx.document);
+    // Tables break only between rows, and no header repeats.
+    expect(findAll(table, 'w:tblHeader')).toHaveLength(0);
+    expect(findAll(table, 'w:cantSplit')).toHaveLength(2);
+  });
 });
 
 describe('Raw', () => {
@@ -664,9 +934,7 @@ type AbstractLevel = {
   readonly indentHanging: undefined | string;
 };
 
-const levelsOf = (
-  abstractNumbering: XmlNode,
-): ReadonlyArray<AbstractLevel> =>
+const levelsOf = (abstractNumbering: XmlNode): ReadonlyArray<AbstractLevel> =>
   findAll(abstractNumbering, 'w:lvl').map((level) => ({
     level: attribute(level, 'w:ilvl')!,
     format: attribute(findAll(level, 'w:numFmt')[0], 'w:val'),
@@ -790,11 +1058,7 @@ describe('List', () => {
     );
 
     // The two decimal lists share a definition; only the markers differ.
-    expect(usedFormats(docx)).toEqual([
-      'decimal',
-      'lowerRoman',
-      'upperLetter',
-    ]);
+    expect(usedFormats(docx)).toEqual(['decimal', 'lowerRoman', 'upperLetter']);
     const [first, second] = paragraphs(docx.document).map(
       (paragraph) => numberingOf(paragraph)!.numId,
     );
@@ -863,8 +1127,8 @@ describe('List', () => {
       </DocumentProvider>,
     );
 
-    const [one, seven, oneAgain] = paragraphs(docx.document).map(
-      (paragraph) => numberingOf(paragraph)!,
+    const [one, seven, oneAgain] = paragraphs(docx.document).map((paragraph) =>
+      numberingOf(paragraph)!,
     );
     // Three lists, three instances: sharing one would make the third list
     // carry on from the first.
@@ -921,9 +1185,9 @@ describe('List', () => {
     expect(usedFormats(docx)).toEqual(['decimal']);
     const [item] = paragraphs(docx.document);
     expect(numberingOf(item)!.level).toBe('0');
-    expect(numberingDefinition(docx, numberingOf(item)!.numId).levels[0].start).toBe(
-      '4',
-    );
+    expect(
+      numberingDefinition(docx, numberingOf(item)!.numId).levels[0].start,
+    ).toBe('4');
   });
 });
 
@@ -996,7 +1260,10 @@ describe('Bookmark and Link', () => {
       </DocumentProvider>,
     );
 
-    const name = attribute(findAll(docx.document, 'w:bookmarkStart')[0], 'w:name');
+    const name = attribute(
+      findAll(docx.document, 'w:bookmarkStart')[0],
+      'w:name',
+    );
     // Bookmark names are single tokens, so a space cannot survive as itself.
     expect(name).toBe('chapterU0020one');
     expect(

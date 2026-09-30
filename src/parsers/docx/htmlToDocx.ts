@@ -1,5 +1,6 @@
 import {
   Document,
+  Packer,
   Header,
   Footer,
   TextRun,
@@ -36,17 +37,33 @@ import { isValueInArray } from '../../utils/array';
 import {
   INTRINSIC_TAG_TYPOGRAPHY_OPTIONS,
   MONOSPACE_DOCX_FONT_NAME,
+  PARAGRAPH_TAG_NAMES,
+  assignTypographyOptions,
   isChildOfTagName,
+  isMasonryUnit,
+  isTrimmedLineBox,
+  resolveBlockTypography,
+  resolveFragmentationRules,
+  resolveLineBox,
+  resolveLineBoxFont,
+  typographyOptionsToFlat,
+  wordSpaceAboveCapHeight,
+  wordSpaceBelowBaseline,
 } from '../../entities';
+import { resolveDocumentFontFiles } from '../../lib/documentFonts';
 import {
   type HtmlElementNode,
+  type HtmlNode,
   mapHtmlToDocument,
 } from '../../lib/mapHtmlToDocument';
+import type { FragmentationLayout } from '../../fragmenter/model';
 import type {
   ElementData,
   ElementsContext,
   ElementType,
   FontsConfig,
+  FragmentationRules,
+  LineBox,
   PageMargin,
   PageSize,
   TagName,
@@ -54,6 +71,7 @@ import type {
   INTRINSIC_VARIANT_TAG_NAMES,
 } from '../../entities';
 import {
+  parseLineSpacing,
   parseTextRunOptions,
   parseParagraphOptions,
 } from './typographyOptionsToDocx';
@@ -67,6 +85,15 @@ import { toDocxColor } from './toDocxColor';
 import { MAX_LIST_LEVEL, createListNumbering } from './numberingToDocx';
 import { type DocumentImage, resolveDocumentImages } from './documentImages';
 import { tableToDocx } from './tableToDocx';
+import { type PackedDocxPatches, patchPackedDocx } from './patchPackedDocx';
+import { type EmbeddedFont, resolveDocxFonts } from './fontsToDocx';
+import {
+  MISSING_MASONRY_LAYOUT_MESSAGE,
+  MasonryContent,
+  MasonryUnit,
+  packMasonryUnits,
+  type MasonryBreak,
+} from './masonryToDocx';
 
 const DOCX_HEADING = {
   h1: HeadingLevel.HEADING_1,
@@ -245,11 +272,27 @@ const toImageTransformation = (
 };
 
 const PARAGRAPH_OPTIONS_KEY: unique symbol = Symbol('OptionsKey');
+
+const LINE_BOX_KEY: unique symbol = Symbol('LineBoxKey');
+
+/**
+ * What the trim pass needs of a text paragraph: the line box it resolved to,
+ * and the margins its typography resolves to (its variant's included), in
+ * twips.
+ */
+type ParagraphLineBox = {
+  lineBox: LineBox;
+  marginTop: number;
+  marginBottom: number;
+};
+
 /**
  * Override paragraph class so options can be changed after instantiation.
  */
 class Paragraph extends DocxParagraph {
   public [PARAGRAPH_OPTIONS_KEY]: IParagraphOptions;
+
+  public [LINE_BOX_KEY]: undefined | ParagraphLineBox;
 
   public static clone(
     paragraph: Paragraph,
@@ -260,14 +303,150 @@ class Paragraph extends DocxParagraph {
       paragraph[PARAGRAPH_OPTIONS_KEY],
       extraOptions,
     );
-    return new Paragraph(newOptions);
+    return new Paragraph(newOptions, paragraph[LINE_BOX_KEY]);
   }
 
-  constructor(options: IParagraphOptions) {
+  constructor(options: IParagraphOptions, lineBox?: ParagraphLineBox) {
     super(options);
     this[PARAGRAPH_OPTIONS_KEY] = options;
+    this[LINE_BOX_KEY] = lineBox;
   }
 }
+
+/** `paragraphOptions` with the exact (or at least) line of `lineBox`. */
+const withLineSpacing = (
+  paragraphOptions: undefined | IParagraphPropertiesOptions,
+  lineBox: undefined | LineBox,
+  { atLeast = false }: { atLeast?: boolean } = {},
+): undefined | IParagraphPropertiesOptions =>
+  lineBox
+    ? {
+        ...paragraphOptions,
+        spacing: {
+          ...paragraphOptions?.spacing,
+          ...parseLineSpacing(lineBox, { atLeast }),
+        },
+      }
+    : paragraphOptions;
+
+/** Whether a paragraph holds a picture, which an exact line would clip. */
+const hasImageRun = (children: ReadonlyArray<unknown>): boolean =>
+  children.flat(Infinity).some((child) => child instanceof ImageRun);
+
+/** `create`, called at most once and only when first asked for. */
+const once = <TValue>(create: () => TValue): (() => TValue) => {
+  let value: undefined | { current: TValue } = undefined;
+  return () => (value ??= { current: create() }).current;
+};
+
+const TWIP_PER_PT = 20;
+
+/** Rounding noise, well under a twip, is not a spacing Word cannot write. */
+const TRIM_SPACING_EPSILON_TWIP = 0.5;
+
+/**
+ * Word cannot trim a text box, so the space a trimmed CSS box leaves out
+ * (above the capitals of its first line, below the baseline of its last) is
+ * taken out of the paragraph spacing instead, pair by pair down a section.
+ * Between a box and the next, where either is trimmed, the collapsed CSS
+ * margin `g` becomes the next paragraph's space before, less what Word keeps
+ * around the lines: `g − (0.2 L₁ − 0.25pt) − (0.8 L₂ + 0.25pt − cap₂)`, with
+ * the first paragraph's space after set to 0. For the first paragraph of a
+ * section the top of the section's content is the box before it.
+ *
+ * Spacing cannot be negative: a pair set closer than Word's own lines is
+ * written 0 apart, with a warning. At the top of a section that is expected
+ * (the PDF places the first line there as Word does, `trim` rules of the
+ * `word` profile), so it goes unreported.
+ */
+const compensateTrimmedSpacing = (
+  blocks: ReadonlyArray<unknown>,
+  adjacent: FragmentationRules['margins']['adjacent'],
+): Array<unknown> => {
+  const result = [...blocks];
+  const START = { index: undefined, trimmed: false, below: 0, after: 0 };
+  let previous: {
+    index: undefined | number;
+    trimmed: boolean;
+    below: number;
+    after: number;
+  } = START;
+  blocks.forEach((block, index) => {
+    if (!(block instanceof Paragraph)) {
+      previous = START;
+      return;
+    }
+    const { spacing } = block[PARAGRAPH_OPTIONS_KEY];
+    const own = block[LINE_BOX_KEY];
+    const lineBox = own?.lineBox;
+    const before = spacing?.before ?? own?.marginTop ?? 0;
+    const after = spacing?.after ?? own?.marginBottom ?? 0;
+    const trimmed = isTrimmedLineBox(lineBox);
+    if (trimmed || previous.trimmed) {
+      const gap =
+        adjacent === 'sum'
+          ? previous.after + before
+          : Math.max(previous.after, before, 0);
+      const needed =
+        previous.below +
+        (isTrimmedLineBox(lineBox)
+          ? wordSpaceAboveCapHeight(lineBox) * TWIP_PER_PT
+          : 0);
+      const compensated = gap - needed;
+      if (
+        compensated < -TRIM_SPACING_EPSILON_TWIP &&
+        previous.index !== undefined
+      ) {
+        // Only a position differs, not where lines or pages break, so this
+        // is a debug note rather than a warning.
+        console.debug(
+          `A trimmed paragraph is ${gap / TWIP_PER_PT}pt from the paragraph before it, less than the ${needed / TWIP_PER_PT}pt Word keeps around their lines; the DOCX sets them ${-compensated / TWIP_PER_PT}pt further apart than the PDF.`,
+        );
+      }
+      result[index] = Paragraph.clone(block, {
+        spacing: { ...spacing, before: Math.max(Math.round(compensated), 0) },
+      });
+      const previousBlock =
+        previous.index === undefined ? undefined : result[previous.index];
+      if (previous.index !== undefined && previousBlock instanceof Paragraph) {
+        result[previous.index] = Paragraph.clone(previousBlock, {
+          spacing: {
+            ...previousBlock[PARAGRAPH_OPTIONS_KEY].spacing,
+            after: 0,
+          },
+        });
+      }
+    }
+    previous = {
+      index,
+      trimmed,
+      below:
+        lineBox && trimmed ? wordSpaceBelowBaseline(lineBox) * TWIP_PER_PT : 0,
+      after,
+    };
+  });
+  return result;
+};
+
+/**
+ * Word collapses adjacent spacing by taking the previous paragraph's space
+ * after off the next paragraph's space before, and it does so across a section
+ * break that starts a new page as well: the first paragraph of the next stack
+ * would lose its space before. The space after the last paragraph of a stack
+ * that ends its page moves nothing on that page, so it is written as 0.
+ */
+const withoutTrailingSpaceAfter = (
+  blocks: ReadonlyArray<unknown>,
+): Array<unknown> => {
+  const result = [...blocks];
+  const last = result.at(-1);
+  if (last instanceof Paragraph) {
+    result[result.length - 1] = Paragraph.clone(last, {
+      spacing: { ...last[PARAGRAPH_OPTIONS_KEY].spacing, after: 0 },
+    });
+  }
+  return result;
+};
 
 /**
  * A `w:tab` run together with the tab stop the paragraph holding it has to
@@ -461,26 +640,143 @@ export type HtmlToDocxOptions = {
    * before the document is mapped.
    */
   publicDirectory?: string;
+  /**
+   * Whether the DOCX embeds the font file of every face without a `docx`
+   * source that the document uses, so Word lays text out in the same font as
+   * the PDF. Defaults to true. Off, the DOCX still names those fonts, which
+   * Word uses when they are installed. A font whose licence forbids embedding
+   * is never embedded.
+   */
+  embedFonts?: boolean;
+  /**
+   * The layout a browser run made of the same document, or a function that
+   * makes it, called only when the document has masonry columns: their
+   * packed order comes from it. `reactToDocx` makes it with its `browser`.
+   */
+  layout?: FragmentationLayout | (() => Promise<FragmentationLayout>);
 };
 
-export const htmlToDocx = async (
+const toDocxBreaks = (masonryBreak: MasonryBreak) =>
+  masonryBreak.kind === 'page'
+    ? [new PageBreak()]
+    : range(masonryBreak.count).map(() => new ColumnBreak());
+
+/**
+ * A unit's last block ending with a page break, when it can. A column break
+ * cannot end a paragraph: Word carries the paragraph mark after it into the
+ * next column as an empty line, which pushes that column one line down (Word
+ * print, 2026-09-30). Column breaks get a paragraph of their own instead.
+ */
+const withMasonryBreakAfter = (
+  block: BlockChild,
+  masonryBreak: MasonryBreak,
+): undefined | BlockChild => {
+  if (!(block instanceof Paragraph) || masonryBreak.kind !== 'page') {
+    return undefined;
+  }
+  const options = block[PARAGRAPH_OPTIONS_KEY];
+  // The break ends the last line, so it takes no room of its own, and the
+  // paragraph keeps with nothing past it.
+  return new Paragraph(
+    {
+      ...options,
+      keepNext: false,
+      children: [...(options.children ?? []), ...toDocxBreaks(masonryBreak)],
+    },
+    block[LINE_BOX_KEY],
+  );
+};
+
+/**
+ * A paragraph that holds only a break: every column break, and a page break
+ * after a table. Its line is one twip high, so neither the line that holds the
+ * break nor the paragraph mark Word carries past it takes any room.
+ */
+const createMasonryBreak = (masonryBreak: MasonryBreak): BlockChild =>
+  new DocxParagraph({
+    spacing: { before: 0, after: 0, line: 1, lineRule: LineRuleType.EXACT },
+    children: toDocxBreaks(masonryBreak),
+  });
+
+const createDocx = async (
   html: string,
-  { fonts: fontsOption, svgImages, publicDirectory }: HtmlToDocxOptions,
-) => {
+  {
+    fonts: fontsOption,
+    svgImages,
+    publicDirectory,
+    embedFonts = true,
+    layout: layoutOption,
+  }: HtmlToDocxOptions,
+): Promise<{
+  document: Document;
+  rules: FragmentationRules;
+  embeddedFonts: ReadonlyArray<EmbeddedFont>;
+}> => {
   // Mapping is synchronous and reading an image is not, so every `Image` source
   // in the document is resolved to bytes before the mapping starts.
   const images = await resolveDocumentImages(html, { publicDirectory });
+
+  // The font files are read up front, for the same reason: a line box needs
+  // their metrics, and a run names a face by the family its file names
+  // itself. A call-level config overrides the document's.
+  const { fonts, embeddedFonts } = resolveDocxFonts(
+    (await resolveDocumentFontFiles(html, {
+      fonts: fontsOption,
+      publicDirectory,
+    })) ?? { fonts: {}, fontFiles: new Map() },
+    { embedFonts },
+  );
 
   // Every list declares the numbering it needs while it is mapped, so the
   // document ships exactly the definitions its paragraphs point at.
   const listNumbering = createListNumbering();
 
-  const mappedDocument = mapHtmlToDocument(html, (node) => {
+  const parseNode = (node: HtmlNode) => {
     const elementsContext = node.data.elementsContext;
-    // Fonts declared once on `DocumentProvider` ride along on the document
-    // element, so every target resolves the same families.
-    const fonts = fontsOption ?? elementsContext.document?.fonts ?? {};
     const { contentOptions } = elementsContext;
+
+    // What a run inherits from its style and the document's defaults, which
+    // a `capHeight` of its own is measured in.
+    const inheritedTypography = assignTypographyOptions(
+      {},
+      elementsContext.document.defaultTypography,
+      elementsContext.variant === undefined
+        ? undefined
+        : elementsContext.document.variants[elementsContext.variant],
+    );
+
+    /**
+     * The line box of the paragraphs an element makes, resolved from the same
+     * typography the CSS targets resolve it from. Only a paragraph tag trims:
+     * the paragraph a container gathers loose runs into is an anonymous box in
+     * CSS, which is not trimmed.
+     */
+    const resolveElementLineBox = (tagName: TagName) => {
+      const { variants, defaultTypography } = elementsContext.document;
+      const typography = resolveBlockTypography({
+        defaultTypography,
+        variants,
+        tagName,
+        variant: elementsContext.variant,
+        contentOptions,
+      });
+      const lineTypography = isValueInArray(tagName, PARAGRAPH_TAG_NAMES)
+        ? typography
+        : { ...typography, textBoxTrim: 'none' as const };
+      const lineBox = resolveLineBox(
+        lineTypography,
+        resolveLineBoxFont(fonts, lineTypography),
+      );
+      const { marginTop, marginBottom } = typographyOptionsToFlat(typography);
+      return {
+        lineBox,
+        paragraphLineBox: lineBox && {
+          lineBox,
+          marginTop: marginTop === undefined ? 0 : toTwip(marginTop),
+          marginBottom: marginBottom === undefined ? 0 : toTwip(marginBottom),
+        },
+      };
+    };
 
     if (node.type === 'text') {
       const { whiteSpace } = contentOptions;
@@ -493,7 +789,7 @@ export const htmlToDocx = async (
         ...(isChildOfTagName(parentTagNames, MONOSPACE_TAG_NAMES) && {
           font: MONOSPACE_DOCX_FONT_NAME,
         }),
-        ...parseTextRunOptions(fonts, contentOptions),
+        ...parseTextRunOptions(fonts, contentOptions, inheritedTypography),
         style: variantNameToCharacterStyleId(
           elementsContext.variant ??
             (elementsContext.isInsideHyperlink
@@ -535,7 +831,42 @@ export const htmlToDocx = async (
         contentOptions: { breakInside, breakAfter },
       } = element;
 
-      const paragraphOptions = parseParagraphOptions(fonts, contentOptions);
+      // Only the branches that make paragraphs resolve a line box: an inline
+      // element's would never be written, and may need metrics its font has
+      // not got.
+      const elementLineBox = once(() => resolveElementLineBox(node.tagName));
+
+      const blockParagraphOptions = once(() =>
+        withLineSpacing(
+          parseParagraphOptions(fonts, contentOptions),
+          elementLineBox().lineBox,
+        ),
+      );
+
+      /**
+       * A text paragraph: its line box goes with it to the trim pass, and a
+       * picture among its runs makes its line `atLeast`.
+       */
+      const createTextParagraph = (options: IParagraphOptions) => {
+        const { lineBox, paragraphLineBox } = elementLineBox();
+        return new Paragraph(
+          hasImageRun(node.children)
+            ? {
+                ...options,
+                ...withLineSpacing(options, lineBox, { atLeast: true }),
+              }
+            : options,
+          paragraphLineBox,
+        );
+      };
+
+      // The element that carries the break rule may itself be the paragraph,
+      // as in `<Typography as="h2" breakAfter="avoid">`. The loop below only
+      // reaches the paragraphs a wrapper holds.
+      const ownKeepOptions = {
+        ...(breakInside === 'avoid' && { keepLines: true }),
+        ...(breakAfter === 'avoid' && { keepNext: true }),
+      };
 
       // `breakInside` accumulates down the context, so a table built inside a
       // `BreakAvoid` knows to keep its own rows and paragraphs together.
@@ -546,7 +877,7 @@ export const htmlToDocx = async (
         isValueInArray(node.tagName, BLOCK_TAG_NAMES) &&
         !isValueInArray(element.elementType, STRUCTURAL_CHILDREN_ELEMENT_TYPES)
       ) {
-        node.children = toBlockChildren(node.children, paragraphOptions);
+        node.children = toBlockChildren(node.children, blockParagraphOptions());
       }
 
       if (breakInside === 'avoid' || breakAfter === 'avoid') {
@@ -557,7 +888,9 @@ export const htmlToDocx = async (
               // If Paragraph is the last child, do not keep the next element.
               // If there is a parent breakInside it will overwrite this.
               keepNext:
-                index < node.children.length - 1 || breakAfter === 'avoid',
+                index < node.children.length - 1 ||
+                breakAfter === 'avoid' ||
+                child[PARAGRAPH_OPTIONS_KEY].keepNext === true,
             });
           }
           // A Table keeps itself together through `cantSplit` on its rows.
@@ -607,7 +940,11 @@ export const htmlToDocx = async (
         return elementsContext.isInsideParagraph
           ? imageRun
           : new Paragraph({
-              ...paragraphOptions,
+              ...withLineSpacing(
+                blockParagraphOptions(),
+                elementLineBox().lineBox,
+                { atLeast: true },
+              ),
               ...(align && { alignment: DOCX_ALIGNMENT[align] }),
               children: [imageRun],
             });
@@ -813,6 +1150,9 @@ export const htmlToDocx = async (
       if (element.elementType === 'table') {
         return tableToDocx(node, element.elementOptions, {
           fonts,
+          tableRules: resolveFragmentationRules(
+            elementsContext.document?.fragmentation,
+          ).tables,
           contentWidthTwip: toContentWidthTwip(elementsContext),
           keepChildrenTogether,
           toCellChildren,
@@ -831,14 +1171,24 @@ export const htmlToDocx = async (
         const docxBreak = elementsContext.isInsideColumn
           ? new ColumnBreak()
           : new PageBreak();
-        return elementsContext.isInsideParagraph
-          ? docxBreak
+        if (elementsContext.isInsideParagraph) {
+          return docxBreak;
+        }
+        // Inside a masonry unit, Word breaks where the layout broke the unit,
+        // with the breaks the packing writes. A Break between units is none:
+        // the packing writes the break it made there.
+        return elementsContext.stack.columns.fill === 'masonry'
+          ? createMasonryBreak(
+              elementsContext.isInsideColumn
+                ? { kind: 'column', count: 1 }
+                : { kind: 'page' },
+            )
           : new Paragraph({ children: [docxBreak] });
       }
 
       if (element.elementType === 'pagenumber') {
         return new TextRun({
-          ...parseTextRunOptions(fonts, contentOptions),
+          ...parseTextRunOptions(fonts, contentOptions, inheritedTypography),
           style: variantNameToCharacterStyleId(elementsContext.variant),
           children: [PageNumber.CURRENT],
         });
@@ -846,7 +1196,7 @@ export const htmlToDocx = async (
 
       if (element.elementType === 'pagecount') {
         return new TextRun({
-          ...parseTextRunOptions(fonts, contentOptions),
+          ...parseTextRunOptions(fonts, contentOptions, inheritedTypography),
           style: variantNameToCharacterStyleId(elementsContext.variant),
           children: [PageNumber.TOTAL_PAGES],
         });
@@ -873,7 +1223,7 @@ export const htmlToDocx = async (
                   },
                   borders: TABLE_BORDERS_RESET,
                   children: toCellChildren([leftChild], {
-                    paragraphOptions,
+                    paragraphOptions: blockParagraphOptions(),
                     keepLines: keepChildrenTogether,
                   }),
                 }),
@@ -883,7 +1233,7 @@ export const htmlToDocx = async (
                   },
                   borders: TABLE_BORDERS_RESET,
                   children: toCellChildren([rightChild], {
-                    paragraphOptions,
+                    paragraphOptions: blockParagraphOptions(),
                     keepLines: keepChildrenTogether,
                   }),
                 }),
@@ -918,8 +1268,9 @@ export const htmlToDocx = async (
 
       if (node.tagName === 'li') {
         const { list } = elementsContext;
-        return new Paragraph({
-          ...paragraphOptions,
+        return createTextParagraph({
+          ...blockParagraphOptions(),
+          ...ownKeepOptions,
           // The declared numbering, rather than `bullet`: `bullet` always
           // writes Word's own `ListParagraph` style, and `w:pPr` holds at most
           // one `w:pStyle`, so an item could never keep its variant's style.
@@ -939,8 +1290,9 @@ export const htmlToDocx = async (
       }
 
       if (node.tagName === 'p') {
-        return new Paragraph({
-          ...paragraphOptions,
+        return createTextParagraph({
+          ...blockParagraphOptions(),
+          ...ownKeepOptions,
           style: variantNameToParagraphStyleId(elementsContext.variant),
           tabStops: toTabStops(node.children),
           children: node.children as ParagraphChild[],
@@ -948,12 +1300,17 @@ export const htmlToDocx = async (
       }
 
       if (node.tagName === 'pre') {
-        return new Paragraph({
+        return createTextParagraph({
           // A `pre` is one paragraph holding the line breaks its text carried,
           // so the intrinsic margins are its own. An author's options are
           // assigned after them and still win.
           ...PRE_PARAGRAPH_OPTIONS,
-          ...paragraphOptions,
+          ...blockParagraphOptions(),
+          spacing: {
+            ...PRE_PARAGRAPH_OPTIONS?.spacing,
+            ...blockParagraphOptions()?.spacing,
+          },
+          ...ownKeepOptions,
           style: variantNameToParagraphStyleId(elementsContext.variant),
           tabStops: toTabStops(node.children),
           children: node.children as ParagraphChild[],
@@ -963,7 +1320,7 @@ export const htmlToDocx = async (
       if (node.tagName === 'blockquote') {
         const quoteIndent = BLOCKQUOTE_PARAGRAPH_OPTIONS?.indent;
         const quoteSpacing = BLOCKQUOTE_PARAGRAPH_OPTIONS?.spacing;
-        const blocks = toBlockChildren(node.children, paragraphOptions);
+        const blocks = toBlockChildren(node.children, blockParagraphOptions());
         return blocks.map((child, index) => {
           // A `w:tbl` inside a quote carries its own indent and is left alone.
           if (!(child instanceof Paragraph)) {
@@ -988,8 +1345,9 @@ export const htmlToDocx = async (
       }
 
       if (node.tagName in DOCX_HEADING) {
-        return new Paragraph({
-          ...paragraphOptions,
+        return createTextParagraph({
+          ...blockParagraphOptions(),
+          ...ownKeepOptions,
           // `heading` is only a shorthand for a built-in style id and `w:pPr`
           // holds at most one `w:pStyle`: an explicit variant wins over the tag.
           style:
@@ -1025,10 +1383,26 @@ export const htmlToDocx = async (
     }
 
     if (node.type === 'root') {
-      const rootChildren = toBlockChildren(
-        node.children,
+      const rootParagraphOptions = withLineSpacing(
         parseParagraphOptions(fonts, contentOptions),
+        resolveElementLineBox(node.tagName).lineBox,
       );
+
+      if (
+        element.elementType === 'content' &&
+        elementsContext.stack.columns.fill === 'masonry'
+      ) {
+        return new MasonryContent(
+          node.children
+            .flat(Infinity)
+            .filter((child) => child instanceof MasonryUnit)
+            .map((unit) =>
+              toBlockChildren(unit.children, rootParagraphOptions),
+            ),
+        );
+      }
+
+      const rootChildren = toBlockChildren(node.children, rootParagraphOptions);
 
       if (element.elementType === 'header') {
         return new Header({
@@ -1048,9 +1422,71 @@ export const htmlToDocx = async (
     }
 
     return node.children;
+  };
+
+  const mappedDocument = mapHtmlToDocument(html, (node) => {
+    const parsed = parseNode(node);
+    // Every unit child of a masonry stack is one unit the packing moves; any
+    // other child (a Break) is left out of the stack's content.
+    return node.type === 'element' &&
+      node.data.elementsContext.stack.columns.fill === 'masonry' &&
+      node.data.parentElementTypes.at(-2) === 'content' &&
+      isMasonryUnit({
+        tagName: node.tagName,
+        elementType: node.data.element.elementType,
+      })
+      ? new MasonryUnit([parsed])
+      : parsed;
   });
 
-  const { size, stacks, variants } = mappedDocument;
+  const { size, variants } = mappedDocument;
+
+  // A masonry stack's units go in the order a layout run packed them.
+  const needsLayout = mappedDocument.stacks.some(
+    ({ content }) => content instanceof MasonryContent,
+  );
+  const layout = !needsLayout
+    ? undefined
+    : typeof layoutOption === 'function'
+      ? await layoutOption()
+      : layoutOption;
+  const stacks = mappedDocument.stacks.map((stack, stackIndex) => {
+    if (!(stack.content instanceof MasonryContent)) {
+      return stack;
+    }
+    if (layout === undefined) {
+      throw new Error(MISSING_MASONRY_LAYOUT_MESSAGE);
+    }
+    return {
+      ...stack,
+      content: packMasonryUnits(stack.content.units, {
+        stackIndex,
+        stackCount: mappedDocument.stacks.length,
+        layout,
+        withBreakAfter: withMasonryBreakAfter,
+        createBreak: createMasonryBreak,
+      }),
+    };
+  });
+
+  const rules = resolveFragmentationRules(mappedDocument.fragmentation);
+  warnUnwritableRules(rules);
+
+  // Whether a column stack's trailing section break is carried by the first
+  // paragraph of the stack after it (`page-break-before`), by stack index of
+  // that next stack.
+  const startsWithPageBreak = stacks.map(
+    (stack, index) =>
+      index > 0 &&
+      !stack.continuous &&
+      stacks[index - 1].columns.columnCount > 1 &&
+      stacks[index - 1].columns.fill !== 'masonry' &&
+      rules.columns.fill !== 'sequential' &&
+      rules.columns.endBeforePage === 'page-break-before' &&
+      isSameMargin(stack.margin, stacks[index - 1].margin) &&
+      Array.isArray(stack.content) &&
+      stack.content[0] instanceof Paragraph,
+  );
 
   const sections = stacks.flatMap(
     (
@@ -1059,15 +1495,36 @@ export const htmlToDocx = async (
         margin,
         content,
         continuous,
-        columns: { columnGap, columnCount },
+        columns: { columnGap, columnCount, fill },
       },
       index,
     ) => {
       const currentSections: Array<ISectionOptions> = [];
+      const compensated = Array.isArray(content)
+        ? compensateTrimmedSpacing(content, rules.margins.adjacent)
+        : content;
+      const blocks =
+        Array.isArray(compensated) &&
+        index < stacks.length - 1 &&
+        !stacks[index + 1].continuous
+          ? withoutTrailingSpaceAfter(compensated)
+          : compensated;
+      const children =
+        startsWithPageBreak[index] &&
+        Array.isArray(blocks) &&
+        blocks[0] instanceof Paragraph
+          ? [
+              Paragraph.clone(blocks[0], { pageBreakBefore: true }),
+              ...blocks.slice(1),
+            ]
+          : blocks;
       currentSections.push({
         properties: {
           titlePage: true,
-          type: index > 0 && continuous ? SectionType.CONTINUOUS : undefined,
+          type:
+            index > 0 && (continuous || startsWithPageBreak[index])
+              ? SectionType.CONTINUOUS
+              : undefined,
           page: toPageProperties(size, margin),
           ...(columnCount > 1 && {
             column: {
@@ -1086,18 +1543,35 @@ export const htmlToDocx = async (
           first: layouts.first.footer as Footer,
           default: layouts.subsequent.footer as Footer,
         },
-        children: content as ISectionOptions['children'],
+        children: children as ISectionOptions['children'],
       } satisfies ISectionOptions);
 
-      // Prevent columns from filling entire page by adding second continuous section.
-      if (columnCount > 1 && !stacks[index + 1]?.continuous) {
+      // Word balances columns only when they end at a continuous section
+      // break. Before a stack that starts a page of its own, that break needs
+      // a paragraph to hold it, unless the next stack's first paragraph takes
+      // it (`page-break-before`). An empty `children` becomes a carrier that
+      // `patchPackedDocx` cuts to one point (`minimal`); an empty paragraph
+      // stays an ordinary line (`line`). Masonry columns end where the
+      // layout ended them, with explicit breaks, and are not balanced again.
+      if (
+        columnCount > 1 &&
+        fill !== 'masonry' &&
+        rules.columns.fill !== 'sequential' &&
+        !stacks[index + 1]?.continuous &&
+        !startsWithPageBreak[index + 1]
+      ) {
         currentSections.push({
           properties: {
             titlePage: true,
             type: SectionType.CONTINUOUS,
             page: toPageProperties(size, margin),
           },
-          children: [],
+          // An empty run keeps the paragraph an ordinary one once the break
+          // is merged into it, rather than a bare carrier.
+          children:
+            rules.columns.endBeforePage === 'minimal'
+              ? []
+              : [new Paragraph({ children: [new TextRun('')] })],
         } satisfies ISectionOptions);
       }
       return currentSections;
@@ -1105,42 +1579,94 @@ export const htmlToDocx = async (
   );
 
   const styles = parseVariants(
-    fontsOption ?? mappedDocument.fonts ?? {},
+    fonts,
     variants,
+    mappedDocument.defaultTypography,
   );
 
-  // const fontsWithBuffers = await fontsStore.loadFontsWithBuffers();
-  // const docxFonts = [
-  // {
-  //   name: 'Sevillana',
-  //   characterSet: CharacterSet.ANSI,
-  //   data: fs.readFileSync(
-  //     '/Users/mattidupre/Repositories/matti-docs/src/fixtures/mockAssets/Sevillana.ttf',
-  //   ),
-  // },
-  // ...transform(
-  //   fontsWithBuffers,
-  //   (target, font) => {
-  //     if (!font) {
-  //       return;
-  //     }
-  //     target.push(
-  //       ...font.fontFaces.map(({ fontFaceName, buffer }) => ({
-  //         name: fontFaceName,
-  //         data: buffer,
-  //         characterSet: CharacterSet.ANSI,
-  //       })),
-  //     );
-  //   },
-  //   [] as Array<ArrayValues<NonNullable<IPropertiesOptions['fonts']>>>,
-  // ),
-  // ];
+  return {
+    document: new Document({
+      evenAndOddHeaderAndFooters: false,
+      sections,
+      styles,
+      numbering: listNumbering.toNumberingOptions(),
+    }),
+    rules,
+    embeddedFonts,
+  };
+};
 
-  return new Document({
-    // fonts: docxFonts,
-    evenAndOddHeaderAndFooters: false,
-    sections,
-    styles,
-    numbering: listNumbering.toNumberingOptions(),
-  });
+const isSameMargin = (a: PageMargin, b: PageMargin) =>
+  a.top === b.top &&
+  a.right === b.right &&
+  a.bottom === b.bottom &&
+  a.left === b.left;
+
+/**
+ * Rules a DOCX cannot state: Word applies its own space-before at the top of
+ * a page and balances only the last page of columns. The PDF follows the
+ * rules exactly, so the two targets differ where these are set.
+ */
+const warnUnwritableRules = ({
+  margins,
+  columns,
+  lines,
+}: FragmentationRules) => {
+  // Word's widow control is one switch: two lines at the bottom and at the top
+  // of a page, or no rule at all. `style` stands for CSS's initial value, two.
+  const counts = [lines.orphans, lines.widows].map((count) =>
+    count === 'style' ? 2 : count,
+  );
+  if (
+    !counts.every((count) => count === 2) &&
+    !counts.every((count) => count <= 1)
+  ) {
+    console.warn(
+      `Word's widow control is two lines at each end of a page or none; the DOCX cannot follow \`lines\` (orphans ${lines.orphans}, widows ${lines.widows}) and uses ${counts.some((count) => count >= 2) ? 'two' : 'none'}.`,
+    );
+  }
+  const { stack, break: afterBreak, natural, column } = margins.keepAtTop;
+  if (!stack || afterBreak || natural || column) {
+    console.warn(
+      'Word keeps space-before only at the start of a section; the DOCX cannot follow `margins.keepAtTop`.',
+    );
+  }
+  if (columns.fill === 'balance-all') {
+    console.warn(
+      'Word balances only the last page of columns; the DOCX cannot follow `columns.fill: balance-all`.',
+    );
+  }
+};
+
+/** The document's rules as the settings `patchPackedDocx` writes. */
+const toPackedDocxPatches = (
+  { lines, margins }: FragmentationRules,
+  embeddedFonts: ReadonlyArray<EmbeddedFont>,
+): PackedDocxPatches => ({
+  // Word's widow control is two lines or nothing. `style` stands for CSS's
+  // initial value, which is two.
+  widowControl: [lines.orphans, lines.widows].some(
+    (count) => count === 'style' || count >= 2,
+  ),
+  sumAdjacentMargins: margins.adjacent === 'sum',
+  embeddedFonts,
+});
+
+/** The `docx` document for `html`, before packing. */
+export const htmlToDocx = async (html: string, options: HtmlToDocxOptions) =>
+  (await createDocx(html, options)).document;
+
+/**
+ * The packed DOCX for `html`, with the settings `docx` cannot write patched
+ * in from the document's fragmentation rules, and its fonts embedded.
+ */
+export const htmlToPackedDocx = async (
+  html: string,
+  options: HtmlToDocxOptions,
+): Promise<Buffer> => {
+  const { document, rules, embeddedFonts } = await createDocx(html, options);
+  return patchPackedDocx(
+    await Packer.toBuffer(document),
+    toPackedDocxPatches(rules, embeddedFonts),
+  );
 };

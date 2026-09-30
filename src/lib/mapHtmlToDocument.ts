@@ -31,6 +31,7 @@ const CONTENT_ELEMENT_TYPES = [
   'pagecount',
   'pagenumber',
   'split',
+  'masonryGroup',
   'positionalTab',
   'image',
   'divider',
@@ -231,9 +232,11 @@ export const mapHtmlToDocument = <TContent>(
           throw new TypeError('Stack must be a child of document.');
         }
 
+        const { columns } = elementData.elementOptions;
+
         assignElementsContext(elementsContext, {
           stack: elementData.elementOptions,
-          isInsideColumn: elementData.elementOptions.columns.columnCount > 1,
+          isInsideColumn: columns.columnCount > 1,
         });
 
         return childContext;
@@ -294,6 +297,15 @@ export const mapHtmlToDocument = <TContent>(
           parentTagNames,
           PARAGRAPH_TAG_NAMES,
         );
+
+        if (
+          isElementOfType(elementData, 'masonryGroup') &&
+          parentElementTypes.at(-1) !== 'content'
+        ) {
+          throw new TypeError(
+            'A MasonryGroup must be a direct child of a Stack, where it is one unit of masonry columns.',
+          );
+        }
 
         if (isElementOfType(elementData, 'gridContainer')) {
           if (isChildOfParagraph) {

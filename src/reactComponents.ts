@@ -25,6 +25,7 @@ export * from './reactComponents/IfEnvironment';
 export * from './reactComponents/Link';
 export * from './reactComponents/List';
 export * from './reactComponents/BreakAvoid';
+export * from './reactComponents/MasonryGroup';
 export * from './reactComponents/PageCount';
 export * from './reactComponents/PageNumber';
 export * from './reactComponents/Stack';

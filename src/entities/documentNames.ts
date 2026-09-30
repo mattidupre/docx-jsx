@@ -65,6 +65,30 @@ export const createTypographyVars = ({
 }) => defineAttributes(prefixes.cssVariable, TYPOGRAPHY_VARS_SCHEMA);
 
 /**
+ * The custom properties of a paragraph's text box, which the paragraph rule
+ * reads: `textBox` is the `text-box` a trimmed paragraph declares, and the
+ * `trim` ones carry capsize's pseudo-element trim for browsers without
+ * `text-box` (`trim` is the pseudo-elements' `content`, set only on trimmed
+ * paragraphs).
+ */
+const LINE_BOX_VARS_SCHEMA = {
+  textBox: CSS_VAR,
+  trim: CSS_VAR,
+  trimCapHeight: CSS_VAR,
+  trimBaseline: CSS_VAR,
+} as const;
+
+/**
+ * The line box custom properties under a document's CSS variable prefix,
+ * e.g. `--matti-docs-text-box`.
+ */
+export const createLineBoxVars = ({
+  prefixes,
+}: {
+  prefixes: Pick<PrefixesConfig, 'cssVariable'>;
+}) => defineAttributes(prefixes.cssVariable, LINE_BOX_VARS_SCHEMA);
+
+/**
  * The class every library element carries in the DOM and PDF targets, e.g.
  * `matti-docs-element-grid-container`. The library styles nothing through it:
  * it exists so a consumer's own stylesheet can reach an element the library
@@ -94,8 +118,8 @@ export const variantNameToClassName = (
  * document on the page, so its selectors have to be the same for all of them.
  *
  * `contentRoot` marks the element document content is laid out under, in
- * every realm: the page root on screen and the pagination tree pagedjs
- * measures in. The library's content rules are rooted at it.
+ * every realm: the page root on screen and the root the Fragmenter measures
+ * content under. The library's content rules are rooted at it.
  */
 export const PAGE_CLASS_NAMES = defineClassNames<
   'pageRoot' | 'page' | 'contentRoot'
@@ -121,4 +145,13 @@ export const PAGE_VARS = defineAttributes('page', {
  */
 export const PAGE_DATA_ATTRIBUTES = defineAttributes(DEFAULT_PREFIX, {
   documentStyles: { attributeTypes: ['data-attribute'] },
+});
+
+/**
+ * Marks the element a multi-column stack lays its columns out in with how
+ * they fill (`data-matti-docs-column-fill="masonry"`), which the Fragmenter
+ * reads when it measures the stack. A `flow` stack carries no mark.
+ */
+export const COLUMNS_DATA_ATTRIBUTES = defineAttributes(DEFAULT_PREFIX, {
+  columnFill: { attributeTypes: ['data-attribute'] },
 });

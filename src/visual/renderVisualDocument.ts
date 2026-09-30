@@ -10,6 +10,7 @@ import { isErrorObject, stringifyErrorObject } from '../utils/error';
 import type { PngPage } from './entities';
 import { docxToPngPages } from './docxToPngPages';
 import { htmlToPngPages } from './htmlToPngPages';
+import { inlineFontFiles } from './inlineFontFiles';
 import { pdfToPngPages } from './pdfToPngPages';
 
 export const VISUAL_TARGETS = ['html', 'pdf', 'docx'] as const;
@@ -45,14 +46,21 @@ export type RenderVisualDocumentOptions = {
  * failure can never be blamed on a stale file left over from an earlier run.
  */
 export const renderVisualDocument = async (
-  { name, Document }: VisualDocument,
+  { name, Document, fonts }: VisualDocument,
   {
     browser,
     publicDirectory = DEFAULT_PUBLIC_DIRECTORY,
   }: RenderVisualDocumentOptions,
 ): Promise<RenderedPages> => {
-  const html = await reactToHtmlDocument(Document);
-  const pdfResult = await reactToPdf(Document, { browser, publicDirectory });
+  const html = await reactToHtmlDocument(Document, {
+    fonts: fonts && (await inlineFontFiles(fonts, { publicDirectory })),
+    publicDirectory,
+  });
+  const pdfResult = await reactToPdf(Document, {
+    browser,
+    fonts,
+    publicDirectory,
+  });
   if (isErrorObject(pdfResult)) {
     throw new Error(
       `reactToPdf failed for "${name}": ${stringifyErrorObject(pdfResult)}`,
@@ -61,8 +69,13 @@ export const renderVisualDocument = async (
   if (!(pdfResult instanceof Uint8Array)) {
     throw new TypeError(`reactToPdf returned no bytes for "${name}".`);
   }
+  // A fixture that brings its own fonts is rendered with exactly those in
+  // every target; the others get the mock fonts in the DOCX only. The browser
+  // is for masonry stacks, whose DOCX is written from the packed order of the
+  // same layout run the PDF is made from.
   const docx = await reactToDocx(Document, {
-    fonts: mockFonts,
+    browser,
+    fonts: fonts ?? mockFonts,
     publicDirectory,
   });
 

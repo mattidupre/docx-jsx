@@ -1,13 +1,20 @@
-import type { HtmlToDomOptions } from '../dom';
+import type { FragmentationLayout } from '../../fragmenter/model';
+import type { DocumentDom, HtmlToDomOptions } from '../dom';
 import htmlToDomCodeCjs from '../dom?source';
 
 export type HtmlToScriptOptions = Omit<
   HtmlToDomOptions,
-  'onDocument' | 'documentStyles'
+  'onDocument' | 'onLayout' | 'documentStyles'
 > & {
   targetQuery?: string;
   functionName?: string;
 };
+
+/**
+ * What the script resolves to: the document's options, as `htmlToDom` hands
+ * them to `onDocument`, with the layout of its pages.
+ */
+export type ScriptResult = DocumentDom & { layout: FragmentationLayout };
 
 /**
  * Serializes a value as a JavaScript literal. `<` is escaped so that the
@@ -30,8 +37,12 @@ export const htmlToScript = (
       const html = ${toScriptLiteral(html)};
       const options = ${toScriptLiteral(options)};
       let result;
+      let layout;
       options.onDocument = (documentObject) => {
         result = documentObject;
+      };
+      options.onLayout = (value) => {
+        layout = value;
       };
       const exports = {};
       {
@@ -40,7 +51,7 @@ export const htmlToScript = (
       try {
         return exports.htmlToDom(html, options).then((element) => {
           rootElement.appendChild(element);
-          return result;
+          return Object.assign({}, result, { layout });
         });
       } catch(err) {
         console.log('Error in htmlToScript', {err});

@@ -3,8 +3,14 @@ import { toLowercase } from '../utils/string';
 import { assignDefined, mergeWithDefault } from '../utils/object';
 import { pluckFromArray } from '../utils/array';
 import type { DataAttributes } from '../utils/dataAttributes';
-import { type Variants, assignVariants } from './typography';
+import {
+  type DefaultTypography,
+  type Variants,
+  assignTypographyOptions,
+  assignVariants,
+} from './typography';
 import type { FontsConfig } from './fonts';
+import type { FragmentationOption } from './fragmentation';
 import type { UnitsSize } from './units';
 
 export const APP_NAME = 'Matti Docs';
@@ -211,6 +217,16 @@ export type DocumentOptions = {
   variants?: Variants;
   prefixes?: PrefixesOptions;
   fonts?: FontsConfig;
+  /**
+   * The body text of the document: its font (which needs a font file, see
+   * `fonts`), size and line height. Written to Word as `w:docDefaults`.
+   */
+  defaultTypography?: DefaultTypography;
+  /**
+   * The conventions the DOM and PDF targets break pages by: `word` (the
+   * default) or `css`, or rules over either.
+   */
+  fragmentation?: FragmentationOption;
 };
 
 export type DocumentConfig = {
@@ -223,6 +239,22 @@ export type DocumentConfig = {
    * rather than carry `{}` into every target.
    */
   fonts?: FontsConfig;
+  /** Optional, like `fonts`: a document that declares none carries nothing. */
+  defaultTypography?: DefaultTypography;
+  /** Optional, like `fonts`: a document that chooses none carries nothing. */
+  fragmentation?: FragmentationOption;
+};
+
+/**
+ * The last declared choice wins, as for every other document option. The
+ * result is spread into the config, so a document that makes no choice has
+ * no `fragmentation` key.
+ */
+const assignFragmentation = (
+  ...args: ReadonlyArray<undefined | FragmentationOption>
+): Pick<DocumentConfig, 'fragmentation'> | Record<string, never> => {
+  const fragmentation = args.findLast((value) => value !== undefined);
+  return fragmentation === undefined ? {} : { fragmentation };
 };
 
 /**
@@ -241,6 +273,17 @@ const assignFonts = (
   return fonts ? { fonts } : {};
 };
 
+/**
+ * Later declarations win per option. The result is spread into the config, so
+ * a document that declares no default typography has no key for it.
+ */
+const assignDefaultTypography = (
+  ...args: ReadonlyArray<undefined | DefaultTypography>
+): Pick<DocumentConfig, 'defaultTypography'> | Record<string, never> =>
+  args.some((value) => value !== undefined)
+    ? { defaultTypography: assignTypographyOptions({}, ...args) }
+    : {};
+
 export const assignDocumentOptions = (
   ...args: ReadonlyArray<undefined | DocumentOptions>
 ): DocumentConfig =>
@@ -251,9 +294,31 @@ export const assignDocumentOptions = (
     // Spread conditionally so a document with no fonts has no `fonts` key at
     // all, rather than one holding `undefined`.
     ...assignFonts(...pluckFromArray(args, 'fonts')),
+    ...assignDefaultTypography(...pluckFromArray(args, 'defaultTypography')),
+    ...assignFragmentation(...pluckFromArray(args, 'fragmentation')),
   });
 
 type ColumnCount = 1 | 2 | 3 | 4;
+
+/**
+ * How a multi-column stack fills its columns:
+ * - `flow` (the default): one after another, as Word does, breaking blocks
+ *   between columns and pages by the document's fragmentation rules;
+ * - `masonry`: every direct child of the stack (or `MasonryGroup`) is a unit
+ *   that moves whole, packed into the shortest column. The packed order is
+ *   the reading order in every target, so a DOCX needs a layout run. A
+ *   `Break` is not a unit: it moves on to the next column (or page), and
+ *   nothing after it is packed ahead of what comes before it. One column
+ *   packs too, in order apart from the lookahead.
+ */
+export type StackColumnFill = 'flow' | 'masonry';
+
+export type StackColumns = {
+  columnCount: ColumnCount;
+  columnGap: UnitsSize;
+  /** Left out, the columns `flow`. */
+  fill?: StackColumnFill;
+};
 
 export type StackOptions = {
   innerPageClassName?: string;
@@ -262,10 +327,7 @@ export type StackOptions = {
   outerPageDataAttributes?: DataAttributes;
   innerPageDataAttributes?: DataAttributes;
   continuous?: boolean;
-  columns?: {
-    columnCount: ColumnCount;
-    columnGap: UnitsSize;
-  };
+  columns?: StackColumns;
 };
 
 export type StackConfig = {
@@ -275,10 +337,7 @@ export type StackConfig = {
   innerPageDataAttributes?: DataAttributes;
   margin: PageMargin;
   continuous: boolean;
-  columns: {
-    columnCount: ColumnCount;
-    columnGap: UnitsSize;
-  };
+  columns: StackColumns;
 };
 
 export const assignStackOptions = (

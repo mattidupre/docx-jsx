@@ -7,15 +7,21 @@ import {
   LineRuleType,
 } from 'docx';
 import {
+  type LineBox,
   type TypographyOptions,
   type TypographyOptionsFlat,
+  assignTypographyOptions,
+  capHeightToFontSize,
   typographyOptionsToFlat,
+  findFontFace,
+  getFontFaceSource,
   getFontFace,
+  resolveLineBoxFont,
   type FontsConfig,
   type FontFace,
   type UnitsSize,
-  type UnitsUnitless,
 } from '../../entities';
+import { isFontStyleItalicish, isFontWeightBoldish } from '../../utils/font';
 import { type KeyedObject, objectValuesDefined } from '../../utils/object';
 import { toPt, toTwip } from './entities';
 
@@ -31,12 +37,6 @@ const DOCX_TEXT_ALIGN = {
 } as const;
 
 /**
- * `w:line` counts 240ths of a line when `w:lineRule` is `auto`, so a unitless
- * CSS line-height multiplier of 1 is 240.
- */
-const LINE_UNITS_PER_LINE = 240;
-
-/**
  * ECMA-376 CT_Border: `w:sz` is a width in eighths of a point documented as
  * 2..96 (0.25pt..12pt) and `w:space` is a padding in points documented as
  * 0..31. The lower bound here is 0 rather than 0.25pt because `0` is how a
@@ -47,11 +47,6 @@ const BORDER_WIDTH_PT_MAX = 12;
 const BORDER_WIDTH_EIGHTHS_PER_PT = 8;
 const BORDER_SPACE_PT_MIN = 0;
 const BORDER_SPACE_PT_MAX = 31;
-
-const UNITLESS_EXP = /^-?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/i;
-
-const isUnitless = (value: string): value is UnitsUnitless =>
-  UNITLESS_EXP.test(value);
 
 const ifTruthy = <TValue, TValueIn>(
   valueIn: TValueIn,
@@ -95,9 +90,68 @@ const clampPt = (
   return value;
 };
 
-// For now only support default docx font names
 const parseFontFace = (fontFace: undefined | FontFace): undefined | string =>
   fontFace?.src;
+
+/**
+ * The font a run names and the bold and italic toggles that pick its style.
+ *
+ * A face with a `docx` source names that installed font, and the run's own
+ * weight and style set the toggles. A face Word knows by its embedded file
+ * (`wordFont`) is matched as the browser matches it, from the run's family,
+ * weight and style over the ones it inherits, and names the family its file
+ * names itself: the toggles pick the file's own style in that family, plus
+ * the bold or italic a browser synthesizes when the face has none. They are
+ * written whenever the typography states them, since a file of a weight
+ * other than regular or bold is the regular style of a family of its own.
+ */
+const parseRunFont = (
+  fonts: FontsConfig,
+  typographyOptions: TypographyOptions,
+  inheritedTypography: undefined | TypographyOptions,
+): Pick<IRunPropertiesOptions, 'font' | 'bold' | 'italics'> => {
+  const { fontFamily, fontWeight, fontStyle } =
+    typographyOptionsToFlat(typographyOptions);
+  const typography = typographyOptionsToFlat(
+    assignTypographyOptions({}, inheritedTypography, typographyOptions),
+  );
+  // A run that states none of them inherits its font whole.
+  const fontFace = [fontFamily, fontWeight, fontStyle].some(
+    (value) => value !== undefined,
+  )
+    ? findFontFace(fonts, typography)?.fontFace
+    : undefined;
+  const wordFont =
+    fontFace && !getFontFaceSource(fontFace, 'docx')
+      ? fontFace.wordFont
+      : undefined;
+  if (fontFace && wordFont) {
+    const bold =
+      wordFont.bold ||
+      (typography.fontWeight === 'bold' &&
+        !isFontWeightBoldish(fontFace.fontWeight));
+    const italics =
+      wordFont.italic ||
+      (typography.fontStyle === 'italic' &&
+        !isFontStyleItalicish(fontFace.fontStyle));
+    return {
+      font: wordFont.fontName,
+      bold: bold || (typography.fontWeight === undefined ? undefined : false),
+      italics:
+        italics || (typography.fontStyle === undefined ? undefined : false),
+    };
+  }
+  return {
+    font: parseFontFace(
+      getFontFace(
+        { fonts, documentType: 'docx' },
+        { fontFamily, fontWeight, fontStyle },
+      ),
+    ),
+    bold: ifTruthy(fontWeight, fontWeight === 'bold'),
+    italics: ifTruthy(fontStyle, fontStyle === 'italic'),
+  };
+};
 
 /**
  * `w:sz` is a font size in half-points. CSS `font-size: normal` has no Word
@@ -105,7 +159,9 @@ const parseFontFace = (fontFace: undefined | FontFace): undefined | string =>
  */
 const parseFontSize = (fontSize: TypographyOptionsFlat['fontSize']) =>
   fontSize &&
-  (fontSize === 'normal' ? undefined : Math.round(toPt(fontSize) * 2));
+  (fontSize === 'normal' ? undefined : toHalfPoints(toPt(fontSize)));
+
+const toHalfPoints = (valuePt: number) => Math.round(valuePt * 2);
 
 const parseBorderWidth = (borderWidth: undefined | UnitsSize) =>
   borderWidth &&
@@ -129,63 +185,74 @@ const parseBorderSpace = (padding: undefined | UnitsSize) =>
     ),
   );
 
-/**
- * CSS `line-height` mapped onto `w:spacing`:
- * - `normal` is font-dependent in CSS and has no fixed Word equivalent, so
- *   nothing is emitted and Word applies its own single spacing.
- * - a unitless multiplier scales the font size, which is what `lineRule="auto"`
- *   does in 240ths of a line.
- * - an absolute length is a fixed leading, which is `lineRule="exact"` in twips.
- */
-const parseLineSpacing = (
-  lineHeight: TypographyOptionsFlat['lineHeight'],
-): undefined | Pick<ISpacingProperties, 'line' | 'lineRule'> => {
-  if (!lineHeight || lineHeight === 'normal') {
-    return undefined;
-  }
-  if (isUnitless(lineHeight)) {
-    return {
-      line: Math.round(Number.parseFloat(lineHeight) * LINE_UNITS_PER_LINE),
-      lineRule: LineRuleType.AUTO,
-    };
-  }
-  return {
-    line: Math.round(toTwip(lineHeight)),
-    lineRule: LineRuleType.EXACT,
-  };
-};
+const TWIP_PER_PT = 20;
 
+/**
+ * A resolved line box as `w:spacing`. Every paragraph is `lineRule="exact"`,
+ * the one rule under which Word puts the baseline at the same place whatever
+ * the font (`0.8 × L + 0.25pt` below the line's top), so the CSS line height
+ * means the same thing in both targets. A paragraph holding a picture is
+ * `atLeast`: an exact line would clip it where CSS grows the line box.
+ */
+export const parseLineSpacing = (
+  { lineHeight }: LineBox,
+  { atLeast }: { atLeast: boolean },
+): Pick<ISpacingProperties, 'line' | 'lineRule'> => ({
+  // A line with no height at all is not a line.
+  line: Math.max(Math.round(lineHeight * TWIP_PER_PT), 1),
+  lineRule: atLeast ? LineRuleType.AT_LEAST : LineRuleType.EXACT,
+});
+
+/**
+ * `typographyOptions` as run properties. A `capHeight` is measured in the
+ * face the run is set in: its own family, else the one it inherits from
+ * `inheritedTypography` (a variant, the document's defaults).
+ */
 export const parseTextRunOptions = (
   fonts: FontsConfig,
   typographyOptions: undefined | TypographyOptions,
+  inheritedTypography?: TypographyOptions,
 ): undefined | IRunPropertiesOptions => {
   const {
+    capHeight,
     fontSize,
     color,
-    fontFamily,
     highlightColor,
-    fontWeight,
-    fontStyle,
     textTransform,
     textDecoration,
     superScript,
     subScript,
   } = typographyOptionsToFlat(typographyOptions ?? {});
+  const { font, bold, italics } = parseRunFont(
+    fonts,
+    typographyOptions ?? {},
+    inheritedTypography,
+  );
 
   // `textAlign` is deliberately absent: alignment is a paragraph property in
   // OOXML and is emitted by parseParagraphOptions.
   return objectValuesDefined({
-    font: parseFontFace(
-      getFontFace(
-        { fonts, documentType: 'docx' },
-        { fontFamily, fontWeight, fontStyle },
-      ),
-    ),
-    size: ifTruthy(fontSize, parseFontSize(fontSize)),
+    font,
+    size:
+      capHeight === undefined
+        ? ifTruthy(fontSize, parseFontSize(fontSize))
+        : toHalfPoints(
+            capHeightToFontSize(
+              capHeight,
+              resolveLineBoxFont(
+                fonts,
+                assignTypographyOptions(
+                  {},
+                  inheritedTypography,
+                  typographyOptions,
+                ),
+              ),
+            ),
+          ),
     color: toDocxColor(color),
     shading: ifTruthy(highlightColor, { fill: toDocxColor(highlightColor) }),
-    bold: ifTruthy(fontWeight, fontWeight === 'bold'),
-    italics: ifTruthy(fontStyle, fontStyle === 'italic'),
+    bold,
+    italics,
     allCaps: ifTruthy(textTransform, textTransform === 'uppercase'),
     underline: ifTruthy(
       textDecoration,
@@ -206,7 +273,6 @@ export const parseParagraphOptions = (
 ): undefined | IParagraphPropertiesOptions => {
   const {
     textAlign,
-    lineHeight,
     highlightColor,
     marginTop,
     marginRight,
@@ -232,7 +298,6 @@ export const parseParagraphOptions = (
     spacing: definedObject({
       before: marginTop && Math.round(toTwip(marginTop)),
       after: marginBottom && Math.round(toTwip(marginBottom)),
-      ...parseLineSpacing(lineHeight),
     }),
     indent: definedObject({
       firstLine: textIndent && Math.round(toTwip(textIndent)),

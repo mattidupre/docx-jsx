@@ -9,7 +9,11 @@ const DOCUMENT_PATH = 'word/document.xml';
 
 const STYLES_PATH = 'word/styles.xml';
 
+const SETTINGS_PATH = 'word/settings.xml';
+
 const NUMBERING_PATH = 'word/numbering.xml';
+
+const FONT_TABLE_PATH = 'word/fontTable.xml';
 
 const HEADER_PATH_PATTERN = /^word\/header(\d+)\.xml$/;
 
@@ -143,6 +147,8 @@ export type DocxArchive = {
   readonly fileNames: ReadonlyArray<string>;
   readonly document: XmlNodes;
   readonly styles: XmlNodes;
+  readonly settings: XmlNodes;
+  readonly fontTable: XmlNodes;
   readonly numbering: undefined | XmlNodes;
   readonly headers: ReadonlyArray<XmlNodes>;
   readonly footers: ReadonlyArray<XmlNodes>;
@@ -196,6 +202,8 @@ export const inspectDocx = async (
     fileNames,
     document: await readRequiredPart(zip, DOCUMENT_PATH),
     styles: await readRequiredPart(zip, STYLES_PATH),
+    settings: await readRequiredPart(zip, SETTINGS_PATH),
+    fontTable: await readRequiredPart(zip, FONT_TABLE_PATH),
     numbering: await readPart(zip, NUMBERING_PATH),
     headers: await readPartsByIndex(zip, fileNames, HEADER_PATH_PATTERN),
     footers: await readPartsByIndex(zip, fileNames, FOOTER_PATH_PATTERN),

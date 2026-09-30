@@ -1,5 +1,9 @@
 import { mapValues, merge } from 'lodash';
-import { type AssertObjectHasKeys, assignDefined } from '../utils/object';
+import {
+  type AssertObjectHasKeys,
+  assignDefined,
+  getValueOf,
+} from '../utils/object';
 import { toDefinedArray } from '../utils/array';
 import type { FontFamily } from './fonts';
 import type { TagName } from './html';
@@ -66,6 +70,20 @@ type TypographyOptionsCustomFlat = {
   highlightColor: Color;
   superScript: boolean;
   subScript: boolean;
+  /**
+   * The height of the capital letters, as another way to size the text: the
+   * font size is `capHeight` divided by the font's cap height per em, read
+   * from its file. `capHeight` and `fontSize` set one size, so the later of
+   * the two wins when typography is assigned.
+   */
+  capHeight: UnitsSize;
+  /**
+   * `both` trims a paragraph's box to the cap height of its first line and
+   * the baseline of its last (CSS `text-box: trim-both cap alphabetic`), so
+   * the space between two paragraphs is the space between their text. Word
+   * cannot trim, so the DOCX moves that space into the paragraph spacing.
+   */
+  textBoxTrim: 'none' | 'both';
 };
 
 // const DEFAULT_TYPOGRAPHY_CUSTOM_OPTIONS: Required<TypographyOptionsCustomFlat> =
@@ -101,11 +119,30 @@ export const typographyOptionsToFlat = <TOptions extends TypographyOptions>(
 // };
 
 /**
+ * The two options that set the same size: whichever is assigned later wins,
+ * so assigning one removes the other.
+ */
+const EXCLUSIVE_SIZE_KEYS = [
+  ['fontSize', 'capHeight'],
+  ['capHeight', 'fontSize'],
+] as const satisfies ReadonlyArray<
+  readonly [keyof TypographyOptions, keyof TypographyOptions]
+>;
+
+/**
  * Overwrites typography config values onto the first value.
  */
 export const assignTypographyOptions = (
   ...[args0, ...args]: ReadonlyArray<undefined | TypographyOptions>
-): TypographyOptions => assignDefined(args0 ?? {}, ...args);
+): TypographyOptions =>
+  args.reduce<TypographyOptions>((target, options) => {
+    for (const [key, excluded] of EXCLUSIVE_SIZE_KEYS) {
+      if (options?.[key] !== undefined) {
+        delete target[excluded];
+      }
+    }
+    return assignDefined(target, options);
+  }, args0 ?? {});
 
 /**
  * The heading scale every browser ships in its user agent stylesheet, as
@@ -161,6 +198,11 @@ export const INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS: Partial<
       fontWeight: 'bold',
       marginTop: toPx(marginPx),
       marginBottom: toPx(marginPx),
+      // A heading never ends a page or a column apart from what it heads, and
+      // never splits across one: Word's built-in heading styles keep with
+      // next and keep lines together, and css-break-3 recommends the same.
+      breakAfter: 'avoid',
+      breakInside: 'avoid',
     };
   },
 );
@@ -226,7 +268,9 @@ export const INTRINSIC_TAG_TYPOGRAPHY_OPTIONS = {
  */
 export const INTRINSIC_BLOCK_TAG_NAMES = [
   'blockquote',
-] as const satisfies ReadonlyArray<keyof typeof INTRINSIC_TAG_TYPOGRAPHY_OPTIONS>;
+] as const satisfies ReadonlyArray<
+  keyof typeof INTRINSIC_TAG_TYPOGRAPHY_OPTIONS
+>;
 
 /**
  * Map certain HTML tags to their respective typography styles.
@@ -273,3 +317,47 @@ export const INTRINSIC_VARIANT_TAG_NAMES = {
   listParagraph: 'li',
   hyperlink: 'a',
 } as const satisfies Partial<Record<VariantName, TagName>>;
+
+/**
+ * The typography a document gives text that sets none of its own: the font,
+ * the size and the line model of its body. The DOCX writes it as
+ * `w:docDefaults`, and the CSS targets set it on the content root.
+ */
+export type DefaultTypography = Pick<
+  TypographyOptions,
+  'fontFamily' | 'fontSize' | 'capHeight' | 'lineHeight' | 'textBoxTrim'
+>;
+
+/**
+ * The typography a block element resolves to, lowest priority first: the
+ * document's defaults, the intrinsic typography of its tag, the variants CSS
+ * applies to the tag by name (`heading2` to every `h2`), its own variant and
+ * its inline options. Both targets resolve a paragraph's line box from this.
+ */
+export const resolveBlockTypography = ({
+  defaultTypography,
+  variants,
+  tagName,
+  variant,
+  contentOptions,
+}: {
+  defaultTypography: undefined | DefaultTypography;
+  variants: Variants;
+  tagName: TagName;
+  variant: undefined | VariantName;
+  contentOptions: undefined | TypographyOptions;
+}): TypographyOptions =>
+  assignTypographyOptions(
+    {},
+    defaultTypography,
+    getValueOf(INTRINSIC_HEADING_TYPOGRAPHY_OPTIONS, tagName),
+    getValueOf(INTRINSIC_TAG_TYPOGRAPHY_OPTIONS, tagName),
+    ...Object.keys(variants)
+      .filter(
+        (variantName) =>
+          getValueOf(INTRINSIC_VARIANT_TAG_NAMES, variantName) === tagName,
+      )
+      .map((variantName) => variants[variantName]),
+    variant === undefined ? undefined : variants[variant],
+    contentOptions,
+  );

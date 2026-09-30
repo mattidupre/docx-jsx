@@ -60,7 +60,8 @@ matti-kit).
 
 ### Chrome is required for PDF
 
-PDF generation paginates the document in a real browser (pagedjs) and then calls
+PDF generation paginates the document in a real browser (the library's own
+Fragmenter) and then calls
 `page.pdf()`. `reactToPdf` does **not** launch or download a browser: it takes a
 `Browser` from `puppeteer-core` that the caller owns and is responsible for
 closing.
@@ -131,6 +132,9 @@ const docx = await reactToDocx(Document, {
   fonts,            // FontsConfig; overrides fonts declared on DocumentProvider
   publicDirectory,  // where a non-data: `Image` src is read from
   svgImages,        // { [svgId]: { data, width, height } } rasterised `Svg`s
+  embedFonts,       // embed the document's font files; defaults to true
+  browser,          // only for masonry columns: the layout run their order comes from
+  closeBrowser,     // as for reactToPdf; pass pageStyleSheets and styleSheets too
 });
 
 // PDF -> Uint8Array, or `{ error }` (see `isErrorObject`)
@@ -144,7 +148,10 @@ const pdf = await reactToPdf(Document, {
 });
 
 // A standalone HTML file that paginates itself in the browser -> string
-const html = await reactToHtmlDocument(Document);
+const html = await reactToHtmlDocument(Document, {
+  fonts,
+  publicDirectory,  // where font files are read for their metrics
+});
 
 // A detached, paginated HTMLElement, for a live preview -> HTMLElement
 const element = await reactToDom(Document, {
@@ -228,7 +235,7 @@ rules and variants, then `styleSheets`. Each render's sheets are scoped with
 variants or stylesheets can share a page without reaching each other — a
 consumer's `styleSheets` style the pages of the render they were passed to, not
 every page on the document. Pagination measures the content under the same
-sheets, scoped to the element pagedjs flows it into.
+sheets, scoped to the element the Fragmenter lays it out under.
 
 ## Targets and environments
 
@@ -237,7 +244,7 @@ sheets, scoped to the element pagedjs flows it into.
 | Entry point | `documentType` | Notes |
 | --- | --- | --- |
 | `reactToDocx` | `docx` | Structural annotations serialised into the markup, then mapped to `docx` objects. |
-| `reactToPdf` | `pdf` | Same markup, paginated by pagedjs in Chrome, then printed. |
+| `reactToPdf` | `pdf` | Same markup, paginated by the Fragmenter in Chrome, then printed. |
 | `reactToDom` / `reactToHtmlDocument` / `reactToScript` / `Preview` | `pdf` | The DOM target *is* the PDF target; the PDF is a print of it. |
 | A `DocumentProvider` rendered directly by React DOM | `web` | Unpaginated. Headers and footers are not rendered, and `PageNumber`/`PageCount` warn. |
 
@@ -249,18 +256,19 @@ sense in one target (an "on the web" call to action, a print-only note).
 
 | Component | Purpose | HTML / DOM / PDF | DOCX | Notes and limits |
 | --- | --- | --- | --- | --- |
-| `DocumentProvider` | Document root: page size, variants, prefixes, fonts | Wrapper element carrying the encoded document config; injects the variant stylesheet when `injectEnvironmentCss` | `Document` with generated `styles` and `numbering` | Defaults to 8.5in × 11in. Nesting a provider with different variants or prefixes throws. |
+| `DocumentProvider` | Document root: page size, variants, prefixes, fonts, default typography, fragmentation | Wrapper element carrying the encoded document config; injects the variant stylesheet when `injectEnvironmentCss` | `Document` with generated `styles` and `numbering` | Defaults to 8.5in × 11in. Nesting a provider with different variants or prefixes throws. `fragmentation` picks the pagination conventions of the DOM and PDF targets: `word` (the default: widow/orphan control, space-before dropped at the top of a continued page, repeated table headers) or `css` (css-break-3), or rules over either. |
 | `ContentProvider` | Variants and prefixes without a document | Adopted stylesheet when `injectEnvironmentCss` and `documentType === 'web'` | Context only; contributes no content | Use to style library components outside a document (Storybook, a web page). |
-| `Stack` | A page section: margins, columns, running header and footer | One `PageTemplate` per layout; pagedjs chunks content into pages | One `ISectionOptions` per stack (page size, margins, `column`, first/default headers and footers) | `continuous` starts the section on the current page. A page belongs to the stack whose content starts it, and gets that stack's `first` layout only when it also starts the stack. A multi-column stack emits a second, empty continuous section so the columns do not fill the page. |
+| `Stack` | A page section: margins, columns, running header and footer | One `PageTemplate` per layout; the Fragmenter measures each stack at the width of the page it starts on, and what is left of it again on a later page of another width (a split block carries on from the same place in its text), and fills pages from the measurements | One `ISectionOptions` per stack (page size, margins, `column`, first/default headers and footers) | `continuous` starts the section on the current page. A page belongs to the stack whose content starts it, and gets that stack's `first` layout only when it also starts the stack. A multi-column stack emits a second, empty continuous section so the columns do not fill the page. `columns={{ columnCount, columnGap, fill: 'masonry' }}` packs the direct children (units) into the shortest column instead of flowing; see `MasonryGroup`. |
 | `Typography` | A styled tag plus an optional variant | The tag from `as`, with typography written as CSS custom properties and the variant class | Run properties, or paragraph properties when the tag is a paragraph tag | `as` defaults to `span`. |
-| `Break` | Force a page or column break | `break-after: page`, rewritten to pagedjs's `data-break-after` / `data-previous-break-after` attribute pair; inside a multi-column stack, `break-after: column` | `PageBreak`, or `ColumnBreak` inside a multi-column stack; wrapped in a paragraph when not already inside one | pagedjs only breaks *onto* an element, so a trailing break gets an empty carrier element appended. |
-| `BreakAvoid` | Keep a subtree together | `break-inside: avoid` (and `break-after: avoid` with `after`) | `keepLines` on paragraph children, `keepNext` on all but the last; a `Table` keeps itself together with `cantSplit` on its rows | `breakInside` accumulates down the element context, so a nested table inherits it. pagedjs never splits a fixed-height block: a block taller than the page overflows silently. |
+| `Break` | Force a page or column break | `break-after: page`; inside a multi-column stack, `break-after: column` | `PageBreak`, or `ColumnBreak` inside a multi-column stack; wrapped in a paragraph when not already inside one | A break that ends the document is followed by a blank page, as in Word. |
+| `BreakAvoid` | Keep a subtree together | `break-inside: avoid` (and `break-after: avoid` with `after`) | `keepLines` on paragraph children, `keepNext` on all but the last; a `Table` keeps itself together with `cantSplit` on its rows | `breakInside` accumulates down the element context, so a nested table inherits it. A kept block taller than a page is split anyway where it can be, and overflows where it cannot (a fixed-height block). |
+| `MasonryGroup` | One movable unit of masonry columns | A `div`; the Fragmenter packs each unit whole into the column whose content ends highest, looks up to 8 units ahead for one that fits when the next fits nowhere, splits only a unit taller than a column (as flow does), keeps a unit that keeps with the next (a heading, `keepWithNext`) in the same column, and balances the last page. The DOM order is the packed order | The units in the packed order of a layout run in `browser`, with `w:br w:type="column"` and `w:br w:type="page"` where the layout ended a column or a page between units; a split unit flows on by itself, and the section is not balanced again | Must be a direct child of a `Stack`; every other direct child of a masonry stack is a unit of its own, except a `Break` or a bare `<br>`. Reading order is the packed order in every target. A `Break` between units starts the next column right of every column with content (a page break, in a one-column stack, starts the next page), and one inside a unit carries the rest of the unit there; nothing after a `Break` is packed ahead of what comes before it. A one-column masonry stack places its units in order, apart from the lookahead. `reactToDocx` throws for a masonry document without a `browser`. |
 | `PageNumber` | The current page number | An empty `<span>` filled in per page while the page template is built | `TextRun` with the `PAGE` field | Warns when rendered with `documentType: 'web'`, which has no pages. |
 | `PageCount` | The total page count | Same | `TextRun` with the `NUMPAGES` field | Same. docx-preview does not evaluate Word fields, so the visual pipeline sees these as blank. |
 | `Split` | A left/right row | `display: flex; justify-content: space-between` | A one-row, two-cell borderless `Table` at 100% width | Reads exactly two children — its `left` and `right` props — structurally. |
 | `TabSplit` | A left/right row inside one paragraph | Flex layout inside the tag from `as` (a paragraph tag) | A right-aligned tab stop at the content width plus a `w:tab` run | Uses an ordinary tab stop rather than `w:ptab`: Word draws both, but most other readers ignore `w:ptab` and run the two sides together. |
 | `Grid` / `GridItem` | A column grid | Floated items with `calc()` widths and half-gap margins | A borderless `Table`; each item is a cell with `columnSpan` equal to its size, and rows wrap when the next item overflows | `columnCount` defaults to 12. An item wider than the grid is clamped to a full row in both targets. A short final row is padded with a filler cell. |
-| `Table` / `TableRow` / `TableCell` | A data table | A `<table>` with `border-collapse: collapse`, a `<colgroup>` of `<col>` widths (with `table-layout: fixed`), a `<thead>` of the header rows and a `<tbody>` of the rest; borders, padding, spans, alignments, `background-color` and widths as inline styles and attributes on every `<th>`/`<td>` | A `Table` with `w:tblW`, a `w:tblGrid` in twips, all six `w:tblBorders`, `w:tblCellMar` for `cellPadding`, `w:tblHeader` on header rows, `w:cantSplit`, `w:gridSpan`, `w:vMerge`, `w:vAlign` and `w:shd` | Header rows repeat across pages in Word only: pagedjs 0.4 rebuilds a split table's ancestors without their children, so the continuation table has no `<thead>`. Rows keep together by default (`break-inside: avoid` on the row *and* its cells, `cantSplit` in Word). A header row is hoisted into `<thead>` only when it is a direct `TableRow` child. |
+| `Table` / `TableRow` / `TableCell` | A data table | A `<table>` with `border-collapse: collapse`, a `<colgroup>` of `<col>` widths (with `table-layout: fixed`), a `<thead>` of the header rows and a `<tbody>` of the rest; borders, padding, spans, alignments, `background-color` and widths as inline styles and attributes on every `<th>`/`<td>` | A `Table` with `w:tblW`, a `w:tblGrid` in twips, all six `w:tblBorders`, `w:tblCellMar` for `cellPadding`, `w:tblHeader` on header rows, `w:cantSplit`, `w:gridSpan`, `w:vMerge`, `w:vAlign` and `w:shd` | Header rows repeat across pages in Word and, under the `word` fragmentation profile, in the DOM and PDF; a header with no room for a row under it is left out. Rows keep together by default; a row taller than a page is split in the DOM and PDF, each cell at its own lines, so every page shows the lines of each cell that fit, once (`break-inside: avoid` on the row *and* its cells, `cantSplit` in Word, which splits such a row itself); a row with a cell spanning rows is not split. A header row is hoisted into `<thead>` only when it is a direct `TableRow` child. |
 | `Image` | A raster image | `<img src alt>` sized with CSS; the omitted axis is `auto`; `align` makes it a block with auto margins | `ImageRun` sized in pixels at 96 DPI, inside a `Paragraph` whose alignment matches `align` | At least one of `width`/`height` is required. `src` is a `data:` URL, or a path resolved against `publicDirectory` (served to Chrome for PDF, read with `node:fs` for DOCX). The omitted axis comes from the intrinsic size in the file header. |
 | `Divider` | A horizontal rule | A zero-height `<div>` with `border-top` and margins | An empty `Paragraph` with a single bottom border, `spacing.before`/`after` in twips, and its line pinned to the rule thickness | Not `<hr>`: its user-agent thickness, colour and margins differ from Word's. `width` is a percentage of the content width — a CSS `width` in the browser, a right indent in Word. |
 | `Spacer` | Vertical space | An empty `<div>` with an explicit `height` and no margins | An empty `Paragraph` with exact line spacing equal to `height` and zero before/after | Exact line spacing is the only paragraph height Word does not adjust for the font. |
@@ -327,6 +335,7 @@ type TypographyOptions = {
   paddingBottom, borderBottomWidth, borderBottomColor,
   whiteSpace,
   highlightColor, superScript, subScript,
+  capHeight, textBoxTrim,
 };
 ```
 
@@ -335,8 +344,33 @@ root in every target, because Word has no cascade to resolve it against: the
 browser targets are given the resolved `px` (in typography variables, component
 styles, fallback literals and page geometry), so a host page with
 `html { font-size: 20px }` no longer scales a preview.
-`lineHeight` may also be a unitless multiplier, which becomes automatic line
-spacing in Word; a length becomes exact line spacing.
+
+**The line model.** Every paragraph's line height is resolved once, to an
+absolute leading L, from its typography and the metrics of its font file
+(`entities/lineBox.ts`): a unitless multiplier times the font size, a length,
+or `normal`, which is the font's own single line (`hhea` ascent + descent +
+line gap, what Word calls single). CSS gets `line-height: L` and Word
+`lineRule="exact"` (`atLeast` for a paragraph holding a picture), the one rule
+under which Word puts the baseline at `0.8 × L + 0.25pt` whatever the font.
+Text that names no line height and has no font metrics keeps each target's own
+`normal`.
+
+- `capHeight` sizes text by its capitals instead of `fontSize` (the later of
+  the two wins): the font size is the cap height over the font's cap height
+  per em.
+- `textBoxTrim: 'both'` trims a paragraph to the cap height of its first line
+  and the baseline of its last (`text-box: trim-both cap alphabetic`, with
+  capsize's pseudo-element trim where that is unsupported), so a margin is
+  the space between the text itself. Word cannot trim: the DOCX moves the
+  trimmed space into the paragraph spacing, and the `word` fragmentation
+  profile places a trimmed line at the top and bottom of a page where Word
+  does (`trim` rules).
+- `normal`, `capHeight` and trimming need the font's metrics, and throw a
+  `MissingFontMetricsError` without them.
+
+`DocumentProvider`'s `defaultTypography` (`fontFamily`, `fontSize`,
+`capHeight`, `lineHeight`, `textBoxTrim`) is the document's body text. The CSS
+targets set it on the content root and the DOCX writes it as `w:docDefaults`.
 
 **Variants** are named `TypographyOptions`, declared once on `DocumentProvider`
 (or `ContentProvider`) and referenced by name:
@@ -397,9 +431,9 @@ without either target relying on its own defaults. Both are the lowest-priority
 source in their target.
 
 **Fonts.** A `FontsConfig` maps a family name to font faces, each with per-target
-sources: a file for `web`/`pdf` (emitted as `@font-face`) and an installed Word
-font name for `docx`. Declare them once on `DocumentProvider`, or pass `fonts` to
-a renderer to override.
+sources: a file for `web`/`pdf` (emitted as `@font-face`) and, optionally, an
+installed Word font name for `docx`. Declare them once on `DocumentProvider`, or
+pass `fonts` to a renderer to override.
 
 ```ts
 const fonts = {
@@ -410,7 +444,13 @@ const fonts = {
         fontStyle: 'normal',
         sources: [
           { documentType: 'web', src: 'Merriweather-Regular.ttf', format: 'truetype' },
-          { documentType: 'docx', src: 'Calibri', format: 'truetype' },
+        ],
+      },
+      {
+        fontWeight: '700',
+        fontStyle: 'normal',
+        sources: [
+          { documentType: 'web', src: 'Merriweather-Bold.ttf', format: 'truetype' },
         ],
       },
     ],
@@ -418,8 +458,37 @@ const fonts = {
 };
 ```
 
-A source with no `documentType` serves both browser targets. A `docx` source
-names a font on the reader's machine and is never used as a file.
+A source with no `documentType` serves both browser targets.
+
+The DOCX embeds the font files, so Word sets text in the same font as the PDF
+without it being installed. Each face's file goes into the font table under the
+family name inside the file (name ID 1), in the one of Word's four styles
+(regular, bold, italic, bold italic) its `OS/2` `fsSelection` says it is; runs
+and styles name that family in `w:rFonts`, and their bold and italic toggles
+pick the face the browser would pick. A file of another weight, such as
+`Merriweather-Light.ttf`, is the regular style of a family of its own
+(`Merriweather Light`). Only families the document uses are embedded, and the
+obfuscation keys are derived from the files, so the same document gives the
+same font parts. Word reads single TrueType or OpenType files: a `woff`/`woff2`
+file or a collection is not embedded (with a warning).
+
+A font's licence is respected (`OS/2` `fsType`): installable, editable and
+preview & print fonts are embedded; a restricted font is not, and a warning
+names it. `embedFonts: false` turns embedding off. Either way the DOCX still
+names the font, and Word uses it when it is installed.
+
+A `docx` source opts a face out: the DOCX names that installed Word font instead
+(`Calibri` for Merriweather, say, or `Arial` for an Arial file) and embeds
+nothing for it. Word's own fonts are installed wherever Word is, so embedding
+them would only make the document larger.
+
+A face's `web`/`pdf` source is also its font file for the line model: the
+renderers that run in Node (`reactToDocx`, `reactToPdf`,
+`reactToHtmlDocument`) read its metrics with `@capsizecss/unpack` from
+`publicDirectory` (or an absolute path, or a `data:` URL) and pass them on as
+plain data. A document rendered only in a browser (`reactToDom`, the preview)
+declares them on the face instead:
+`metrics: { unitsPerEm, ascent, descent, lineGap, capHeight }`.
 
 ## Testing
 
@@ -551,7 +620,7 @@ pin) by `scripts/buildStyles.ts`, following matti-kit's shadow stylesheet build
 
 | Config | Output | Used for |
 | --- | --- | --- |
-| `panda.neutral.config.ts` | `NEUTRAL_STYLES` | Undoing the host page's reset; pagedjs's split rules |
+| `panda.neutral.config.ts` | `NEUTRAL_STYLES` | Undoing the host page's reset; the rules for split elements |
 | `panda.config.ts` | `CONTENT_STYLES_TEMPLATE` | The structural rules, with the CSS variable prefix left as a token and instantiated per document |
 | `panda.shadow.config.ts` | `PAGE_SHADOW_STYLES` | The page chrome, in each page's shadow root, with preflight minus its `html, :host` rule |
 

@@ -192,6 +192,23 @@ describe('assignDocumentOptions', () => {
     expect(config.size).not.toBe(size);
     expect(size).toEqual({ width: '5in', height: '7in' });
   });
+
+  test('carries no fragmentation unless one is chosen', () => {
+    expect(assignDocumentOptions({}, { size: undefined })).not.toHaveProperty(
+      'fragmentation',
+    );
+  });
+
+  test('later arguments win for the fragmentation', () => {
+    expect(
+      assignDocumentOptions(
+        {},
+        { fragmentation: 'css' },
+        { fragmentation: undefined },
+        { fragmentation: { extends: 'css', lines: { widows: 3 } } },
+      ).fragmentation,
+    ).toEqual({ extends: 'css', lines: { widows: 3 } });
+  });
 });
 
 describe('assignStackOptions', () => {
