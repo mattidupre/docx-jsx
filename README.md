@@ -506,8 +506,27 @@ pnpm dev          # the same, on watch via nodemon
 pnpm build:src    # vite build only
 pnpm build:types  # declaration emit only
 pnpm storybook    # storybook dev server (STORYBOOK_PORT, default 3000)
-pnpm link:push    # clean-publish into ./publish and `yalc push` it
+pnpm link:push    # sync dist into linked consumers (no-op when none are linked)
+pnpm release [patch|minor|major]  # bump, build, publish to GitHub Packages
 ```
+
+### Publishing and linking
+
+The package is published privately to GitHub Packages as `@mattidupre/matti-docs`,
+with only `dist/` (minus test and fixture declarations) in the tarball.
+`pnpm release` bumps the version, builds, and runs `clean-publish`. Publishing
+goes through npm, so the script hands npm the `gh` CLI token (needs
+`write:packages`) in a throwaway user config. pnpm's git checks still apply: run
+it from a clean `main`.
+
+To try unreleased changes in a consumer (resume-builder), run
+`pnpm docs:link <this checkout>` there once. From then on `pnpm build` and
+`pnpm dev` end with `link:push`, which uses `pnpm-sync` to hard-link `dist/`
+over the consumer's installed copy. The installed copy resolves `react` from the
+consumer, so there is a single React. A symlink (`pnpm link`) would load this
+repo's dev React and break the rules of hooks. The consumer registers its copies
+in `node_modules/.pnpm-sync.json` here; keep `pnpm-sync` in step with the
+consumer's `pnpm-sync-lib`, because that file format is versioned.
 
 `vite.config.ts` builds the library in lib mode, ESM and CJS, one chunk set per
 entry point. Which modules stay unbundled is declared in that config:

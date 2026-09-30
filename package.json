@@ -1,17 +1,25 @@
 {
   "type": "module",
-  "name": "matti-docs",
-  "version": "0.0.0",
+  "name": "@mattidupre/matti-docs",
+  "version": "0.1.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mattidupre/docx-jsx.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "license": "UNLICENSED",
   "engines": {
     "node": ">=22.12.0"
   },
   "files": [
     "dist/",
-    "src/",
-    "bundler/",
-    "vite.config.*",
-    "tsconfig.json"
+    "!dist/**/*.test.d.ts",
+    "!dist/**/*.stories.d.ts",
+    "!dist/demo/",
+    "!dist/fixtures/",
+    "!dist/visual/"
   ],
   "exports": {
     "./*": {
@@ -53,6 +61,7 @@
     "pdfjs-dist": "^6.3.289",
     "pixelmatch": "^7.2.0",
     "pngjs": "^7.0.0",
+    "pnpm-sync": "0.3.5",
     "postcss": "^8.5.28",
     "prettier": "^3.9.9",
     "rollup": "^4.63.5",
@@ -65,8 +74,7 @@
     "typescript-native": "npm:typescript@^7.0.2",
     "vite": "^8.3.1",
     "vite-node": "^6.0.0",
-    "vitest": "^5.0.2",
-    "yalc": "1.0.0-pre.53"
+    "vitest": "^5.0.2"
   },
   "peerDependencies": {
     "@pandacss/dev": "2.0.0-beta.18",
@@ -119,9 +127,10 @@
     "typecheck": "tsc --noEmit",
     "prelint": "pnpm build:styles",
     "lint": "eslint ./src",
-    "link:push": "rm -rf ./publish && clean-publish --without-publish --temp-dir publish && yalc push publish && rm -rf ./publish",
+    "link:push": "[ ! -f node_modules/.pnpm-sync.json ] || pnpm-sync copy",
     "prestorybook": "pnpm build:styles",
-    "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'"
+    "storybook": "dotenv -- bash -c 'storybook dev --no-open --port \"${STORYBOOK_PORT:-3000}\"'",
+    "release": "scripts/release.sh"
   },
   "nodemonConfig": {
     "ext": "ts,js,tsx,jsx,json,css",

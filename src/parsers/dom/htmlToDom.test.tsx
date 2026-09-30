@@ -391,6 +391,54 @@ describe('htmlToDom', () => {
     expect(layout.after!).toBeGreaterThan(layout.before!);
   });
 
+  it('keeps content inside the page area when styles depend on the stack element', async () => {
+    const overflows = await harness.evaluate(
+      async (api, pageHtml: string) => {
+        // B0 is the first child of stack B while pagedjs measures it. Unwrapped
+        // onto a page after A's paragraphs, it would gain this margin and push
+        // the page past its content area.
+        const pagesEl = await api.htmlToDom(pageHtml, {
+          styleSheets: ['p:not(:first-child) { margin-top: 0.5in; }'],
+        });
+        document.body.appendChild(pagesEl);
+        try {
+          return Array.from(pagesEl.children).map((pageRootEl) => {
+            // The content region is a part of the page's shadow root; the
+            // content itself is the light DOM that is not slotted into the
+            // header or footer.
+            const contentEl =
+              pageRootEl.shadowRoot?.querySelector('[part="content"]');
+            if (!contentEl) {
+              throw new Error('The page has no content part.');
+            }
+            const areaBottom =
+              contentEl.getBoundingClientRect().bottom -
+              Number.parseFloat(
+                window.getComputedStyle(contentEl).paddingBottom,
+              );
+            const contentParagraphs = Array.from(
+              pageRootEl.querySelectorAll('p'),
+            ).filter((paragraphEl) => !paragraphEl.closest('[slot]'));
+            const contentBottom = Math.max(
+              ...contentParagraphs.map((paragraphEl) =>
+                Math.round(paragraphEl.getBoundingClientRect().bottom),
+              ),
+            );
+            return contentBottom - Math.round(areaBottom);
+          });
+        } finally {
+          pagesEl.remove();
+        }
+      },
+      reactToHtml(StraddlingStacksDocument, 'pdf'),
+    );
+
+    expect(overflows.length).toBeGreaterThan(1);
+    for (const overflow of overflows) {
+      expect(overflow).toBeLessThanOrEqual(0);
+    }
+  });
+
   it('gives a continuous stack its first layout when it starts a page', async () => {
     const pages = await readPages(
       harness,
