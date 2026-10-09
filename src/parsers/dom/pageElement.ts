@@ -117,7 +117,37 @@ const createPageElementClass = (view: Window & typeof globalThis) =>
       );
     }
 
+    connectedCallback() {
+      this.#reserveRunningRegions();
+    }
+
+    /** Keep the configured margins as minima when running content is taller. */
+    #reserveRunningRegions() {
+      const { content, header, footer } = this.#regions;
+      // Read the stylesheet's margins again, so reconnecting or measuring a
+      // changed layout can shrink a previously enlarged reservation too.
+      content.style.removeProperty('padding-top');
+      content.style.removeProperty('padding-bottom');
+      const style = (this.ownerDocument.defaultView ?? view).getComputedStyle(
+        content,
+      );
+      const top = Number.parseFloat(style.paddingTop) || 0;
+      const bottom = Number.parseFloat(style.paddingBottom) || 0;
+      const page = this.#pageBox.getBoundingClientRect();
+      const headerBox = header.getBoundingClientRect();
+      const footerBox = footer.getBoundingClientRect();
+      content.style.paddingTop = `${Math.max(
+        top,
+        headerBox.height > 0 ? headerBox.bottom - page.top : 0,
+      )}px`;
+      content.style.paddingBottom = `${Math.max(
+        bottom,
+        footerBox.height > 0 ? page.bottom - footerBox.top : 0,
+      )}px`;
+    }
+
     measureContent(): PageContentMeasurement {
+      this.#reserveRunningRegions();
       const { width: pageWidth, height: pageHeight } =
         this.#pageBox.getBoundingClientRect();
       const style = (this.ownerDocument.defaultView ?? view).getComputedStyle(
@@ -126,8 +156,8 @@ const createPageElementClass = (view: Window & typeof globalThis) =>
       return {
         pageWidth,
         pageHeight,
-        contentWidth: Number.parseInt(style.width, 10),
-        contentHeight: Number.parseInt(style.height, 10),
+        contentWidth: Number.parseFloat(style.width),
+        contentHeight: Number.parseFloat(style.height),
       };
     }
   };

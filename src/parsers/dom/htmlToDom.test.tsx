@@ -64,6 +64,96 @@ const createLayouts = (name: string) => ({
   },
 });
 
+describe('running content clearance', () => {
+  it('paginates with each layout’s running content height and renders without overlap', async () => {
+    const browser = await launchTestBrowser();
+    const harness = await createBrowserHarness<DomApi>(browser, {
+      modules: ['./htmlToDom', './pageTemplate'],
+      resolveDir: RESOLVE_DIR,
+    });
+    try {
+      const html = reactToHtml(
+        () => (
+          <DocumentProvider size={{ width: '300px', height: '400px' }}>
+            <Stack
+              margin={{
+                top: '30px',
+                bottom: '30px',
+                header: '10px',
+                footer: '10px',
+              }}
+              layouts={{
+                first: {
+                  header: (
+                    <p style={{ height: '120px', margin: 0 }}>First header</p>
+                  ),
+                  footer: (
+                    <p style={{ height: '80px', margin: 0 }}>First footer</p>
+                  ),
+                },
+                subsequent: {
+                  header: (
+                    <p style={{ height: '20px', margin: 0 }}>Later header</p>
+                  ),
+                  footer: (
+                    <p style={{ height: '20px', margin: 0 }}>Later footer</p>
+                  ),
+                },
+              }}
+            >
+              {Array.from({ length: 6 }, (_, index) => (
+                <p
+                  key={index}
+                  data-body-block
+                  style={{ height: '80px', margin: 0, breakInside: 'avoid' }}
+                >
+                  {`Block ${index}`}
+                </p>
+              ))}
+            </Stack>
+          </DocumentProvider>
+        ),
+        'pdf',
+      );
+      const pages = await harness.evaluate(async (api, html) => {
+        const pagesEl = await api.htmlToDom(html);
+        document.body.append(pagesEl);
+        try {
+          return Array.from(pagesEl.children).map((page) => {
+            const header = page.querySelector('[slot="header"]');
+            const footer = page.querySelector('[slot="footer"]');
+            if (!header || !footer) {
+              throw new Error('Missing running content.');
+            }
+            const blocks = Array.from(
+              page.querySelectorAll('[data-body-block]'),
+            );
+            return {
+              text: blocks.map((block) => block.textContent),
+              clear: blocks.every((block) => {
+                const bounds = block.getBoundingClientRect();
+                return (
+                  bounds.top >= header.getBoundingClientRect().bottom &&
+                  bounds.bottom <= footer.getBoundingClientRect().top
+                );
+              }),
+            };
+          });
+        } finally {
+          pagesEl.remove();
+        }
+      }, html);
+      expect(pages).toEqual([
+        { text: ['Block 0', 'Block 1'], clear: true },
+        { text: ['Block 2', 'Block 3', 'Block 4', 'Block 5'], clear: true },
+      ]);
+    } finally {
+      await harness.close();
+      await closeTestBrowser(browser);
+    }
+  });
+});
+
 const paragraphs = (prefix: string, count: number) =>
   Array.from({ length: count }, (_value, index) => (
     <p key={`${prefix}_${index}`}>{`${prefix}${index}`}</p>
