@@ -27,6 +27,8 @@ const WORD_PART_EXP = /^word\/[^/]+\.xml$/;
  * write.
  */
 export type PackedDocxPatches = {
+  /** Package as a document (the default) or a macro-free Word template. */
+  fileType?: 'docx' | 'dotx';
   /** Word's two-line widow and orphan rule, on or off. */
   widowControl: boolean;
   /**
@@ -133,6 +135,32 @@ const patchPart = async (
   zip.file(path, patch(await file.async('string')));
 };
 
+/** Change the main part's type without changing any of the document content. */
+const writeTemplateContentType = (xml: string): string => {
+  let found = false;
+  const patched = xml.replace(/<Override\b[^>]*\/>/g, (override) => {
+    if (!/\bPartName="\/word\/document\.xml"/.test(override)) {
+      return override;
+    }
+    const documentType =
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml';
+    if (!override.includes(`ContentType="${documentType}"`)) {
+      return override;
+    }
+    found = true;
+    return override.replace(
+      `ContentType="${documentType}"`,
+      'ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml"',
+    );
+  });
+  if (!found) {
+    throw new TypeError(
+      'Expected the DOCX main document content-type override.',
+    );
+  }
+  return patched;
+};
+
 /** Every font the parts of the document body, styles and numbering name. */
 const readUsedFontNames = async (zip: JSZip): Promise<ReadonlySet<string>> => {
   const parts = zip.file(WORD_PART_EXP);
@@ -173,7 +201,12 @@ const embedFonts = async (
  */
 export const patchPackedDocx = async (
   content: Uint8Array,
-  { widowControl, sumAdjacentMargins, embeddedFonts }: PackedDocxPatches,
+  {
+    widowControl,
+    sumAdjacentMargins,
+    embeddedFonts,
+    fileType = 'docx',
+  }: PackedDocxPatches,
 ): Promise<Buffer> => {
   const zip = await JSZip.loadAsync(content);
   await patchPart(zip, DOCUMENT_PATH, inlineSectionBreaks);
@@ -184,5 +217,8 @@ export const patchPackedDocx = async (
     await patchPart(zip, SETTINGS_PATH, writeSummedMargins);
   }
   await embedFonts(zip, embeddedFonts);
+  if (fileType === 'dotx') {
+    await patchPart(zip, CONTENT_TYPES_PATH, writeTemplateContentType);
+  }
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 };

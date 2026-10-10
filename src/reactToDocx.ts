@@ -1,10 +1,10 @@
-import { htmlToPackedDocx, type HtmlToDocxOptions } from './parsers/docx';
+import { htmlToPackedDocx, type HtmlToPackedDocxOptions } from './parsers/docx';
 import { MISSING_MASONRY_LAYOUT_MESSAGE } from './parsers/docx/masonryToDocx';
 import { htmlToLayout } from './parsers/pdf/htmlToLayout';
 import type { HtmlToPdfOptions } from './parsers/pdf';
 import { reactToHtml, type DocumentRootComponent } from './lib/reactToHtml';
 
-export type ReactToDocxOptions = Omit<HtmlToDocxOptions, 'layout'> &
+export type ReactToDocxOptions = Omit<HtmlToPackedDocxOptions, 'layout'> &
   Partial<
     Pick<
       HtmlToPdfOptions,
@@ -13,7 +13,7 @@ export type ReactToDocxOptions = Omit<HtmlToDocxOptions, 'layout'> &
   >;
 
 /**
- * The DOCX of a document. A document with masonry columns is first laid out
+ * The DOCX or DOTX of a document. A document with masonry columns is first laid out
  * in `browser` exactly as `reactToPdf` lays it out (pass the same options),
  * so its units are packed in the same order; any other document needs no
  * browser, and none is opened for it.

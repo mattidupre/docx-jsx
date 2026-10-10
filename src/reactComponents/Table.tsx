@@ -18,6 +18,11 @@ import {
 } from '../entities';
 import { InternalElement } from './InternalElement';
 import type { ExtendableProps } from './entities';
+import {
+  useRepeatingRows,
+  RepeatingRowsContext,
+  RepeaterRowsAllowedContext,
+} from './Repeater';
 
 /**
  * How wide a table or a cell is: a number is a percentage of the space around
@@ -264,7 +269,11 @@ export function Table({
           </colgroup>
         )}
         {headerRows.length > 0 && <thead>{headerRows}</thead>}
-        <tbody>{bodyRows}</tbody>
+        <tbody>
+          <RepeaterRowsAllowedContext.Provider value={true}>
+            {bodyRows}
+          </RepeaterRowsAllowedContext.Provider>
+        </tbody>
       </InternalElement>
     </TableContext.Provider>
   );
@@ -303,6 +312,12 @@ export function TableRow({
   children,
   ...contentOptions
 }: TableRowProps) {
+  const repeatingGroups = useRepeatingRows();
+  if (header && repeatingGroups.length > 0) {
+    throw new TypeError(
+      'Repeated rows must be body rows; put fixed header rows outside Repeater.',
+    );
+  }
   const tableContext = useContext(TableContext);
   if (!tableContext) {
     throw new Error('TableRow must be a child of Table.');
@@ -314,7 +329,12 @@ export function TableRow({
       <InternalElement
         tagName="tr"
         elementType="tableRow"
-        elementOptions={{ header, keepTogether, height }}
+        elementOptions={{
+          header,
+          keepTogether,
+          height,
+          ...(repeatingGroups.length > 0 && { repeatingGroups }),
+        }}
         variant={variant}
         className={className}
         style={{
@@ -324,7 +344,11 @@ export function TableRow({
         }}
         typography={contentOptions}
       >
-        {positionCells(children)}
+        <RepeatingRowsContext.Provider value={[]}>
+          <RepeaterRowsAllowedContext.Provider value={false}>
+            {positionCells(children)}
+          </RepeaterRowsAllowedContext.Provider>
+        </RepeatingRowsContext.Provider>
       </InternalElement>
     </TableRowContext.Provider>
   );

@@ -23,6 +23,8 @@ import { getValueOf } from '../utils/object';
 import { isValueInArray } from '../utils/array';
 
 const CONTENT_ELEMENT_TYPES = [
+  'repeater',
+  'repeaterItem',
   'gridContainer',
   'gridItem',
   'htmltag',
@@ -228,6 +230,11 @@ export const mapHtmlToDocument = <TContent>(
       }
 
       if (isElementOfType(elementData, 'stack')) {
+        if (parentElementTypes.includes('repeaterItem')) {
+          throw new TypeError(
+            'Repeater items cannot contain Stack sections. Repeat content inside a Stack instead.',
+          );
+        }
         if (!isChildOfElementType(parentElementTypes, 'document')) {
           throw new TypeError('Stack must be a child of document.');
         }
@@ -297,6 +304,32 @@ export const mapHtmlToDocument = <TContent>(
           parentTagNames,
           PARAGRAPH_TAG_NAMES,
         );
+
+        if (isElementOfType(elementData, ['repeater', 'repeaterItem'])) {
+          if (parentElementTypes.at(-1) === 'gridContainer') {
+            throw new TypeError(
+              'Place Repeater inside a GridItem, or repeat a complete Grid.',
+            );
+          }
+          if (
+            isChildOfParagraph ||
+            ['ul', 'ol', 'table', 'thead', 'tbody', 'tr'].includes(
+              parentTagNames.at(-1) ?? '',
+            )
+          ) {
+            throw new TypeError(
+              'Block Repeater must contain document blocks. Use mode="rows" for table rows, or repeat a complete List.',
+            );
+          }
+          if (
+            isElementOfType(elementData, 'repeaterItem') &&
+            parentElementTypes.at(-1) !== 'repeater'
+          ) {
+            throw new TypeError(
+              'Repeater items must be direct children of Repeater.',
+            );
+          }
+        }
 
         if (
           isElementOfType(elementData, 'masonryGroup') &&
@@ -431,6 +464,7 @@ export const mapHtmlToDocument = <TContent>(
             'split',
             'tableCell',
             'htmlraw',
+            'repeaterItem',
           ])
         ) {
           if (text.trim()) {
