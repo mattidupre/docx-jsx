@@ -255,10 +255,10 @@ control.
 <Repeater
   name="updates"
   items={updates}
-  getKey={item => item.id}
+  getKey={(item) => item.id}
   emptyItem={() => <Typography as="p">[Update summary]</Typography>}
 >
-  {item => <Typography as="p">{item.summary}</Typography>}
+  {(item) => <Typography as="p">{item.summary}</Typography>}
 </Repeater>
 ```
 

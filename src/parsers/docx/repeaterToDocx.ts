@@ -87,7 +87,17 @@ export class RepeatingBlock extends FileChild {
   }
 
   override prepForXml(context: IContext): IXmlableObject {
-    return this.component.prepForXml(context);
+    // Body resolves section geometry from its direct FileChild. Within a cell,
+    // controls must stay invisible so Table can find cell/row/table ancestors.
+    if (context.stack.some((parent) => parent instanceof TableCell)) {
+      return this.component.prepForXml(context);
+    }
+    context.stack.push(this);
+    try {
+      return this.component.prepForXml(context);
+    } finally {
+      context.stack.pop();
+    }
   }
 }
 

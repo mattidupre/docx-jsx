@@ -357,6 +357,36 @@ describe('Repeater', () => {
     }
   });
 
+  it('resolves a repeated top-level Split against its own section width', async () => {
+    const archive = await inspectDocx(
+      await reactToDocx(
+        () => (
+          <DocumentProvider>
+            <Stack>
+              <Typography as="p">First section</Typography>
+            </Stack>
+            <Stack margin={{ left: '2in', right: '2in' }}>
+              <Repeater name="narrow" items={[1]} getKey={(item) => item}>
+                {() => (
+                  <Split
+                    left={<Typography as="p">Left</Typography>}
+                    right={<Typography as="p">Right</Typography>}
+                  />
+                )}
+              </Repeater>
+            </Stack>
+          </DocumentProvider>
+        ),
+        {},
+      ),
+    );
+    expect(
+      findAll(archive.document, 'w:gridCol').map((node) =>
+        attribute(node, 'w:w'),
+      ),
+    ).toEqual(['3240', '3240']);
+  });
+
   it('keeps the required cell-ending paragraph minimal after a block repeater', async () => {
     const archive = await inspectDocx(
       await reactToDocx(
