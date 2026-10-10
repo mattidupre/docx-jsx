@@ -173,6 +173,114 @@ const script = reactToScript(Document, { targetQuery: '#rendered', pageClassName
 ignored inside a shadow root, so font declarations belong in `pageStyleSheets`
 while rules that style document content belong in `styleSheets`.
 
+### Word templates and populated documents
+
+Pass `fileType: 'dotx'` to `reactToDocx` to create a macro-free Word template.
+The default is `'docx'`; both formats return a `Buffer` and use the same Word
+renderer. Save each buffer with its matching extension: renaming a DOCX file
+does not make it a template.
+
+Use one shared React component for page setup, variants, branding, headers,
+and footers, and supply different content for the two files:
+
+```tsx
+import { writeFile } from 'node:fs/promises';
+
+const StarterReport = () => <Report content={starterContent} />;
+const FilledReport = () => <Report content={reportContent} />;
+
+const template = await reactToDocx(StarterReport, {
+  ...options,
+  fileType: 'dotx',
+});
+const document = await reactToDocx(FilledReport, options);
+
+await writeFile('report.dotx', template);
+await writeFile('report.docx', document);
+```
+
+`Report`, `starterContent`, `reportContent`, and `options` are supplied by the
+consumer. The template includes all content you render into it; the exporter
+does not infer placeholders or remove actual content. Creating a document from
+the DOTX in Word starts a new document with that starter content. The DOCX is
+the populated document to open and edit.
+
+If both calls share a browser for masonry layout, leave `closeBrowser` false
+and close the browser after both exports finish.
+
+A complete example lives in `src/demo/lib/Report.tsx`: one typed `Report`
+component supplies the layout, with starter and populated data supplying the
+text, project updates, and action-table rows. Updates and rows use `Repeater`
+to retain native repeating sections in the Word files.
+
+Run `pnpm exec vitest run src/demo.test.ts` to generate
+`dist-demo/ReportStarter.dotx` and `dist-demo/ReportFilled.docx`, plus HTML
+previews and PDFs of each.
+
+`Repeater` is an opt-in React loop for content that also needs Word repetition:
+
+```tsx
+<Repeater name="updates" title="Project update" items={updates} getKey={item => item.id}>
+  {item => <Typography as="p">{item.summary}</Typography>}
+</Repeater>
+
+<Table>
+  <TableRow header><TableCell>Action</TableCell></TableRow>
+  <Repeater name="actions" mode="rows" items={actions} getKey={item => item.id}>
+    {item => <TableRow><TableCell>{item.task}</TableCell></TableRow>}
+  </Repeater>
+</Table>
+```
+
+React, preview, and PDF render the supplied items. DOCX and DOTX wrap them in
+native Word repeating-section and repeating-item controls, using docx.js's
+custom XML components. Ordinary `.map()` remains appropriate when no Word
+control is needed. Word edits affect the file; they do not update React data.
+
+The default `blocks` mode accepts document blocks, including whole lists,
+tables, grids, and splits; it also works inside cells, grid items, headers,
+and footers. It accepts the existing typography, variant, class, and style
+props. `rows` mode belongs directly in the table body and can repeat one or
+several rows per item; put styling on `TableRow` or `TableCell`. Fixed headers
+stay outside the repeater. Nested repeaters are supported. A merged cell's
+`rowSpan` must stay within one repeated item.
+
+Use stable, unique keys. For an empty collection, `emptyItem` renders one
+starter item in every output context, retaining a native Word control in both
+DOCX and DOTX. In rows mode it should return one or more `TableRow` elements.
+Without `emptyItem`, an empty collection renders nothing, including no Word
+control.
+
+```tsx
+<Repeater
+  name="updates"
+  items={updates}
+  getKey={(item) => item.id}
+  emptyItem={() => <Typography as="p">[Update summary]</Typography>}
+>
+  {(item) => <Typography as="p">{item.summary}</Typography>}
+</Repeater>
+```
+
+Repeat whole lists or grids, or put a repeater inside a grid item, rather than wrapping
+individual list or grid items. A repeater cannot contain a `Stack` (Word
+sections). Word repeating-section controls require Word 2013 or later and
+client support for that feature; generated XML does not guarantee that every
+Word client exposes an add/remove interface.
+
+Bare text and inline spans in a block item are gathered into a Word paragraph.
+A render callback returning `null`, `undefined`, or a boolean omits that item;
+use `emptyItem` to provide visible starter content. Empty fragments are rejected
+by Word export rather than producing an empty repeating-item control.
+
+A cell ending with a block repeater retains Word's required ending paragraph,
+with a one-twip line and zero spacing to avoid a normal-height blank line.
+Generated paragraph spacing and keep rules preserve the supplied items' layout.
+Word may copy those rules when adding an item, including adjustments at section
+boundaries. Check spacing and pagination after adding or removing items in your
+target Word client; that interaction has not been verified in the unactivated
+Word installation used here.
+
 ### In-browser preview
 
 ```tsx
@@ -260,6 +368,7 @@ sense in one target (an "on the web" call to action, a print-only note).
 | `ContentProvider` | Variants and prefixes without a document | Adopted stylesheet when `injectEnvironmentCss` and `documentType === 'web'` | Context only; contributes no content | Use to style library components outside a document (Storybook, a web page). |
 | `Stack` | A page section: margins, columns, running header and footer | One `PageTemplate` per layout; the Fragmenter measures each stack at the width of the page it starts on, and what is left of it again on a later page of another width (a split block carries on from the same place in its text), and fills pages from the measurements | One `ISectionOptions` per stack (page size, margins, `column`, first/default headers and footers) | `continuous` starts the section on the current page. A page belongs to the stack whose content starts it, and gets that stack's `first` layout only when it also starts the stack. A multi-column stack emits a second, empty continuous section so the columns do not fill the page. `columns={{ columnCount, columnGap, fill: 'masonry' }}` packs the direct children (units) into the shortest column instead of flowing; see `MasonryGroup`. |
 | `Typography` | A styled tag plus an optional variant | The tag from `as`, with typography written as CSS custom properties and the variant class | Run properties, or paragraph properties when the tag is a paragraph tag | `as` defaults to `span`. |
+| `Repeater` | Loop items with Word repetition | Renders the supplied items; rows mode emits real table rows | Native repeating-section and repeating-item content controls | Opt in only for Word parity. Blocks or rows, nested controls, stable keys; empty arrays use `emptyItem` or omit the control. No React synchronization from Word edits. |
 | `Break` | Force a page or column break | `break-after: page`; inside a multi-column stack, `break-after: column` | `PageBreak`, or `ColumnBreak` inside a multi-column stack; wrapped in a paragraph when not already inside one | A break that ends the document is followed by a blank page, as in Word. |
 | `BreakAvoid` | Keep a subtree together | `break-inside: avoid` (and `break-after: avoid` with `after`) | `keepLines` on paragraph children, `keepNext` on all but the last; a `Table` keeps itself together with `cantSplit` on its rows | `breakInside` accumulates down the element context, so a nested table inherits it. A kept block taller than a page is split anyway where it can be, and overflows where it cannot (a fixed-height block). |
 | `MasonryGroup` | One movable unit of masonry columns | A `div`; the Fragmenter packs each unit whole into the column whose content ends highest, looks up to 8 units ahead for one that fits when the next fits nowhere, splits only a unit taller than a column (as flow does), keeps a unit that keeps with the next (a heading, `keepWithNext`) in the same column, and balances the last page. The DOM order is the packed order | The units in the packed order of a layout run in `browser`, with `w:br w:type="column"` and `w:br w:type="page"` where the layout ended a column or a page between units; a split unit flows on by itself, and the section is not balanced again | Must be a direct child of a `Stack`; every other direct child of a masonry stack is a unit of its own, except a `Break` or a bare `<br>`. Reading order is the packed order in every target. A `Break` between units starts the next column right of every column with content (a page break, in a one-column stack, starts the next page), and one inside a unit carries the rest of the unit there; nothing after a `Break` is packed ahead of what comes before it. A one-column masonry stack places its units in order, apart from the lookahead. `reactToDocx` throws for a masonry document without a `browser`. |

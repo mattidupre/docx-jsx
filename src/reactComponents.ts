@@ -33,6 +33,7 @@ export * from './reactComponents/Table';
 export * from './reactComponents/TabSplit';
 export * from './reactComponents/Typography';
 export * from './reactComponents/Raw';
+export { Repeater, type RepeaterProps } from './reactComponents/Repeater';
 export * from './reactComponents/Split';
 export * from './reactComponents/usePageMargins';
 export * from './reactComponents/usePageSize';

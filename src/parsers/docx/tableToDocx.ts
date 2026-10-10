@@ -5,10 +5,9 @@ import {
   type IParagraphPropertiesOptions,
   type ITableBordersOptions,
   type ITableWidthProperties,
-  type Paragraph,
+  type FileChild,
   ShadingType,
-  Table,
-  TableCell,
+  type Table,
   TableLayoutType,
   TableRow,
   VerticalAlignTable,
@@ -31,6 +30,7 @@ import type { HtmlElementNode } from '../../lib/mapHtmlToDocument';
 import { toBorderWidthEighths, toWholeTwip } from './entities';
 import { toDocxColor } from './toDocxColor';
 import { parseParagraphOptions } from './typographyOptionsToDocx';
+import { RepeaterTableCell, type RepeaterFactory } from './repeaterToDocx';
 
 /**
  * A width written as a number is a percentage; CSS writes `50%` and docx
@@ -168,7 +168,7 @@ export type TableCellChildren = (
     paragraphOptions?: IParagraphPropertiesOptions;
     keepLines: boolean;
   },
-) => ReadonlyArray<Paragraph | Table>;
+) => ReadonlyArray<FileChild>;
 
 export type TableToDocxOptions = {
   fonts: FontsConfig;
@@ -179,6 +179,7 @@ export type TableToDocxOptions = {
   /** The document's fragmentation rules for tables. */
   tableRules: FragmentationRules['tables'];
   toCellChildren: TableCellChildren;
+  repeaters: RepeaterFactory;
 };
 
 /**
@@ -204,6 +205,7 @@ export const tableToDocx = (
     keepChildrenTogether,
     tableRules,
     toCellChildren,
+    repeaters,
   }: TableToDocxOptions,
 ): Table | ReadonlyArray<never> => {
   // A `w:tr` without a `w:tc` makes the document unreadable, and a row with no
@@ -219,6 +221,25 @@ export const tableToDocx = (
   const cellNodesByRow = rowNodes.map((rowNode) =>
     selectElementNodes(rowNode.children, 'tableCell'),
   );
+
+  const repeatingPaths = rowNodes.map(
+    (row) => row.data.element.elementOptions.repeatingGroups ?? [],
+  );
+  if (repeatingPaths.some((path) => path.length > 0)) {
+    const signatures = repeatingPaths.map((path) => JSON.stringify(path));
+    for (const [index, cells] of cellNodesByRow.entries()) {
+      for (const cell of cells) {
+        const span = Math.max(cell.data.element.elementOptions.rowSpan ?? 1, 1);
+        for (let offset = 0; offset < span; offset++) {
+          if (signatures[index + offset] !== signatures[index]) {
+            throw new TypeError(
+              'A table rowSpan cannot cross a Repeater item boundary or the end of the table.',
+            );
+          }
+        }
+      }
+    }
+  }
 
   const columnCount = Math.max(
     columnWidths?.length ?? 0,
@@ -261,7 +282,7 @@ export const tableToDocx = (
         .reduce((total, columnWidth) => total + columnWidth, 0);
       columnIndex += span;
 
-      return new TableCell({
+      return new RepeaterTableCell({
         ...(span > 1 && { columnSpan: span }),
         // `docx` writes the `w:vMerge` continuation cells into the rows below
         // from this one number.
@@ -311,20 +332,23 @@ export const tableToDocx = (
     });
   });
 
-  return new Table({
-    rows,
-    width: toWidthOption(width),
-    columnWidths: [...columnWidthsTwip],
-    borders: toTableBorders(borders),
-    margins: {
-      top: cellPaddingTwip,
-      bottom: cellPaddingTwip,
-      left: cellPaddingTwip,
-      right: cellPaddingTwip,
+  return repeaters.table(
+    {
+      rows,
+      width: toWidthOption(width),
+      columnWidths: [...columnWidthsTwip],
+      borders: toTableBorders(borders),
+      margins: {
+        top: cellPaddingTwip,
+        bottom: cellPaddingTwip,
+        left: cellPaddingTwip,
+        right: cellPaddingTwip,
+      },
+      // Declared widths are only honoured exactly under the fixed algorithm,
+      // which is the one the browser is put into by `table-layout: fixed`.
+      layout: columnWidths ? TableLayoutType.FIXED : TableLayoutType.AUTOFIT,
+      ...(align && { alignment: DOCX_TABLE_ALIGNMENT[align] }),
     },
-    // Declared widths are only honoured exactly under the fixed algorithm,
-    // which is the one the browser is put into by `table-layout: fixed`.
-    layout: columnWidths ? TableLayoutType.FIXED : TableLayoutType.AUTOFIT,
-    ...(align && { alignment: DOCX_TABLE_ALIGNMENT[align] }),
-  });
+    repeatingPaths,
+  );
 };

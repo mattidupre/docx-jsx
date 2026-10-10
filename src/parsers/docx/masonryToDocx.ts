@@ -1,4 +1,4 @@
-import type { Paragraph, Table } from 'docx';
+import type { FileChild } from 'docx';
 import type { FragmentationLayout } from '../../fragmenter/model';
 
 /**
@@ -9,7 +9,7 @@ import type { FragmentationLayout } from '../../fragmenter/model';
  * Word breaks it by the same rules.
  */
 
-type MasonryBlock = Paragraph | Table;
+type MasonryBlock = FileChild;
 
 /** What one direct child of a masonry stack maps to, before it is packed. */
 export class MasonryUnit {

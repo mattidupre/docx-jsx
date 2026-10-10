@@ -1,13 +1,13 @@
 import {
   Document,
+  FileChild,
   Packer,
-  Header,
-  Footer,
+  type Header,
+  type Footer,
   TextRun,
   Paragraph as DocxParagraph,
   PageNumber,
   type ParagraphChild,
-  type IHeaderOptions,
   type IParagraphOptions,
   type IParagraphPropertiesOptions,
   type ISectionOptions,
@@ -16,7 +16,7 @@ import {
   ImageRun,
   Table,
   TableRow,
-  TableCell,
+  type TableCell,
   BorderStyle,
   type ITableBordersOptions,
   WidthType,
@@ -71,6 +71,14 @@ import type {
   INTRINSIC_VARIANT_TAG_NAMES,
 } from '../../entities';
 import {
+  createRepeaterFactory,
+  RepeatingBlock,
+  RepeaterTableCell,
+  createRepeaterHeader,
+  createRepeaterFooter,
+  transformRepeatingBlocks,
+} from './repeaterToDocx';
+import {
   parseLineSpacing,
   parseTextRunOptions,
   parseParagraphOptions,
@@ -120,6 +128,7 @@ const BLOCK_TAG_NAMES = [
  * entry per split side -- and so must reach their branch exactly as mapped.
  */
 const STRUCTURAL_CHILDREN_ELEMENT_TYPES = [
+  'repeater',
   'gridContainer',
   'split',
 ] as const satisfies ReadonlyArray<ElementType>;
@@ -511,15 +520,18 @@ const toBookmarkName = (id: string): string => {
   return named.slice(0, BOOKMARK_NAME_MAX_LENGTH);
 };
 
-type BlockChild = DocxParagraph | Table;
+type BlockChild = FileChild;
 
 const isBlockChild = (value: unknown): value is BlockChild =>
-  value instanceof DocxParagraph || value instanceof Table;
+  value instanceof FileChild;
 
-const keepParagraphLines = (child: BlockChild): BlockChild =>
-  child instanceof Paragraph
+const keepParagraphLines = (child: BlockChild): BlockChild => {
+  if (child instanceof RepeatingBlock)
+    return child.withChildren(child.children.map(keepParagraphLines));
+  return child instanceof Paragraph
     ? Paragraph.clone(child, { keepLines: true })
     : child;
+};
 
 /**
  * A section, a table cell and a header all hold blocks, never runs. Runs that
@@ -730,6 +742,7 @@ const createDocx = async (
   // Every list declares the numbering it needs while it is mapped, so the
   // document ships exactly the definitions its paragraphs point at.
   const listNumbering = createListNumbering();
+  const repeaters = createRepeaterFactory();
 
   const parseNode = (node: HtmlNode) => {
     const elementsContext = node.data.elementsContext;
@@ -881,21 +894,43 @@ const createDocx = async (
       }
 
       if (breakInside === 'avoid' || breakAfter === 'avoid') {
-        node.children = node.children.map((child, index) => {
-          if (child instanceof Paragraph) {
-            return Paragraph.clone(child, {
-              keepLines: breakInside === 'avoid',
-              // If Paragraph is the last child, do not keep the next element.
-              // If there is a parent breakInside it will overwrite this.
-              keepNext:
-                index < node.children.length - 1 ||
-                breakAfter === 'avoid' ||
-                child[PARAGRAPH_OPTIONS_KEY].keepNext === true,
-            });
-          }
-          // A Table keeps itself together through `cantSplit` on its rows.
-          return child;
-        });
+        node.children = transformRepeatingBlocks(node.children, (children) =>
+          children.map((child, index) => {
+            if (child instanceof Paragraph) {
+              return Paragraph.clone(child, {
+                keepLines: breakInside === 'avoid',
+                // If Paragraph is the last child, do not keep the next element.
+                // If there is a parent breakInside it will overwrite this.
+                keepNext:
+                  index < children.length - 1 ||
+                  breakAfter === 'avoid' ||
+                  child[PARAGRAPH_OPTIONS_KEY].keepNext === true,
+              });
+            }
+            // A Table keeps itself together through `cantSplit` on its rows.
+            return child;
+          }),
+        );
+      }
+
+      if (element.elementType === 'repeaterItem') {
+        const children = toBlockChildren(
+          node.children,
+          blockParagraphOptions(),
+        );
+        if (children.length === 0) {
+          throw new TypeError(
+            'Repeater items must render content; use an explicit emptyItem for a starter.',
+          );
+        }
+        return repeaters.block(children);
+      }
+      if (element.elementType === 'repeater') {
+        const items = node.children.flat(Infinity);
+        if (!items.every((item) => item instanceof RepeatingBlock)) {
+          throw new TypeError('Repeater must contain repeating items.');
+        }
+        return repeaters.block(items, element.elementOptions);
       }
 
       if (element.elementType === 'positionalTab') {
@@ -1054,7 +1089,7 @@ const createDocx = async (
             throw new TypeError(`Invalid cell range ${start} to ${end} `);
           }
           const size = end - start;
-          return new TableCell({
+          return new RepeaterTableCell({
             margins: {
               left: Math.round(gapTwip / 2),
               right: Math.round(gapTwip / 2),
@@ -1156,6 +1191,7 @@ const createDocx = async (
           contentWidthTwip: toContentWidthTwip(elementsContext),
           keepChildrenTogether,
           toCellChildren,
+          repeaters,
         });
       }
 
@@ -1217,7 +1253,7 @@ const createDocx = async (
             new TableRow({
               cantSplit: true,
               children: [
-                new TableCell({
+                new RepeaterTableCell({
                   margins: {
                     right: cellGapTwip,
                   },
@@ -1227,7 +1263,7 @@ const createDocx = async (
                     keepLines: keepChildrenTogether,
                   }),
                 }),
-                new TableCell({
+                new RepeaterTableCell({
                   margins: {
                     left: cellGapTwip,
                   },
@@ -1321,27 +1357,29 @@ const createDocx = async (
         const quoteIndent = BLOCKQUOTE_PARAGRAPH_OPTIONS?.indent;
         const quoteSpacing = BLOCKQUOTE_PARAGRAPH_OPTIONS?.spacing;
         const blocks = toBlockChildren(node.children, blockParagraphOptions());
-        return blocks.map((child, index) => {
-          // A `w:tbl` inside a quote carries its own indent and is left alone.
-          if (!(child instanceof Paragraph)) {
-            return child;
-          }
-          const { indent, spacing } = child[PARAGRAPH_OPTIONS_KEY];
-          return Paragraph.clone(child, {
-            // Word indents paragraphs rather than the box around them, so the
-            // quote's inset is applied to every block it holds.
-            indent: { ...indent, ...quoteIndent },
-            // CSS gives the quote one margin box, not one per paragraph inside
-            // it, so its vertical margins go on the outermost blocks only.
-            spacing: {
-              ...spacing,
-              ...(index === 0 ? { before: quoteSpacing?.before } : {}),
-              ...(index === blocks.length - 1
-                ? { after: quoteSpacing?.after }
-                : {}),
-            },
-          });
-        });
+        return transformRepeatingBlocks(blocks, (children) =>
+          children.map((child, index) => {
+            // A `w:tbl` inside a quote carries its own indent and is left alone.
+            if (!(child instanceof Paragraph)) {
+              return child;
+            }
+            const { indent, spacing } = child[PARAGRAPH_OPTIONS_KEY];
+            return Paragraph.clone(child, {
+              // Word indents paragraphs rather than the box around them, so the
+              // quote's inset is applied to every block it holds.
+              indent: { ...indent, ...quoteIndent },
+              // CSS gives the quote one margin box, not one per paragraph inside
+              // it, so its vertical margins go on the outermost blocks only.
+              spacing: {
+                ...spacing,
+                ...(index === 0 ? { before: quoteSpacing?.before } : {}),
+                ...(index === children.length - 1
+                  ? { after: quoteSpacing?.after }
+                  : {}),
+              },
+            });
+          }),
+        );
       }
 
       if (node.tagName in DOCX_HEADING) {
@@ -1405,9 +1443,7 @@ const createDocx = async (
       const rootChildren = toBlockChildren(node.children, rootParagraphOptions);
 
       if (element.elementType === 'header') {
-        return new Header({
-          children: rootChildren as IHeaderOptions['children'],
-        });
+        return createRepeaterHeader(rootChildren);
       }
 
       if (element.elementType === 'content') {
@@ -1415,9 +1451,7 @@ const createDocx = async (
       }
 
       if (element.elementType === 'footer') {
-        return new Footer({
-          children: rootChildren as IHeaderOptions['children'],
-        });
+        return createRepeaterFooter(rootChildren);
       }
     }
 
@@ -1501,13 +1535,15 @@ const createDocx = async (
     ) => {
       const currentSections: Array<ISectionOptions> = [];
       const compensated = Array.isArray(content)
-        ? compensateTrimmedSpacing(content, rules.margins.adjacent)
+        ? transformRepeatingBlocks(content, (blocks) =>
+            compensateTrimmedSpacing(blocks, rules.margins.adjacent),
+          )
         : content;
       const blocks =
         Array.isArray(compensated) &&
         index < stacks.length - 1 &&
         !stacks[index + 1].continuous
-          ? withoutTrailingSpaceAfter(compensated)
+          ? transformRepeatingBlocks(compensated, withoutTrailingSpaceAfter)
           : compensated;
       const children =
         startsWithPageBreak[index] &&
@@ -1656,17 +1692,22 @@ const toPackedDocxPatches = (
 export const htmlToDocx = async (html: string, options: HtmlToDocxOptions) =>
   (await createDocx(html, options)).document;
 
+export type HtmlToPackedDocxOptions = HtmlToDocxOptions & {
+  /** Package as a document (the default) or a macro-free Word template. */
+  fileType?: 'docx' | 'dotx';
+};
+
 /**
- * The packed DOCX for `html`, with the settings `docx` cannot write patched
+ * The packed DOCX or DOTX for `html`, with the settings `docx` cannot write patched
  * in from the document's fragmentation rules, and its fonts embedded.
  */
 export const htmlToPackedDocx = async (
   html: string,
-  options: HtmlToDocxOptions,
+  { fileType = 'docx', ...options }: HtmlToPackedDocxOptions,
 ): Promise<Buffer> => {
   const { document, rules, embeddedFonts } = await createDocx(html, options);
-  return patchPackedDocx(
-    await Packer.toBuffer(document),
-    toPackedDocxPatches(rules, embeddedFonts),
-  );
+  return patchPackedDocx(await Packer.toBuffer(document), {
+    ...toPackedDocxPatches(rules, embeddedFonts),
+    fileType,
+  });
 };

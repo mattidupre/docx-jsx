@@ -13,7 +13,7 @@ import {
   type ErrorObject,
 } from '../utils/error';
 
-export type DemoTarget = 'html' | 'docx' | 'pdf';
+export type DemoTarget = 'html' | 'docx' | 'dotx' | 'pdf';
 
 export type DemoBuildResult = {
   baseName: string;
@@ -32,6 +32,8 @@ type Renderer = (
 const createRenderers = (browser: Browser): Record<DemoTarget, Renderer> => ({
   html: (DocumentRoot) => reactToHtmlDocument(DocumentRoot),
   docx: (DocumentRoot) => reactToDocx(DocumentRoot, { fonts: {} }),
+  dotx: (DocumentRoot) =>
+    reactToDocx(DocumentRoot, { fonts: {}, fileType: 'dotx' }),
   pdf: (DocumentRoot) => reactToPdf(DocumentRoot, { browser }),
 });
 
@@ -63,12 +65,12 @@ export const build = async ({ silent }: { silent?: boolean } = {}): Promise<
       fileNames.flatMap((fileName) => {
         const baseName = path.basename(fileName, path.extname(fileName));
 
-        return Object.entries(renderers).map(
-          async ([target, render]): Promise<DemoBuildResult> => {
+        return (['html', 'docx', 'pdf'] as const).map(
+          async (target): Promise<DemoBuildResult> => {
             const filePath = path.join(outDir, `${baseName}.${target}`);
             const result: DemoBuildResult = {
               baseName,
-              target: target as DemoTarget,
+              target,
               filePath,
               byteLength: 0,
               error: undefined,
@@ -76,15 +78,27 @@ export const build = async ({ silent }: { silent?: boolean } = {}): Promise<
 
             log(`Building ${baseName} to ${target.toUpperCase()}...`);
             try {
-              const { Document } = await import(
-                path.join(currentDir, fileName)
+              const {
+                Document,
+                wordFileType,
+              }: {
+                Document: DocumentRootComponent;
+                wordFileType?: 'docx' | 'dotx';
+              } = await import(path.join(currentDir, fileName));
+              result.target =
+                target === 'docx' ? (wordFileType ?? 'docx') : target;
+              result.filePath = path.join(
+                outDir,
+                `${baseName}.${result.target}`,
               );
-              const rendered = await render(Document);
+              const rendered = await renderers[result.target](Document);
               if (isErrorObject(rendered)) {
                 result.error = stringifyErrorObject(rendered);
               } else {
-                await fs.writeFile(filePath, rendered, { encoding: 'utf-8' });
-                result.byteLength = (await fs.stat(filePath)).size;
+                await fs.writeFile(result.filePath, rendered, {
+                  encoding: 'utf-8',
+                });
+                result.byteLength = (await fs.stat(result.filePath)).size;
               }
             } catch (error) {
               result.error = String(
@@ -94,8 +108,8 @@ export const build = async ({ silent }: { silent?: boolean } = {}): Promise<
 
             log(
               result.error
-                ? `Building ${baseName} to ${target.toUpperCase()} encountered an error: ${result.error}`
-                : `Building ${baseName} to ${target.toUpperCase()} complete.`,
+                ? `Building ${baseName} to ${result.target.toUpperCase()} encountered an error: ${result.error}`
+                : `Building ${baseName} to ${result.target.toUpperCase()} complete.`,
             );
             return result;
           },

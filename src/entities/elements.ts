@@ -17,6 +17,8 @@ import type { TypographyOptions, VariantName } from './typography';
 import type { UnitsSize } from './units';
 
 export type ConfigByElementType = {
+  repeater: { name: string; title: string };
+  repeaterItem: Record<string, never>;
   document: DocumentConfig;
   stack: StackConfig;
   header: { layoutType: LayoutType };
@@ -73,6 +75,7 @@ export type ConfigByElementType = {
     repeatHeader: boolean;
   };
   tableRow: {
+    repeatingGroups?: ReadonlyArray<RepeatingRowGroup>;
     header: boolean;
     keepTogether: boolean;
     height?: UnitsSize;
@@ -87,6 +90,13 @@ export type ConfigByElementType = {
     /** A number is a percentage of the table width, a length is absolute. */
     width?: number | UnitsSize;
   };
+};
+
+export type RepeatingRowGroup = {
+  id: string;
+  name: string;
+  title: string;
+  item: string;
 };
 
 export type TableAlign = 'left' | 'center' | 'right';
