@@ -244,6 +244,63 @@ describe('PageTemplate', () => {
     expect(styles.outside).toBe('normal');
   });
 
+  it.each([
+    { headerHeight: 120, footerHeight: 80, expectedHeight: 270 },
+    { headerHeight: 10, footerHeight: 10, expectedHeight: 430 },
+    { headerHeight: 0, footerHeight: 0, expectedHeight: 430 },
+  ])(
+    'reserves running content without reducing sufficient margins: %o',
+    async (sizes) => {
+      const result = await harness.evaluate((api, sizes) => {
+        const shadowStyleSheet = new CSSStyleSheet();
+        shadowStyleSheet.replaceSync(api.PAGE_SHADOW_STYLES);
+        const makeRegion = (height: number) => {
+          const element = document.createElement('div');
+          element.style.height = `${height}px`;
+          return element;
+        };
+        const template = new api.PageTemplate({
+          prefixes: api.assignPrefixesOptions(),
+          size: { width: '300px', height: '500px' },
+          margin: {
+            top: '30px',
+            bottom: '40px',
+            left: '0px',
+            right: '0px',
+            header: '10px',
+            footer: '20px',
+          },
+          header: makeRegion(sizes.headerHeight),
+          footer: makeRegion(sizes.footerHeight),
+          shadowStyleSheets: [shadowStyleSheet],
+        });
+        document.body.append(template.element);
+        const content = makeRegion(sizes.expectedHeight);
+        const rendered = template.extend({ content });
+        document.body.append(rendered.element);
+        try {
+          const header = rendered.element.querySelector('[slot="header"]');
+          const footer = rendered.element.querySelector('[slot="footer"]');
+          if (!header || !footer) {
+            throw new Error('Missing running content.');
+          }
+          const bodyBox = content.getBoundingClientRect();
+          return {
+            height: template.getContentSize().height,
+            headerClear: bodyBox.top >= header.getBoundingClientRect().bottom,
+            footerClear: bodyBox.bottom <= footer.getBoundingClientRect().top,
+          };
+        } finally {
+          template.element.remove();
+          rendered.element.remove();
+        }
+      }, sizes);
+      expect(result.height).toBe(`${sizes.expectedHeight}px`);
+      expect(result.headerClear).toBe(true);
+      expect(result.footerClear).toBe(true);
+    },
+  );
+
   it('lays out the chrome in a shadow root that a stylesheet reaches through its parts', async () => {
     const result = await harness.evaluate((api) => {
       const styleSheet = new CSSStyleSheet();
